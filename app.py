@@ -94,7 +94,7 @@ with tab3:
                     thickness = st.number_input("หนา (Thickness)")
                 with col2:
                     depth = st.number_input("ลึก (Depth)")
-                    surface_area = st.number_input("พื้นผิว (Surface Area)")
+                    surface_area = st.text_input("พื้นผิว (Surface Area)")
                     outer_dia = st.number_input("เส้นผ่านศูนย์กลางนอก")
                     inner_dia = st.number_input("เส้นผ่านศูนย์กลางใน")
                     pcs_per_jig = st.number_input("ชิ้นต่อจิ๊ก", step=1)
