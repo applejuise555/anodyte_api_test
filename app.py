@@ -77,18 +77,60 @@ with tab3:
             supabase.table("jig").insert({"jig_code": new_code}).execute()
             st.success(f"สร้าง {new_code} แล้ว")
 
-    # 2. เพิ่มสินค้าลงจิ๊ก
+ 
+   # 2. เพิ่มสินค้าลงจิ๊ก
     with sub2:
-        jig_list = supabase.table("jig").select("id, jig_code").execute().data
-        jig_map = {item['jig_code']: item['id'] for item in jig_list}
+        st.subheader("ลงทะเบียนสินค้าในจิ๊ก")
+        # ดึงรายชื่อจิ๊กที่มีอยู่มาให้เลือก
+        jig_list_resp = supabase.table("jig").select("id, jig_code").execute()
+        jig_map = {item['jig_code']: item['id'] for item in jig_list_resp.data}
+        
         if jig_map:
-            selected_jig = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()))
-            with st.form("add_prod_form"):
-                p_name = st.text_input("ชื่อสินค้า")
-                p_planned = st.number_input("จำนวนตามแผน", min_value=0)
-                if st.form_submit_button("เพิ่ม"):
-                    supabase.table("jig_product").insert({"jig_id": jig_map[selected_jig], "product_name": p_name, "planned_piece": p_planned}).execute()
-                    st.success("เพิ่มสินค้าเรียบร้อย")
+            with st.form("product_to_jig_form"):
+                selected_jig_code = st.selectbox("เลือกจิ๊กที่ต้องการเพิ่มสินค้า", list(jig_map.keys()))
+                
+                # แบ่งคอลัมน์เพื่อให้ฟอร์มดูสะอาดตา
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    product_code = st.text_input("รหัสสินค้า (Product Code)")
+                    product_name = st.text_input("ชื่อสินค้า (Product Name)")
+                    color = st.text_input("สี (Color)")
+                    surface_type = st.text_input("ประเภทพื้นผิว (Surface Type)")
+                    planned_piece = st.number_input("จำนวนชิ้นงานตามแผน (Planned)", min_value=0, step=1)
+                
+                with col2:
+                    width = st.number_input("ความกว้าง (Width)", step=0.01)
+                    length = st.number_input("ความยาว (Length)", step=0.01)
+                    height = st.number_input("ความสูง (Height)", step=0.01)
+                    thickness = st.number_input("ความหนา (Thickness)", step=0.01)
+                    depth = st.number_input("ความลึก (Depth)", step=0.01)
+                    outer_diameter = st.number_input("เส้นผ่านศูนย์กลางนอก (Outer Diameter)", step=0.01)
+                    inner_diameter = st.number_input("เส้นผ่านศูนย์กลางใน (Inner Diameter)", step=0.01)
+                
+                if st.form_submit_button("เพิ่มสินค้าลงในจิ๊ก"):
+                    data = {
+                        "jig_id": jig_map[selected_jig_code],
+                        "product_code": product_code,
+                        "product_name": product_name,
+                        "color": color,
+                        "width": width,
+                        "length": length,
+                        "height": height,
+                        "thickness": thickness,
+                        "depth": depth,
+                        "outer_diameter": outer_diameter,
+                        "inner_diameter": inner_diameter,
+                        "surface_type": surface_type,
+                        "planned_piece": planned_piece
+                    }
+                    try:
+                        supabase.table("jig_product").insert(data).execute()
+                        st.success(f"เพิ่มสินค้า {product_name} ลงในจิ๊ก {selected_jig_code} สำเร็จ!")
+                    except Exception as e:
+                        st.error(f"เกิดข้อผิดพลาด: {e}")
+        else:
+            st.warning("ยังไม่มีข้อมูลจิ๊ก โปรดไปที่แท็บ '1. ลงทะเบียนจิ๊กใหม่' ก่อน")
 
     # 3. บันทึกการใช้งาน (คำนวณรวม)
     with sub3:
