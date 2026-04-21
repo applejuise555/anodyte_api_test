@@ -74,7 +74,7 @@ with tab3:
     # 1. ลงทะเบียนจิ๊กใหม่
     with sub1:
         with st.form("new_jig_form"):
-            jig_code = st.text_input("รหัสจิ๊ก (เช่น JIG-001)")
+            jig_code = st.text_input("รหัสจิ๊ก (ป/ด/ว/จิ๊กที่ เช่น 20260421001 )")
             if st.form_submit_button("สร้างจิ๊ก"):
                 supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
                 st.success("สร้างจิ๊กสำเร็จ!")
