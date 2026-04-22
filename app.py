@@ -68,26 +68,43 @@ with tab2:
 with tab3:
     sub_prod_reg, sub_jig_reg, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงานใหม่", "2. ลงทะเบียนจิ๊กใหม่", "3. บันทึกผลผลิตรายวัน"])
 
-    # ส่วนที่ 1: ลงทะเบียนสินค้า
+   # ส่วนที่ 1: ลงทะเบียนสินค้า (แก้ไขการแสดงผลให้ครบ)
     with sub_prod_reg:
         st.subheader("เพิ่มฐานข้อมูลชิ้นงานใหม่")
         with st.form("register_product_form"):
             col1, col2 = st.columns(2)
+            
             with col1:
                 p_code = st.text_input("รหัสสินค้า (ใช้ค้นหา)")
                 p_name = st.text_input("ชื่อชิ้นงาน")
+                height = st.number_input("สูง (Height)", step=0.01)
+                width = st.number_input("กว้าง (Width)", step=0.01)
+                thickness = st.number_input("หนา (Thickness)", step=0.01)
+                
             with col2:
-                height = st.number_input("สูง (Height)")
-                width = st.number_input("กว้าง (Width)")
+                depth = st.number_input("ลึก (Depth)", step=0.01)
+                surface_area = st.text_input("พื้นที่ผิว (Surface Area)")
+                outer_dia = st.number_input("เส้นผ่านศูนย์กลางนอก", step=0.01)
+                inner_dia = st.number_input("เส้นผ่านศูนย์กลางใน", step=0.01)
             
             if st.form_submit_button("บันทึกฐานข้อมูลสินค้า"):
+                # ทำการ Validate ข้อมูลเบื้องต้น
                 if not p_code or not p_name:
-                    st.error("กรุณากรอก รหัสสินค้า และ ชื่อชิ้นงาน ให้ครบ")
+                    st.error("กรุณากรอก รหัสสินค้า และ ชื่อชิ้นงาน ให้ครบถ้วน")
                 else:
-                    data = {"product_code": p_code, "product_name": p_name, "height": height, "width": width}
+                    data = {
+                        "product_code": p_code, 
+                        "product_name": p_name, 
+                        "height": height, 
+                        "width": width,
+                        "thickness": thickness,
+                        "depth": depth,
+                        "surface_area": surface_area,
+                        "outer_diameter": outer_dia,
+                        "inner_diameter": inner_dia
+                    }
                     supabase.table("product_specifications").insert(data).execute()
                     st.success(f"บันทึกสินค้า {p_code} เรียบร้อย!")
-
     # ส่วนที่ 2: ลงทะเบียนจิ๊กใหม่
     with sub_jig_reg:
         st.subheader("เพิ่มข้อมูลจิ๊กใหม่")
