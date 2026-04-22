@@ -11,10 +11,11 @@ except Exception as e:
     st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
 
 st.set_page_config(page_title="Production Log System", layout="wide")
-st.title("ระบบบันทึกข้อมูลการผลิต (Full System)")
+st.title("ระบบบันทึกข้อมูลการผลิต (Cleaned Version)")
 
 # --- Helper Functions ---
 def get_options(table, id_col, name_col):
+    """ฟังก์ชันดึงข้อมูลแบบ Dropdown"""
     try:
         response = supabase.table(table).select(f"{id_col}, {name_col}").execute()
         return {item[name_col]: item[id_col] for item in response.data}
@@ -28,7 +29,6 @@ tab1, tab2, tab3 = st.tabs(["บ่อสี", "บ่ออโนไดซ์",
 with tab1:
     st.header("บันทึกข้อมูลบ่อสี (Color Tank)")
     with st.form("color_log_form", clear_on_submit=True):
-        # ปรับเปลี่ยน key ใน dict ให้ตรงกับชื่อคอลัมน์ในตาราง color_tank_logs ของคุณ
         value_data = st.number_input("ค่าที่บันทึก (เช่น อุณหภูมิ/ความเข้มข้น)", format="%.2f")
         note = st.text_input("หมายเหตุ")
         
@@ -65,8 +65,8 @@ with tab2:
 with tab3:
     sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
 
+    # 1. ลงทะเบียนชิ้นงาน
     with sub_prod:
-           with sub_prod:
         with st.form("new_product_form", clear_on_submit=True):
             p_code = st.text_input("รหัสสินค้า")
             p_name = st.text_input("ชื่อชิ้นงาน")
@@ -88,16 +88,15 @@ with tab3:
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-        st.write("ฟอร์มลงทะเบียนชิ้นงาน")
-
+    # 2. ลงทะเบียนจิ๊ก
     with sub_jig:
         with st.form("new_jig_form", clear_on_submit=True):
             jig_code = st.text_input("รหัสจิ๊ก")
             if st.form_submit_button("บันทึกจิ๊ก"):
                 supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
                 st.success("บันทึกจิ๊กสำเร็จ!")
-        st.write("ฟอร์มลงทะเบียนจิ๊ก")
 
+    # 3. บันทึกผลผลิต
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
@@ -127,3 +126,5 @@ with tab3:
                         st.success("บันทึกผลผลิตสำเร็จ!")
                     except Exception as e:
                         st.error(f"ไม่สามารถบันทึกได้: {e}")
+        else:
+            st.warning("กรุณาลงทะเบียนข้อมูลสินค้า/จิ๊ก/สี ให้ครบถ้วนก่อนเริ่มบันทึก")
