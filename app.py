@@ -30,12 +30,10 @@ tab1, tab2, tab3 = st.tabs(["บ่อสี", "บ่ออโนไดซ์",
 # --- TAB 1: บ่อสี ---
 with tab1:
     st.header("บันทึกข้อมูลบ่อสี")
-    # (เพิ่มโค้ดการทำงานของบ่อสีที่นี่)
 
 # --- TAB 2: บ่ออโนไดซ์ ---
 with tab2:
     st.header("บันทึกข้อมูลบ่ออโนไดซ์")
-    # (เพิ่มโค้ดการทำงานของบ่ออโนไดซ์ที่นี่)
 
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
@@ -54,12 +52,15 @@ with tab3:
             id_val = st.number_input("Inner Diameter", 0.0, format="%.2f")
             
             if st.form_submit_button("บันทึกสินค้า"):
-                supabase.table("products").insert({
-                    "product_code": p_code, "product_name": p_name,
-                    "height": h, "width": w, "thickness": t,
-                    "depth": d, "outer_diameter": od, "inner_diameter": id_val
-                }).execute()
-                st.success("บันทึกสินค้าสำเร็จ!")
+                try:
+                    supabase.table("products").insert({
+                        "product_code": p_code, "product_name": p_name,
+                        "height": h, "width": w, "thickness": t,
+                        "depth": d, "outer_diameter": od, "inner_diameter": id_val
+                    }).execute()
+                    st.success("บันทึกสินค้าสำเร็จ!")
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
     # 2. ลงทะเบียนจิ๊ก
     with sub_jig:
@@ -73,10 +74,13 @@ with tab3:
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
+        # รายการสี
+        color_options = ["Red", "Blue", "Black", "Gold", "Silver", "Clear"]
         
         if prods and jigs:
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
+            sel_c = st.selectbox("เลือกสี", color_options)
             
             with st.form("log_prod_form", clear_on_submit=True):
                 pcs_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
@@ -85,10 +89,11 @@ with tab3:
                 
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
-                        # ข้อมูลต้องตรงกับชื่อคอลัมน์ในฐานข้อมูลเป๊ะๆ
+                        # บันทึกข้อมูลโดยระบุคอลัมน์ 'color' ให้ถูกต้อง
                         supabase.table("jig_usage_log").insert({
                             "product_id": prods[sel_p],
                             "jig_id": jigs[sel_j],
+                            "color": sel_c, 
                             "pcs_per_row": int(pcs_row),
                             "pcs_per_jig": int(pcs_jig),
                             "total_pieces": int(total_pcs),
@@ -97,3 +102,5 @@ with tab3:
                         st.success("บันทึกผลผลิตสำเร็จ!")
                     except Exception as e:
                         st.error(f"Error: {e}")
+        else:
+            st.warning("กรุณาลงทะเบียนสินค้าและจิ๊กก่อนเริ่มบันทึกผลผลิต")
