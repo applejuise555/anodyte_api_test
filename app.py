@@ -129,7 +129,6 @@ with tab3:
                 pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
                 pcs_per_jig = st.number_input("จำนวนต่อจิ๊ก (pcs_per_jig)", min_value=0, step=1)
                 total_pieces = st.number_input("จำนวนรวม (total_pieces)", min_value=0, step=1)
-                pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
                 rows_filled = st.number_input("จำนวนแถวที่เต็ม (Rows Filled)", min_value=0, step=1)
                 partial_pieces = st.number_input("เศษชิ้นงานแถวสุดท้าย (Partial Pieces)", min_value=0, step=1)
             
