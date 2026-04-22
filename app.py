@@ -54,26 +54,43 @@ with tab2:
 
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
-    sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
-
-    with sub_prod:
+with sub_prod:
         with st.form("new_product_form", clear_on_submit=True):
             p_code = st.text_input("รหัสสินค้า")
             p_name = st.text_input("ชื่อชิ้นงาน")
-            h = st.number_input("Height", 0.0, format="%.2f")
-            w = st.number_input("Width", 0.0, format="%.2f")
-            t = st.number_input("Thickness", 0.0, format="%.2f")
-            d = st.number_input("Depth", 0.0, format="%.2f")
-            od = st.number_input("Outer Diameter", 0.0, format="%.2f")
-            id_val = st.number_input("Inner Diameter", 0.0, format="%.2f")
+            
+            # --- เพิ่มฟิลด์ลักษณะพื้นผิวตรงนี้ ---
+            surface_finish = st.text_input("ลักษณะพื้นผิว (Surface Finish)")
+            # หรือถ้ามีรายการที่ใช้บ่อย ให้เปลี่ยนเป็น selectbox แบบนี้ครับ:
+            # surface_finish = st.selectbox("ลักษณะพื้นผิว", ["Polished", "Matte", "Sandblasted", "Anodized"])
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                h = st.number_input("Height", 0.0, format="%.2f")
+                w = st.number_input("Width", 0.0, format="%.2f")
+                t = st.number_input("Thickness", 0.0, format="%.2f")
+            with col2:
+                d = st.number_input("Depth", 0.0, format="%.2f")
+                od = st.number_input("Outer Diameter", 0.0, format="%.2f")
+                id_val = st.number_input("Inner Diameter", 0.0, format="%.2f")
             
             if st.form_submit_button("บันทึกสินค้า"):
-                supabase.table("products").insert({
-                    "product_code": p_code, "product_name": p_name,
-                    "height": h, "width": w, "thickness": t,
-                    "depth": d, "outer_diameter": od, "inner_diameter": id_val
-                }).execute()
-                st.success("สำเร็จ!")
+                try:
+                    # เพิ่ม "surface_finish": surface_finish เข้าไปในนี้
+                    supabase.table("products").insert({
+                        "product_code": p_code, 
+                        "product_name": p_name,
+                        "surface_finish": surface_finish, # เพิ่มบรรทัดนี้
+                        "height": h, 
+                        "width": w, 
+                        "thickness": t,
+                        "depth": d, 
+                        "outer_diameter": od, 
+                        "inner_diameter": id_val
+                    }).execute()
+                    st.success("บันทึกสินค้าสำเร็จ!")
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
     with sub_jig:
         with st.form("new_jig_form", clear_on_submit=True):
