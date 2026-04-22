@@ -58,12 +58,12 @@ with tab2:
     else:
         st.warning("ยังไม่มีข้อมูลบ่ออโนไดซ์ในระบบ")
 
-# --- TAB 3: งานจิ๊ก ---
+# --- TAB 3: งานจิ๊ก (ปรับปรุงโครงสร้างใหม่) ---
 with tab3:
-    sub_register, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงานใหม่", "2. บันทึกผลผลิตรายวัน"])
+    sub_prod_reg, sub_jig_reg, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงานใหม่", "2. ลงทะเบียนจิ๊กใหม่", "3. บันทึกผลผลิตรายวัน"])
 
     # ส่วนที่ 1: ลงทะเบียนสินค้า
-    with sub_register:
+    with sub_prod_reg:
         st.subheader("เพิ่มฐานข้อมูลชิ้นงานใหม่")
         with st.form("register_product_form"):
             col1, col2 = st.columns(2)
@@ -89,32 +89,29 @@ with tab3:
                 supabase.table("product_specifications").insert(data).execute()
                 st.success(f"บันทึกสินค้า {p_code} เรียบร้อย!")
 
-    # ส่วนที่ 2: บันทึกการผลิต
+    # ส่วนที่ 2: ลงทะเบียนจิ๊กใหม่ (แยกออกมาที่นี่)
+    with sub_jig_reg:
+        st.subheader("เพิ่มข้อมูลจิ๊กใหม่")
+        with st.form("new_jig_form"):
+            new_jig_code = st.text_input("ตั้งรหัสจิ๊กใหม่ (Jig Model Code)")
+            if st.form_submit_button("บันทึกจิ๊กใหม่"):
+                if new_jig_code:
+                    supabase.table("jigs").insert({"jig_model_code": new_jig_code}).execute()
+                    st.success(f"บันทึกจิ๊ก {new_jig_code} เรียบร้อย!")
+                else:
+                    st.error("กรุณาระบุรหัสจิ๊ก")
+
+    # ส่วนที่ 3: บันทึกการผลิต (แสดงเฉพาะรายการที่มีอยู่)
     with sub_log:
         st.subheader("บันทึกข้อมูลการผลิตรายวัน")
         product_list = get_dropdown_options("product_specifications", "product_code", "product_code")
+        jig_list = get_dropdown_options("jigs", "jig_id", "jig_model_code")
         
-        if product_list:
+        if product_list and jig_list:
             with st.form("daily_production_form"):
                 sel_product = st.selectbox("เลือกรหัสสินค้า", list(product_list.keys()))
                 sel_color = st.text_input("สี (Color ที่ผลิตในล็อตนี้)")
-                
-                # --- ส่วนจัดการจิ๊ก ---
-                jig_option = st.radio("เลือกจิ๊ก", ["เลือกจิ๊กที่มีอยู่", "ลงทะเบียนจิ๊กใหม่"], horizontal=True)
-                
-                target_jig_id = None
-                new_jig_code = None
-                
-                if jig_option == "เลือกจิ๊กที่มีอยู่":
-                    jig_list = get_dropdown_options("jigs", "jig_id", "jig_model_code")
-                    if jig_list:
-                        selected_jig_name = st.selectbox("เลือกจิ๊กที่ใช้", list(jig_list.keys()))
-                        target_jig_id = jig_list[selected_jig_name]
-                    else:
-                        st.error("ไม่มีข้อมูลจิ๊กในระบบ กรุณาเปลี่ยนเป็นโหมด 'ลงทะเบียนจิ๊กใหม่'")
-                
-                else: # ลงทะเบียนจิ๊กใหม่
-                    new_jig_code = st.text_input("ตั้งรหัสจิ๊กใหม่ (Jig Model Code)")
+                selected_jig_name = st.selectbox("เลือกจิ๊กที่ใช้", list(jig_list.keys()))
                 
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -125,29 +122,17 @@ with tab3:
                 total_pieces = st.number_input("จำนวนชิ้นงานรวมทั้งหมด", step=1)
                 
                 if st.form_submit_button("บันทึกผลผลิต"):
-                    # ขั้นตอนที่ 1: ถ้าเป็นจิ๊กใหม่ ให้สร้างลง Database ก่อน
-                    if jig_option == "ลงทะเบียนจิ๊กใหม่":
-                        if new_jig_code:
-                            res = supabase.table("jigs").insert({"jig_model_code": new_jig_code}).execute()
-                            target_jig_id = res.data[0]['jig_id']
-                        else:
-                            st.error("กรุณาระบุรหัสจิ๊กใหม่")
-                            st.stop()
-                    
-                    # ขั้นตอนที่ 2: บันทึก log การผลิต
-                    if target_jig_id:
-                        data = {
-                            "product_code": sel_product,
-                            "color": sel_color,
-                            "jig_id": target_jig_id,
-                            "pcs_per_jig": pcs_jig,
-                            "pcs_per_row": pcs_row,
-                            "total_pieces": total_pieces,
-                            "recorded_date": str(datetime.date.today())
-                        }
-                        supabase.table("jig_usage_log").insert(data).execute()
-                        st.success(f"บันทึกยอดการผลิตสำเร็จ (รหัสจิ๊ก: {new_jig_code if new_jig_code else target_jig_id})")
-                    else:
-                        st.error("ไม่สามารถบันทึกข้อมูลได้ เนื่องจากไม่พบข้อมูลจิ๊ก")
+                    target_jig_id = jig_list[selected_jig_name]
+                    data = {
+                        "product_code": sel_product,
+                        "color": sel_color,
+                        "jig_id": target_jig_id,
+                        "pcs_per_jig": pcs_jig,
+                        "pcs_per_row": pcs_row,
+                        "total_pieces": total_pieces,
+                        "recorded_date": str(datetime.date.today())
+                    }
+                    supabase.table("jig_usage_log").insert(data).execute()
+                    st.success(f"บันทึกยอดการผลิตสำหรับจิ๊ก {selected_jig_name} สำเร็จ!")
         else:
-            st.warning("โปรดตรวจสอบว่ามีการลงทะเบียน สินค้า ในระบบแล้ว")
+            st.warning("โปรดตรวจสอบว่ามีการลงทะเบียน สินค้า หรือ จิ๊ก ในระบบแล้ว")
