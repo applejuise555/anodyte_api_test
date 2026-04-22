@@ -72,9 +72,9 @@ with tab3:
         with st.form("new_product_form", clear_on_submit=True):
             p_code = st.text_input("รหัสสินค้า")
             p_name = st.text_input("ชื่อชิ้นงาน")
-            surf = st.text_input("ลักษณะพื้นผิว")
+            surf = st.text_input("ลักษณะพื้นผิว (Surface Finish)")
             
-            # เพิ่มฟิลด์สำหรับข้อมูลสินค้า
+            # ฟิลด์ใหม่สำหรับขนาด
             col1, col2 = st.columns(2)
             with col1:
                 h = st.number_input("Height", 0.0, format="%.2f")
@@ -90,14 +90,17 @@ with tab3:
                     "product_code": p_code, 
                     "product_name": p_name, 
                     "surface_finish": surf,
-                    "height": h,
-                    "width": w,
-                    "thickness": t,
-                    "depth": d,
-                    "outer_diameter": od,
-                    "inner_diameter": id_val
+                    "height": h, "width": w, "thickness": t, 
+                    "depth": d, "outer_diameter": od, "inner_diameter": id_val
                 }).execute()
                 st.success("บันทึกสินค้าเรียบร้อย")
+
+    with sub_jig:
+        with st.form("new_jig_form", clear_on_submit=True):
+            jig_code = st.text_input("รหัสจิ๊ก")
+            if st.form_submit_button("บันทึกจิ๊ก"):
+                supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
+                st.success("สำเร็จ!")
 
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
@@ -116,14 +119,6 @@ with tab3:
 
             sel_c = st.pills("เลือกสี", list(color_hex_map.keys()), selection_mode="single", default=last_color if last_color else None)
             
-            if sel_c:
-                st.markdown(f"""
-                    <div style="display: flex; align-items: center; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border: 1px solid #ddd;">
-                        <div style="width: 20px; height: 20px; background-color: {color_hex_map[sel_c]}; margin-right: 10px; border-radius: 3px;"></div>
-                        <b>สีที่เลือก: {sel_c}</b>
-                    </div>
-                """, unsafe_allow_html=True)
-
             with st.form("log_prod_form", clear_on_submit=True):
                 pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
                 rows_filled = st.number_input("จำนวนแถวที่เต็ม (Rows Filled)", min_value=0, step=1)
