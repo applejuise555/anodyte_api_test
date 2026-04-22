@@ -125,8 +125,17 @@ with tab3:
             color_names = list(all_colors.keys())
             default_idx = color_names.index(last_color) if last_color in color_names else 0
 
-            with st.form("log_prod_form", clear_on_submit=True):
-                sel_c = st.selectbox("เลือกสี", color_names, index=default_idx)
+# เปิดฟอร์ม
+    with st.form("log_prod_form", clear_on_submit=True):
+    
+        # [ใส่ตรงนี้!] วาง st.pills แทนที่ st.selectbox เดิม
+        colors = [
+            "Black", "Red", "Violet", "Green", "Banana leaf Green", 
+            "Gold", "Orange", "Light Blue", "Blue", "Dark Blue", 
+            "Dark Titanium", "Dark Red", "Pink", "Copper", 
+            "Titanium", "Rose Gold"
+        ]
+        sel_c = st.pills("เลือกสี", colors, selection_mode="single")
                 
                 # Input สำหรับคอลัมน์ที่บังคับ (Not Null ตามฐานข้อมูล)
                 pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
