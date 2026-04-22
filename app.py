@@ -1,7 +1,10 @@
 import streamlit as st
 from supabase import create_client
 import datetime
+from datetime import datetime, timezone, timedelta
 
+# 1. สร้างตัวแปร Timezone สำหรับประเทศไทย (UTC +7)
+ICT = timezone(timedelta(hours=7))
 # --- 1. การตั้งค่าเชื่อมต่อ ---
 try:
     url = st.secrets["SUPABASE_URL"]
@@ -147,7 +150,8 @@ with tab3:
                             "partial_pieces": partial_pieces,# เพิ่มเข้ามา
                             #"pcs_per_jig": total_pieces,     # ยอดรวมต่อจิ๊ก
                             "total_pieces": total_pieces,    # ยอดรวมรวม
-                            "recorded_date": str(datetime.date.today())
+                            "recorded_date": current_time_th  # ใช้ตัวแปรนี้แทน str(datetime.date.today())
+        }
                         }
                         
                         supabase.table("jig_usage_log").insert(insert_data).execute()
