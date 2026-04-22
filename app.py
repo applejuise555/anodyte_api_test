@@ -34,12 +34,12 @@ with tab2:
     st.header("บันทึกข้อมูลบ่ออโนไดซ์")
     # ... (โค้ดส่วนบ่ออโนไดซ์เดิมของคุณ)
 
-# --- TAB 3: งานจิ๊ก (ปรับปรุงใหม่) ---
+# --- TAB 3: งานจิ๊ก ---
 with tab3:
-    # สร้าง Sub-tabs สำหรับแยกหน้าลงทะเบียน
+    # 1. ต้องประกาศ Tabs ก่อนใช้งาน
     sub_prod_reg, sub_jig_reg, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงานใหม่", "2. ลงทะเบียนจิ๊กใหม่", "3. บันทึกผลผลิตรายวัน"])
 
-    # 1. ลงทะเบียนสินค้า
+    # 2. ส่วนลงทะเบียนชิ้นงาน
     with sub_prod_reg:
         st.subheader("เพิ่มฐานข้อมูลชิ้นงานใหม่")
         with st.form("register_product_form"):
@@ -56,8 +56,8 @@ with tab3:
                 outer_dia = st.number_input("เส้นผ่านศูนย์กลางนอก", step=0.01)
                 inner_dia = st.number_input("เส้นผ่านศูนย์กลางใน", step=0.01)
             
+            # ปุ่มบันทึกพร้อมระบบเช็คค่าว่าง
             if st.form_submit_button("บันทึกฐานข้อมูลสินค้า"):
-                # VALIDATION: ตรวจสอบห้ามว่าง
                 if not p_code or not p_name:
                     st.error("กรุณากรอก รหัสสินค้า และ ชื่อชิ้นงาน ให้ครบถ้วน")
                 else:
@@ -70,20 +70,19 @@ with tab3:
                     supabase.table("product_specifications").insert(data).execute()
                     st.success(f"บันทึกสินค้า {p_code} เรียบร้อย!")
 
-    # 2. ลงทะเบียนจิ๊กใหม่
+    # 3. ส่วนลงทะเบียนจิ๊ก
     with sub_jig_reg:
         st.subheader("เพิ่มข้อมูลจิ๊กใหม่")
         with st.form("new_jig_form"):
             new_jig_code = st.text_input("ตั้งรหัสจิ๊กใหม่ (จำเป็น)")
             if st.form_submit_button("บันทึกจิ๊กใหม่"):
-                # VALIDATION
                 if not new_jig_code:
                     st.error("กรุณาระบุรหัสจิ๊กใหม่")
                 else:
                     supabase.table("jigs").insert({"jig_model_code": new_jig_code}).execute()
                     st.success(f"บันทึกจิ๊ก {new_jig_code} เรียบร้อย!")
 
-    # 3. บันทึกผลผลิตรายวัน
+    # 4. ส่วนบันทึกผลผลิตรายวัน
     with sub_log:
         st.subheader("บันทึกข้อมูลการผลิตรายวัน")
         product_list = get_dropdown_options("product_specifications", "product_code", "product_code")
@@ -101,9 +100,9 @@ with tab3:
                 total_pieces = st.number_input("จำนวนชิ้นงานรวมทั้งหมด (จำเป็น)", step=1)
                 
                 if st.form_submit_button("บันทึกผลผลิต"):
-                    # VALIDATION
+                    # ตรวจสอบว่าข้อมูลห้ามว่าง
                     if not sel_color or pcs_jig <= 0 or total_pieces <= 0:
-                        st.error("กรุณากรอก สี, จำนวนชิ้นต่อจิ๊ก และ ยอดรวม ให้ถูกต้อง")
+                        st.error("กรุณากรอกข้อมูล สี, จำนวนต่อจิ๊ก และ ยอดรวม ให้ครบถ้วนและมากกว่า 0")
                     else:
                         target_jig_id = jig_list[selected_jig_name]
                         data = {
