@@ -103,7 +103,7 @@ with tab3:
                 supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
                 st.success("สำเร็จ!")
 
-with sub_log:
+    with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
         all_colors = get_options("colors", "color_id", "color_name") 
@@ -113,41 +113,49 @@ with sub_log:
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
             
             jig_id = jigs[sel_j]
+            last_color = None
+            try:
+                # แก้ไขชื่อคอลัมน์เป็น "color" ให้ตรงกับ DB
+                hist = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
+                if hist.data:
+                    last_color = hist.data[0]['color']
+            except:
+                pass
             
-            # --- เริ่ม Form ---
+            color_names = list(all_colors.keys())
+            default_idx = color_names.index(last_color) if last_color in color_names else 0
+
             with st.form("log_prod_form", clear_on_submit=True):
-                # ใช้ st.pills
-                colors = [
-                    "Black", "Red", "Violet", "Green", "Banana leaf Green", 
-                    "Gold", "Orange", "Light Blue", "Blue", "Dark Blue", 
-                    "Dark Titanium", "Dark Red", "Pink", "Copper", 
-                    "Titanium", "Rose Gold"
-                ]
-                sel_c = st.pills("เลือกสี", colors, selection_mode="single")
+                sel_c = st.selectbox("เลือกสี", color_names, index=default_idx)
                 
-                # Input ต่างๆ (ต้องเว้นวรรคให้เท่ากันกับ st.pills)
+                # Input สำหรับคอลัมน์ที่บังคับ (Not Null ตามฐานข้อมูล)
                 pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
+                #pcs_per_jig = st.number_input("จำนวนต่อจิ๊ก (pcs_per_jig)", min_value=0, step=1)
+                total_pieces = st.number_input("จำนวนรวม (total_pieces)", min_value=0, step=1)
                 rows_filled = st.number_input("จำนวนแถวที่เต็ม (Rows Filled)", min_value=0, step=1)
                 partial_pieces = st.number_input("เศษชิ้นงานแถวสุดท้าย (Partial Pieces)", min_value=0, step=1)
-                
-                # ปุ่มบันทึก
+            
+                # คำนวณยอดรวมให้อัตโนมัติ (เป็นตัวเลือกที่ดีเพื่อให้ User เห็นภาพ)
+                total_pieces = (rows_filled * pcs_per_row) + partial_pieces
+                st.write(f"ยอดรวมทั้งหมด: {total_pieces} ชิ้น")
                 if st.form_submit_button("บันทึกการผลิต"):
-                    total_pieces = (rows_filled * pcs_per_row) + partial_pieces
                     try:
                         current_time_th = datetime.now(ICT).isoformat()
-                        
+                        # สร้าง Dictionary โดยรวมคอลัมน์ใหม่ที่เพิ่มเข้าไป
                         insert_data = {
                             "product_id": prods[sel_p],
                             "jig_id": jig_id,
                             "color": sel_c,
                             "pcs_per_row": pcs_per_row,
-                            "rows_filled": rows_filled,
-                            "partial_pieces": partial_pieces,
-                            "total_pieces": total_pieces,
-                            "recorded_date": current_time_th
-                        }
+                            "rows_filled": rows_filled,      # เพิ่มเข้ามา
+                            "partial_pieces": partial_pieces,# เพิ่มเข้ามา
+                            #"pcs_per_jig": total_pieces,     # ยอดรวมต่อจิ๊ก
+                            "total_pieces": total_pieces,    # ยอดรวมรวม
+                            "recorded_date": current_time_th  # ใช้ตัวแปรนี้แทน str(datetime.date.today())
+        }
+                        
                         
                         supabase.table("jig_usage_log").insert(insert_data).execute()
-                        st.success(f"บันทึกข้อมูลสำเร็จ! (รวม {total_pieces} ชิ้น)")
+                        st.success("บันทึกข้อมูลพร้อมรายละเอียดการผลิตสำเร็จ!")
                     except Exception as e:
                         st.error(f"Error: {e}")
