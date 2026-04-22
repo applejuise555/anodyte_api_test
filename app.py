@@ -54,6 +54,7 @@ with tab2:
 
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
+    sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
     with sub_prod:
         with st.form("new_product_form", clear_on_submit=True):
             p_code = st.text_input("รหัสสินค้า")
