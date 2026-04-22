@@ -3,7 +3,6 @@ from supabase import create_client
 import datetime
 
 # --- การตั้งค่าเริ่มต้น ---
-# เชื่อมต่อ Supabase
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
@@ -59,12 +58,12 @@ with tab2:
     else:
         st.warning("ยังไม่มีข้อมูลบ่ออโนไดซ์ในระบบ")
 
-# --- TAB 3: งานจิ๊ก (แบ่งเป็น 2 ส่วน) ---
+# --- TAB 3: งานจิ๊ก ---
 with tab3:
-    # สร้าง Sub-tabs 2 อันเท่านั้น
+    # สร้าง Sub-tabs 2 อัน (จัดการ error เดิมที่เรียกใช้ sub3 เกิน)
     sub_register, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงานใหม่", "2. บันทึกผลผลิตรายวัน"])
 
-    # ส่วนที่ 1: ลงทะเบียนสินค้า (Master Data)
+    # ส่วนที่ 1: ลงทะเบียนสินค้า (เอาสีออกแล้ว)
     with sub_register:
         st.subheader("เพิ่มฐานข้อมูลชิ้นงานใหม่")
         with st.form("register_product_form"):
@@ -72,7 +71,6 @@ with tab3:
             with col1:
                 p_code = st.text_input("รหัสสินค้า (ใช้ค้นหา)")
                 p_name = st.text_input("ชื่อชิ้นงาน")
-                p_color = st.text_input("สี")
                 height = st.number_input("สูง (Height)")
                 width = st.number_input("กว้าง (Width)")
             with col2:
@@ -84,15 +82,15 @@ with tab3:
             
             if st.form_submit_button("บันทึกฐานข้อมูลสินค้า"):
                 data = {
-                    "product_code": p_code, "product_name": p_name, "color": p_color,
+                    "product_code": p_code, "product_name": p_name,
                     "height": height, "width": width, "thickness": thickness,
                     "depth": depth, "surface_area": surface_area,
-                    "outer_diameter": outer_dia, "inner_diameter": inner_diameter
+                    "outer_diameter": outer_dia, "inner_diameter": inner_dia
                 }
                 supabase.table("product_specifications").insert(data).execute()
                 st.success(f"บันทึกสินค้า {p_code} เรียบร้อย!")
 
-    # ส่วนที่ 2: บันทึกการผลิต (Transactional Data)
+    # ส่วนที่ 2: บันทึกการผลิต (เพิ่มช่องกรอกสี)
     with sub_log:
         st.subheader("บันทึกข้อมูลการผลิตรายวัน")
         product_list = get_dropdown_options("product_specifications", "product_code", "product_code")
@@ -101,7 +99,9 @@ with tab3:
         if product_list and jig_list:
             with st.form("daily_production_form"):
                 sel_product = st.selectbox("เลือกรหัสสินค้า", list(product_list.keys()))
+                sel_color = st.text_input("สี (Color ที่ผลิตในล็อตนี้)") # เพิ่มช่องสีที่นี่
                 sel_jig = st.selectbox("เลือกจิ๊กที่ใช้", list(jig_list.keys()))
+                
                 col_a, col_b = st.columns(2)
                 with col_a:
                     pcs_jig = st.number_input("จำนวนชิ้นต่อจิ๊ก", step=1)
@@ -113,6 +113,7 @@ with tab3:
                 if st.form_submit_button("บันทึกผลผลิต"):
                     data = {
                         "product_code": sel_product,
+                        "color": sel_color, # บันทึกสีไปกับรายการผลิต
                         "jig_id": jig_list[sel_jig],
                         "pcs_per_jig": pcs_jig,
                         "pcs_per_row": pcs_row,
