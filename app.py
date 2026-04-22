@@ -140,6 +140,7 @@ with tab3:
                 st.write(f"ยอดรวมทั้งหมด: {total_pieces} ชิ้น")
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
+                        current_time_th = datetime.now(ICT).isoformat()
                         # สร้าง Dictionary โดยรวมคอลัมน์ใหม่ที่เพิ่มเข้าไป
                         insert_data = {
                             "product_id": prods[sel_p],
