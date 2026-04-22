@@ -26,7 +26,7 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 # --- โครงสร้าง Tabs ---
 tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
 
-# --- TAB 1 & 2 (เหมือนเดิม) ---
+# --- TAB 1 & 2 ---
 with tab1:
     st.header("บันทึกข้อมูลบ่อสี")
     color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
@@ -94,10 +94,10 @@ with tab3:
             jig_id = jigs[sel_j]
             last_color = None
             try:
-                # พยายามดึงสีล่าสุด
-                hist = supabase.table("jig_usage_log").select("clor").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
+                # แก้ไขชื่อคอลัมน์เป็น "color" ให้ตรงกับ DB
+                hist = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
                 if hist.data:
-                    last_color = hist.data[0]['clor']
+                    last_color = hist.data[0]['color']
             except:
                 pass
             
@@ -107,9 +107,10 @@ with tab3:
             with st.form("log_prod_form", clear_on_submit=True):
                 sel_c = st.selectbox("เลือกสี", color_names, index=default_idx)
                 
-                # Input สำหรับคอลัมน์ที่บังคับ (Not Null)
+                # Input สำหรับคอลัมน์ที่บังคับ (Not Null ตามฐานข้อมูล)
                 pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
                 pcs_per_jig = st.number_input("จำนวนต่อจิ๊ก (pcs_per_jig)", min_value=0, step=1)
+                total_pieces = st.number_input("จำนวนรวม (total_pieces)", min_value=0, step=1)
                 
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
@@ -117,9 +118,10 @@ with tab3:
                         insert_data = {
                             "product_id": prods[sel_p],
                             "jig_id": jig_id,
-                            "color": sel_c,            # ชื่อคอลัมน์ต้องเป็น 'clor'
+                            "color": sel_c,            # ชื่อคอลัมน์คือ 'color'
                             "pcs_per_row": pcs_per_row,
                             "pcs_per_jig": pcs_per_jig,
+                            "total_pieces": total_pieces, # เพิ่มเพื่อให้ครบ Not-null
                             "recorded_date": str(datetime.date.today())
                         }
                         
