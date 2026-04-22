@@ -74,7 +74,7 @@ with tab3:
             p_name = st.text_input("ชื่อชิ้นงาน")
             surf = st.text_input("ลักษณะพื้นผิว (Surface Finish)")
             
-            # ฟิลด์ใหม่สำหรับขนาด
+            # ฟิลด์ขนาดที่คงไว้ตามเดิม
             col1, col2 = st.columns(2)
             with col1:
                 h = st.number_input("Height", 0.0, format="%.2f")
@@ -110,7 +110,6 @@ with tab3:
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
             
-            # ดึงประวัติสีล่าสุด
             last_color = None
             try:
                 hist = supabase.table("jig_usage_log").select("color").eq("jig_id", jigs[sel_j]).order("recorded_date", desc=True).limit(1).execute()
