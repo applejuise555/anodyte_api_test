@@ -2,129 +2,137 @@ import streamlit as st
 from supabase import create_client
 import datetime
 
-# --- 1. การตั้งค่าเชื่อมต่อ ---
+# -------------------------
+# ตั้งค่า Page
+# -------------------------
+st.set_page_config(page_title="Production Log System", layout="wide")
+st.title("ระบบบันทึกข้อมูลการผลิต (Full System)")
+
+# -------------------------
+# เชื่อมต่อ Supabase
+# -------------------------
 try:
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     supabase = create_client(url, key)
 except Exception as e:
-    st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
+    st.error(f"❌ ไม่สามารถเชื่อมต่อ Supabase: {e}")
+    st.stop()
 
-st.set_page_config(page_title="Production Log System", layout="wide")
-st.title("ระบบบันทึกข้อมูลการผลิต (Cleaned Version)")
-
-# --- Helper Functions ---
-def get_options(table, id_col, name_col):
-    """ฟังก์ชันดึงข้อมูลแบบ Dropdown"""
+# -------------------------
+# Helper
+# -------------------------
+def get_tanks(tank_type):
     try:
-        response = supabase.table(table).select(f"{id_col}, {name_col}").execute()
-        return {item[name_col]: item[id_col] for item in response.data}
+        res = supabase.table("tanks").select("tank_id, tank_name").eq("tank_type", tank_type).execute()
+        return {i["tank_name"]: i["tank_id"] for i in res.data}
+    except Exception as e:
+        st.error(f"โหลด tank ไม่ได้: {e}")
+        return {}
+
+def get_jigs():
+    try:
+        res = supabase.table("jigs").select("jig_id, jig_model_code").execute()
+        return {i["jig_model_code"]: i["jig_id"] for i in res.data}
     except:
         return {}
 
-# --- Tabs หลัก ---
+# -------------------------
+# Tabs
+# -------------------------
 tab1, tab2, tab3 = st.tabs(["บ่อสี", "บ่ออโนไดซ์", "งานจิ๊ก"])
 
-# --- TAB 1: บ่อสี ---
+# =====================================================
+# 🟣 TAB 1: COLOR TANK
+# =====================================================
 with tab1:
-    st.header("บันทึกข้อมูลบ่อสี (Color Tank)")
-    with st.form("color_log_form", clear_on_submit=True):
-        value_data = st.number_input("ค่าที่บันทึก (เช่น อุณหภูมิ/ความเข้มข้น)", format="%.2f")
-        note = st.text_input("หมายเหตุ")
-        
-        if st.form_submit_button("บันทึกข้อมูลบ่อสี"):
-            try:
+    st.header("บันทึกบ่อสี")
+
+    tanks = get_tanks("Color")
+
+    if not tanks:
+        st.warning("ไม่มีข้อมูลบ่อสี")
+    else:
+        sel_tank = st.selectbox("เลือกบ่อ", list(tanks.keys()))
+
+        with st.form("color_form", clear_on_submit=True):
+            ph = st.number_input("ค่า pH", format="%.2f")
+            temp = st.number_input("อุณหภูมิ (°C)", format="%.2f")
+
+            if st.form_submit_button("บันทึก"):
                 supabase.table("color_tank_logs").insert({
-                    "value": value_data,
-                    "note": note,
-                    "created_at": str(datetime.datetime.now())
+                    "tank_id": tanks[sel_tank],
+                    "ph_value": ph,
+                    "temperature": temp
                 }).execute()
-                st.success("บันทึกข้อมูลบ่อสีสำเร็จ!")
-            except Exception as e:
-                st.error(f"Error: {e}")
 
-# --- TAB 2: บ่ออโนไดซ์ ---
+                st.success("✅ บันทึกบ่อสีสำเร็จ")
+
+# =====================================================
+# 🔵 TAB 2: ANODIZE
+# =====================================================
 with tab2:
-    st.header("บันทึกข้อมูลบ่ออโนไดซ์ (Anodize Tank)")
-    with st.form("anodize_log_form", clear_on_submit=True):
-        value_data = st.number_input("ค่าที่บันทึก", format="%.2f")
-        note = st.text_input("หมายเหตุ")
-        
-        if st.form_submit_button("บันทึกข้อมูลบ่ออโนไดซ์"):
-            try:
+    st.header("บันทึกบ่ออโนไดซ์")
+
+    tanks = get_tanks("Anodize")
+
+    if not tanks:
+        st.warning("ไม่มีข้อมูลบ่ออโนไดซ์")
+    else:
+        sel_tank = st.selectbox("เลือกบ่อ", list(tanks.keys()))
+
+        with st.form("anodize_form", clear_on_submit=True):
+            ph = st.number_input("ค่า pH", format="%.2f")
+            temp = st.number_input("อุณหภูมิ (°C)", format="%.2f")
+            density = st.number_input("ความหนาแน่น", format="%.3f")
+
+            if st.form_submit_button("บันทึก"):
                 supabase.table("anodize_tank_logs").insert({
-                    "value": value_data,
-                    "note": note,
-                    "created_at": str(datetime.datetime.now())
+                    "tank_id": tanks[sel_tank],
+                    "ph_value": ph,
+                    "temperature": temp,
+                    "density": density
                 }).execute()
-                st.success("บันทึกข้อมูลบ่ออโนไดซ์สำเร็จ!")
-            except Exception as e:
-                st.error(f"Error: {e}")
 
-# --- TAB 3: งานจิ๊ก ---
+                st.success("✅ บันทึกบ่ออโนไดซ์สำเร็จ")
+
+# =====================================================
+# 🟢 TAB 3: PRODUCTION
+# =====================================================
 with tab3:
-    sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
+    st.header("บันทึกผลผลิต")
 
-    # 1. ลงทะเบียนชิ้นงาน
-    with sub_prod:
-        with st.form("new_product_form", clear_on_submit=True):
-            p_code = st.text_input("รหัสสินค้า")
-            p_name = st.text_input("ชื่อชิ้นงาน")
-            h = st.number_input("Height", 0.0, format="%.2f")
-            w = st.number_input("Width", 0.0, format="%.2f")
-            t = st.number_input("Thickness", 0.0, format="%.2f")
-            d = st.number_input("Depth", 0.0, format="%.2f")
-            od = st.number_input("Outer Diameter", 0.0, format="%.2f")
-            id_val = st.number_input("Inner Diameter", 0.0, format="%.2f")
-            
-            if st.form_submit_button("บันทึกสินค้า"):
-                try:
-                    supabase.table("products").insert({
-                        "product_code": p_code, "product_name": p_name,
-                        "height": h, "width": w, "thickness": t,
-                        "depth": d, "outer_diameter": od, "inner_diameter": id_val
-                    }).execute()
-                    st.success("บันทึกสินค้าสำเร็จ!")
-                except Exception as e:
-                    st.error(f"Error: {e}")
+    jigs = get_jigs()
 
-    # 2. ลงทะเบียนจิ๊ก
-    with sub_jig:
-        with st.form("new_jig_form", clear_on_submit=True):
-            jig_code = st.text_input("รหัสจิ๊ก")
-            if st.form_submit_button("บันทึกจิ๊ก"):
-                supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
-                st.success("บันทึกจิ๊กสำเร็จ!")
+    if not jigs:
+        st.warning("ไม่มีข้อมูล JIG")
+    else:
+        sel_jig = st.selectbox("เลือก JIG", list(jigs.keys()))
 
-    # 3. บันทึกผลผลิต
-    with sub_log:
-        prods = get_options("products", "product_id", "product_code")
-        jigs = get_options("jigs", "jig_id", "jig_model_code")
-        colors = get_options("colors", "color_id", "color_name")
-        
-        if prods and jigs and colors:
-            sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
-            sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
-            sel_c = st.selectbox("เลือกสี", list(colors.keys()))
-            
-            with st.form("log_prod_form", clear_on_submit=True):
-                pcs_row = st.number_input("จำนวนต่อแถว", min_value=0, step=1)
-                pcs_jig = st.number_input("จำนวนต่อจิ๊ก", min_value=0, step=1)
-                total_pcs = st.number_input("จำนวนรวม", min_value=0, step=1)
-                
-                if st.form_submit_button("บันทึกการผลิต"):
-                    try:
-                        supabase.table("jig_usage_log").insert({
-                            "product_id": prods[sel_p],
-                            "jig_id": jigs[sel_j],
-                            "color": sel_c,
-                            "pcs_per_row": int(pcs_row),
-                            "pcs_per_jig": int(pcs_jig),
-                            "total_pieces": int(total_pcs),
-                            "recorded_date": str(datetime.date.today())
-                        }).execute()
-                        st.success("บันทึกผลผลิตสำเร็จ!")
-                    except Exception as e:
-                        st.error(f"ไม่สามารถบันทึกได้: {e}")
-        else:
-            st.warning("กรุณาลงทะเบียนข้อมูลสินค้า/จิ๊ก/สี ให้ครบถ้วนก่อนเริ่มบันทึก")
+        with st.form("prod_form", clear_on_submit=True):
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                max_rows = st.number_input("จำนวนแถวสูงสุด", min_value=1)
+
+            with col2:
+                actual_rows = st.number_input("จำนวนแถวที่ใช้จริง", min_value=0)
+
+            with col3:
+                pcs_per_row = st.number_input("จำนวนต่อแถว", min_value=1)
+
+            total = actual_rows * pcs_per_row
+            usage = (actual_rows / max_rows * 100) if max_rows else 0
+
+            st.info(f"📦 จำนวนรวม: {total}")
+            st.info(f"⚙️ ใช้จิ๊ก: {usage:.2f}%")
+
+            if st.form_submit_button("บันทึก"):
+                supabase.table("production_summary").insert({
+                    "jig_id": jigs[sel_jig],
+                    "total_workpieces": total,
+                    "recorded_date": datetime.date.today().isoformat()
+                }).execute()
+
+                st.success("✅ บันทึกผลผลิตสำเร็จ")
