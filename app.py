@@ -69,8 +69,9 @@ with tab2:
 
 # --- TAB 3: การจัดการ (งานจิ๊ก + สินค้า) ---
 # --- TAB 3: งานจิ๊ก ---
+# --- TAB 3: งานจิ๊ก ---
 with tab3:
-    # แยกเป็น 2 Sub-tab ชัดเจน
+    # สร้าง 2 Tabs เท่านั้น
     sub_register, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงานใหม่", "2. บันทึกผลผลิตรายวัน"])
 
     # ส่วนที่ 1: ลงทะเบียนสินค้า (Master Data)
@@ -93,11 +94,18 @@ with tab3:
             
             if st.form_submit_button("บันทึกฐานข้อมูลสินค้า"):
                 data = {
-                    "product_code": p_code, "product_name": p_name, "color": p_color,
-                    "height": height, "width": width, "thickness": thickness,
-                    "depth": depth, "surface_area": surface_area,
-                    "outer_diameter": outer_dia, "inner_diameter": inner_dia
+                    "product_code": p_code, 
+                    "product_name": p_name, 
+                    "color": p_color,
+                    "height": height, 
+                    "width": width, 
+                    "thickness": thickness,
+                    "depth": depth, 
+                    "surface_area": surface_area,
+                    "outer_diameter": outer_dia, 
+                    "inner_diameter": inner_dia
                 }
+                # บันทึกลงตาราง product_specifications
                 supabase.table("product_specifications").insert(data).execute()
                 st.success(f"บันทึกสินค้า {p_code} เรียบร้อย!")
 
@@ -106,6 +114,7 @@ with tab3:
         st.subheader("บันทึกข้อมูลการผลิตรายวัน")
         
         # ดึงข้อมูลมาแสดงเป็นตัวเลือก
+        # ดึง product_code จากตาราง product_specifications
         product_list = get_dropdown_options("product_specifications", "product_code", "product_code")
         jig_list = get_dropdown_options("jigs", "jig_id", "jig_model_code")
         
@@ -124,39 +133,20 @@ with tab3:
                 
                 if st.form_submit_button("บันทึกผลผลิต"):
                     data = {
-                        "product_code": sel_product, # เก็บแค่ Code ไปอ้างอิง
+                        "product_code": sel_product,
                         "jig_id": jig_list[sel_jig],
                         "pcs_per_jig": pcs_jig,
                         "pcs_per_row": pcs_row,
                         "total_pieces": total_pieces,
                         "recorded_date": str(datetime.date.today())
                     }
+                    # บันทึกลงตาราง jig_usage_log
                     supabase.table("jig_usage_log").insert(data).execute()
                     st.success("บันทึกยอดการผลิตสำเร็จ!")
         else:
             st.warning("ต้องลงทะเบียนสินค้าหรือจิ๊กก่อนเริ่มบันทึก")
 
-    # 3. บันทึกผลผลิต (ลิงก์ จิ๊ก + สินค้า)
-    with sub3:
-        # ดึงรายชื่อจิ๊กและสินค้ามาทำ Dropdown
-        jig_list = get_dropdown_options("jigs", "jig_id", "jig_model_code")
-        prod_list = get_dropdown_options("products", "product_id", "product_code")
-        
-        if jig_list and prod_list:
-            with st.form("production_form"):
-                sel_jig = st.selectbox("เลือกจิ๊ก", list(jig_list.keys()))
-                sel_prod = st.selectbox("เลือกสินค้าที่ผลิต", list(prod_list.keys()))
-                total_workpieces = st.number_input("จำนวนชิ้นงานรวม", step=1)
-                
-                if st.form_submit_button("บันทึกยอด"):
-                    # บันทึกลงตาราง production_summary โดยเก็บทั้ง jig_id และ product_id
-                    data = {
-                        "jig_id": jig_list[sel_jig],
-                        "product_id": prod_list[sel_prod],
-                        "total_workpieces": total_workpieces
-                    }
-                    supabase.table("production_summary").insert(data).execute()
-                    st.success("บันทึกยอดการผลิตสำเร็จ!")
+
     # 3. สรุปผลผลิต
     with sub3:
         jig_list = get_dropdown_options("jigs", "jig_id", "jig_model_code")
