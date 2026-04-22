@@ -11,7 +11,7 @@ except Exception as e:
     st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
 
 st.set_page_config(page_title="Production Log System", layout="wide")
-st.title("ระบบบันทึกข้อมูลการผลิต (Complete System)")
+st.title("ระบบบันทึกข้อมูลการผลิต (Full System)")
 
 # ฟังก์ชันดึงข้อมูลมาทำ Dropdown
 def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
@@ -70,24 +70,23 @@ with tab2:
 with tab3:
     sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
 
+    # 1. ลงทะเบียนชิ้นงาน
     with sub_prod:
         with st.form("new_product_form", clear_on_submit=True):
             st.subheader("ข้อมูลทั่วไป")
-            p_code = st.text_input("รหัสสินค้า (Unique)")
+            p_code = st.text_input("รหัสสินค้า")
             p_name = st.text_input("ชื่อชิ้นงาน")
             
-            st.subheader("ขนาดและมิติ")
+            st.subheader("ขนาดและมิติ (Dimensions)")
             col1, col2 = st.columns(2)
-            height = col1.number_input("ความสูง (height)", 0.0, format="%.2f")
-            width = col2.number_input("ความกว้าง (width)", 0.0, format="%.2f")
-            
+            h = col1.number_input("ความสูง (height)", 0.0, format="%.2f")
+            w = col2.number_input("ความกว้าง (width)", 0.0, format="%.2f")
             col3, col4 = st.columns(2)
-            thickness = col3.number_input("ความหนา (thickness)", 0.0, format="%.2f")
-            depth = col4.number_input("ความลึก (depth)", 0.0, format="%.2f")
-            
+            t = col3.number_input("ความหนา (thickness)", 0.0, format="%.2f")
+            d = col4.number_input("ความลึก (depth)", 0.0, format="%.2f")
             col5, col6 = st.columns(2)
-            outer_d = col5.number_input("เส้นผ่านศูนย์กลางภายนอก (outer_diameter)", 0.0, format="%.2f")
-            inner_d = col6.number_input("เส้นผ่านศูนย์กลางภายใน (inner_diameter)", 0.0, format="%.2f")
+            od = col5.number_input("เส้นผ่านศูนย์กลางภายนอก (outer_diameter)", 0.0, format="%.2f")
+            id_val = col6.number_input("เส้นผ่านศูนย์กลางภายใน (inner_diameter)", 0.0, format="%.2f")
             
             if st.form_submit_button("บันทึกสินค้า"):
                 if not p_code or not p_name:
@@ -95,19 +94,15 @@ with tab3:
                 else:
                     try:
                         supabase.table("products").insert({
-                            "product_code": p_code, 
-                            "product_name": p_name,
-                            "height": height,
-                            "width": width,
-                            "thickness": thickness,
-                            "depth": depth,
-                            "outer_diameter": outer_d,
-                            "inner_diameter": inner_d
+                            "product_code": p_code, "product_name": p_name,
+                            "height": h, "width": w, "thickness": t,
+                            "depth": d, "outer_diameter": od, "inner_diameter": id_val
                         }).execute()
                         st.success("ลงทะเบียนสินค้าสำเร็จ!")
                     except Exception as e:
                         st.error(f"Error: {e}")
 
+    # 2. ลงทะเบียนจิ๊ก
     with sub_jig:
         with st.form("new_jig_form", clear_on_submit=True):
             jig_code = st.text_input("รหัสจิ๊ก")
@@ -121,51 +116,36 @@ with tab3:
                     except Exception as e:
                         st.error(f"Error: {e}")
 
+    # 3. บันทึกผลผลิต
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
         tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
+        all_colors = get_options("colors", "color_id", "color_name") # ดึงมาทุกสี
 
-        if prods and jigs and tanks:
+        if prods and jigs and tanks and all_colors:
             with st.form("log_prod_form", clear_on_submit=True):
                 sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
                 sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
                 sel_t = st.selectbox("เลือกบ่อสี", list(tanks.keys()))
+                sel_c = st.selectbox("เลือกสี", list(all_colors.keys())) # เลือกจากรายการสีทั้งหมด
                 
-                # Logic ดึงสีที่ผูกกับบ่อ
-                tank_id = tanks[sel_t]
-                try:
-                    res = supabase.table("tank_color_mapping").select("color_id, colors(color_name)").eq("tank_id", tank_id).execute()
-                    valid_colors = {item['colors']['color_name']: item['color_id'] for item in res.data}
-                except:
-                    valid_colors = {}
-
-                if valid_colors:
-                    sel_c = st.selectbox("เลือกสี", list(valid_colors.keys()))
-                    color_id = valid_colors[sel_c]
-                else:
-                    st.error(f"บ่อ {sel_t} นี้ยังไม่มีการตั้งค่าสีในระบบ")
-                    color_id = None
-
                 pcs_jig = st.number_input("จำนวนต่อจิ๊ก", min_value=1)
                 total = st.number_input("จำนวนรวม", min_value=1)
                 
                 if st.form_submit_button("บันทึกการผลิต"):
-                    if not color_id:
-                        st.warning("ไม่สามารถบันทึกได้ เนื่องจากข้อมูลสีไม่ถูกต้อง")
-                    else:
-                        try:
-                            supabase.table("jig_usage_log").insert({
-                                "product_id": prods[sel_p],
-                                "jig_id": jigs[sel_j],
-                                "color_id": color_id,
-                                "tank_id": tank_id,
-                                "pcs_per_jig": pcs_jig,
-                                "total_pieces": total,
-                                "recorded_date": str(datetime.date.today())
-                            }).execute()
-                            st.success("บันทึกผลผลิตสำเร็จ!")
-                        except Exception as e:
-                            st.error(f"Error: {e}")
+                    try:
+                        supabase.table("jig_usage_log").insert({
+                            "product_id": prods[sel_p],
+                            "jig_id": jigs[sel_j],
+                            "tank_id": tanks[sel_t],
+                            "color_id": all_colors[sel_c], # ใช้ ID จากสีที่เลือกได้อิสระ
+                            "pcs_per_jig": pcs_jig,
+                            "total_pieces": total,
+                            "recorded_date": str(datetime.date.today())
+                        }).execute()
+                        st.success("บันทึกผลผลิตสำเร็จ!")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
         else:
-            st.warning("กรุณาลงทะเบียน สินค้า, จิ๊ก และ บ่อ ให้ครบก่อนบันทึกข้อมูล")
+            st.warning("กรุณาตรวจสอบว่าคุณได้ลงทะเบียน สินค้า, จิ๊ก, บ่อ และ สี ในระบบครบถ้วนแล้ว")
