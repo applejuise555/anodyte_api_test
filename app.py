@@ -11,7 +11,7 @@ except Exception as e:
     st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
 
 st.set_page_config(page_title="Production Log System", layout="wide")
-st.title("ระบบบันทึกข้อมูลการผลิต (New Schema)")
+st.title("ระบบบันทึกข้อมูลการผลิต (Complete System)")
 
 # ฟังก์ชันดึงข้อมูลมาทำ Dropdown
 def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
@@ -67,35 +67,35 @@ with tab2:
                         st.error(f"Error: {e}")
 
 # --- TAB 3: งานจิ๊ก ---
-with sub_prod:
+with tab3:
+    sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
+
+    with sub_prod:
         with st.form("new_product_form", clear_on_submit=True):
             st.subheader("ข้อมูลทั่วไป")
             p_code = st.text_input("รหัสสินค้า (Unique)")
             p_name = st.text_input("ชื่อชิ้นงาน")
             
-            st.subheader("ขนาดและมิติ (Dimensions)")
-            # จัดเรียงแบบ 2 คอลัมน์เพื่อให้ฟอร์มไม่ยาวเกินไป
+            st.subheader("ขนาดและมิติ")
             col1, col2 = st.columns(2)
-            height = col1.number_input("ความสูง (height)", min_value=0.0, format="%.2f")
-            width = col2.number_input("ความกว้าง (width)", min_value=0.0, format="%.2f")
+            height = col1.number_input("ความสูง (height)", 0.0, format="%.2f")
+            width = col2.number_input("ความกว้าง (width)", 0.0, format="%.2f")
             
             col3, col4 = st.columns(2)
-            thickness = col3.number_input("ความหนา (thickness)", min_value=0.0, format="%.2f")
-            depth = col4.number_input("ความลึก (depth)", min_value=0.0, format="%.2f")
+            thickness = col3.number_input("ความหนา (thickness)", 0.0, format="%.2f")
+            depth = col4.number_input("ความลึก (depth)", 0.0, format="%.2f")
             
             col5, col6 = st.columns(2)
-            outer_d = col5.number_input("เส้นผ่านศูนย์กลางภายนอก (outer_diameter)", min_value=0.0, format="%.2f")
-            inner_d = col6.number_input("เส้นผ่านศูนย์กลางภายใน (inner_diameter)", min_value=0.0, format="%.2f")
+            outer_d = col5.number_input("เส้นผ่านศูนย์กลางภายนอก (outer_diameter)", 0.0, format="%.2f")
+            inner_d = col6.number_input("เส้นผ่านศูนย์กลางภายใน (inner_diameter)", 0.0, format="%.2f")
             
             if st.form_submit_button("บันทึกสินค้า"):
-                # ตรวจสอบว่ามีข้อมูลจำเป็นครบถ้วน
                 if not p_code or not p_name:
-                    st.error("กรุณากรอกรหัสสินค้าและชื่อชิ้นงานให้ครบถ้วน")
+                    st.warning("กรุณากรอกรหัสและชื่อสินค้าให้ครบถ้วน")
                 else:
                     try:
-                        # บันทึกข้อมูลลง Database ตาม Schema ใหม่
                         supabase.table("products").insert({
-                            "product_code": p_code,
+                            "product_code": p_code, 
                             "product_name": p_name,
                             "height": height,
                             "width": width,
@@ -104,9 +104,9 @@ with sub_prod:
                             "outer_diameter": outer_d,
                             "inner_diameter": inner_d
                         }).execute()
-                        st.success(f"ลงทะเบียนสินค้า {p_name} สำเร็จ!")
+                        st.success("ลงทะเบียนสินค้าสำเร็จ!")
                     except Exception as e:
-                        st.error(f"เกิดข้อผิดพลาด: {e}")
+                        st.error(f"Error: {e}")
 
     with sub_jig:
         with st.form("new_jig_form", clear_on_submit=True):
@@ -132,7 +132,7 @@ with sub_prod:
                 sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
                 sel_t = st.selectbox("เลือกบ่อสี", list(tanks.keys()))
                 
-                # Logic ดึงสีตามบ่อ
+                # Logic ดึงสีที่ผูกกับบ่อ
                 tank_id = tanks[sel_t]
                 try:
                     res = supabase.table("tank_color_mapping").select("color_id, colors(color_name)").eq("tank_id", tank_id).execute()
@@ -144,7 +144,7 @@ with sub_prod:
                     sel_c = st.selectbox("เลือกสี", list(valid_colors.keys()))
                     color_id = valid_colors[sel_c]
                 else:
-                    st.error(f"บ่อ {sel_t} นี้ยังไม่มีการตั้งค่าสี (กรุณาเช็คตาราง mapping)")
+                    st.error(f"บ่อ {sel_t} นี้ยังไม่มีการตั้งค่าสีในระบบ")
                     color_id = None
 
                 pcs_jig = st.number_input("จำนวนต่อจิ๊ก", min_value=1)
@@ -152,7 +152,7 @@ with sub_prod:
                 
                 if st.form_submit_button("บันทึกการผลิต"):
                     if not color_id:
-                        st.warning("ไม่สามารถบันทึกได้ เนื่องจากไม่มีข้อมูลสี")
+                        st.warning("ไม่สามารถบันทึกได้ เนื่องจากข้อมูลสีไม่ถูกต้อง")
                     else:
                         try:
                             supabase.table("jig_usage_log").insert({
