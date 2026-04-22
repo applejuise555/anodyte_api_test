@@ -64,18 +64,18 @@ with tab3:
 
     # ส่วนที่ 1: ลงทะเบียนสินค้า
     with sub_prod_reg:
-        st.subheader("เพิ่มฐานข้อมูลชิ้นงานใหม่")
+        st.subheader("สำหรับกรณีมีชิ้นงานที่ไม่ได้บันทึกไว้เท่านั้น!")
         with st.form("register_product_form"):
             col1, col2 = st.columns(2)
             with col1:
-                p_code = st.text_input("รหัสสินค้า (ใช้ค้นหา)")
+                p_code = st.text_input("รหัสสินค้า")
                 p_name = st.text_input("ชื่อชิ้นงาน")
                 height = st.number_input("สูง (Height)")
                 width = st.number_input("กว้าง (Width)")
             with col2:
                 thickness = st.number_input("หนา (Thickness)")
                 depth = st.number_input("ลึก (Depth)")
-                surface_area = st.text_input("พื้นที่ผิว")
+                surface_area = st.text_input("ลักษณะผิว")
                 outer_dia = st.number_input("เส้นผ่านศูนย์กลางนอก")
                 inner_dia = st.number_input("เส้นผ่านศูนย์กลางใน")
             
