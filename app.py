@@ -3,7 +3,7 @@ from supabase import create_client
 import datetime
 from datetime import datetime, timezone, timedelta
 
-# 1. สร้างตัวแปร Timezone สำหรับประเทศไทย (UTC +7)
+# 1. ตั้งค่า Timezone
 ICT = timezone(timedelta(hours=7))
 
 # --- การตั้งค่าเชื่อมต่อ ---
@@ -17,7 +17,7 @@ except Exception as e:
 st.set_page_config(page_title="Production Log System", layout="wide")
 st.title("ระบบบันทึกข้อมูลการผลิต")
 
-# ฟังก์ชันดึงข้อมูลจาก Supabase
+# ฟังก์ชันดึง Options
 def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
     try:
         query = supabase.table(table).select(f"{id_col}, {name_col}")
@@ -28,9 +28,9 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
     except Exception as e:
         return {}
 
-# Dictionary สำหรับแสดงสี (รหัสสีตามชื่อสี)
+# สร้างรายการสีและ Hex Code
 color_hex_map = {
-    "Black": "#222222", "Red": "#FF0000", "Violet": "#9400D3", 
+    "Black": "#000000", "Red": "#FF0000", "Violet": "#9400D3", 
     "Green": "#008000", "Banana leaf Green": "#90EE90", "Gold": "#FFD700", 
     "Orange": "#FFA500", "Light Blue": "#ADD8E6", "Blue": "#0000FF", 
     "Dark Blue": "#00008B", "Dark Titanium": "#4A4E69", "Dark Red": "#8B0000", 
@@ -40,7 +40,6 @@ color_hex_map = {
 # --- โครงสร้าง Tabs ---
 tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
 
-# --- TAB 1 & 2 ---
 with tab1:
     st.header("บันทึกข้อมูลบ่อสี")
     color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
@@ -66,7 +65,6 @@ with tab2:
                 supabase.table("anodize_tank_logs").insert({"tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, "density": density}).execute()
                 st.success("บันทึกข้อมูลสำเร็จ!")
 
-# --- TAB 3: งานจิ๊ก ---
 with tab3:
     sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
     
@@ -85,14 +83,11 @@ with tab3:
                 od = st.number_input("Outer Diameter", 0.0, format="%.2f")
                 id_val = st.number_input("Inner Diameter", 0.0, format="%.2f")
             if st.form_submit_button("บันทึกสินค้า"):
-                try:
-                    supabase.table("products").insert({
-                        "product_code": p_code, "product_name": p_name, "surface_finish": surface_finish, 
-                        "height": h, "width": w, "thickness": t, "depth": d, "outer_diameter": od, "inner_diameter": id_val
-                    }).execute()
-                    st.success("บันทึกสินค้าสำเร็จ!")
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                supabase.table("products").insert({
+                    "product_code": p_code, "product_name": p_name, "surface_finish": surface_finish,
+                    "height": h, "width": w, "thickness": t, "depth": d, "outer_diameter": od, "inner_diameter": id_val
+                }).execute()
+                st.success("บันทึกสินค้าสำเร็จ!")
 
     with sub_jig:
         with st.form("new_jig_form", clear_on_submit=True):
@@ -104,37 +99,44 @@ with tab3:
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
-        
+
         if prods and jigs:
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
             jig_id = jigs[sel_j]
+            
+            # ดึงประวัติสีล่าสุด
+            last_color = None
+            try:
+                hist = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
+                if hist.data: last_color = hist.data[0]['color']
+            except: pass
 
-            # --- เริ่มฟอร์มบันทึกการผลิต ---
-            with st.form("log_prod_form", clear_on_submit=True):
-                # 1. เลือกสี
-                sel_c = st.selectbox("เลือกสี", list(color_hex_map.keys()))
-                
-                # 2. แสดงตัวอย่างสี (Visual Swatch)
-                st.markdown(
-                    f"""<div style="display: flex; align-items: center; margin-bottom: 15px;">
-                        <div style="width: 25px; height: 25px; background-color: {color_hex_map[sel_c]}; border-radius: 5px; border: 1px solid #ddd; margin-right: 10px;"></div>
+            # --- ส่วนการเลือกสี (Pills + Preview) ---
+            color_names = list(color_hex_map.keys())
+            default_pill = last_color if last_color in color_names else color_names[0]
+            
+            sel_c = st.pills("เลือกสี", color_names, selection_mode="single", default=default_pill)
+            
+            # แสดงกล่องสีตัวอย่างทันที
+            if sel_c:
+                st.markdown(f"""
+                    <div style="display: flex; align-items: center; padding: 10px; background-color: #f0f2f6; border-radius: 8px;">
+                        <div style="width: 25px; height: 25px; background-color: {color_hex_map[sel_c]}; border-radius: 4px; margin-right: 15px; border: 1px solid #ccc;"></div>
                         <span>สีที่เลือก: <b>{sel_c}</b></span>
-                    </div>""", unsafe_allow_html=True
-                )
-                
-                # 3. Input จำนวนงาน
+                    </div>
+                """, unsafe_allow_html=True)
+            
+            with st.form("log_prod_form", clear_on_submit=True):
                 pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
                 rows_filled = st.number_input("จำนวนแถวที่เต็ม (Rows Filled)", min_value=0, step=1)
                 partial_pieces = st.number_input("เศษชิ้นงาน (Partial Pieces)", min_value=0, step=1)
                 
-                # คำนวณอัตโนมัติ
                 total_pieces = (rows_filled * pcs_per_row) + partial_pieces
-                st.info(f"ยอดรวมทั้งหมด: {total_pieces} ชิ้น")
+                st.write(f"ยอดรวมทั้งหมด: {total_pieces} ชิ้น")
                 
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
-                        current_time_th = datetime.now(ICT).isoformat()
                         insert_data = {
                             "product_id": prods[sel_p],
                             "jig_id": jig_id,
@@ -143,9 +145,9 @@ with tab3:
                             "rows_filled": rows_filled,
                             "partial_pieces": partial_pieces,
                             "total_pieces": total_pieces,
-                            "recorded_date": current_time_th
+                            "recorded_date": datetime.now(ICT).isoformat()
                         }
                         supabase.table("jig_usage_log").insert(insert_data).execute()
-                        st.success("บันทึกข้อมูลพร้อมรายละเอียดการผลิตสำเร็จ!")
+                        st.success("บันทึกข้อมูลสำเร็จ!")
                     except Exception as e:
                         st.error(f"Error: {e}")
