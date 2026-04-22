@@ -135,7 +135,7 @@ with tab3:
             
                 # คำนวณยอดรวมให้อัตโนมัติ (เป็นตัวเลือกที่ดีเพื่อให้ User เห็นภาพ)
                 total_pieces = (rows_filled * pcs_per_row) + partial_pieces
-            st.write(f"ยอดรวมทั้งหมด: {total_pieces} ชิ้น")
+                st.write(f"ยอดรวมทั้งหมด: {total_pieces} ชิ้น")
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
                         # สร้าง Dictionary โดยรวมคอลัมน์ใหม่ที่เพิ่มเข้าไป
