@@ -11,7 +11,7 @@ except Exception as e:
     st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
 
 st.set_page_config(page_title="Production Log System", layout="wide")
-st.title("ระบบบันทึกข้อมูลการผลิต (Full Corrected Version)")
+st.title("ระบบบันทึกข้อมูลการผลิต")
 
 def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
     try:
