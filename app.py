@@ -11,7 +11,7 @@ except Exception as e:
     st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
 
 st.set_page_config(page_title="Production Log System", layout="wide")
-st.title("ระบบบันทึกข้อมูลการผลิต (Complete System)")
+st.title("ระบบบันทึกข้อมูลการผลิต (Updated System)")
 
 # ฟังก์ชันดึงข้อมูลมาทำ Dropdown
 def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
@@ -70,11 +70,10 @@ with tab2:
 with tab3:
     sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
 
-    # 1. ลงทะเบียนชิ้นงาน
     with sub_prod:
         with st.form("new_product_form", clear_on_submit=True):
             st.subheader("ข้อมูลทั่วไป")
-            p_code = st.text_input("รหัสสินค้า")
+            p_code = st.text_input("รหัสสินค้า (Unique)")
             p_name = st.text_input("ชื่อชิ้นงาน")
             
             st.subheader("ขนาดและมิติ (Dimensions)")
@@ -102,7 +101,6 @@ with tab3:
                     except Exception as e:
                         st.error(f"Error: {e}")
 
-    # 2. ลงทะเบียนจิ๊ก
     with sub_jig:
         with st.form("new_jig_form", clear_on_submit=True):
             jig_code = st.text_input("รหัสจิ๊ก")
@@ -116,26 +114,46 @@ with tab3:
                     except Exception as e:
                         st.error(f"Error: {e}")
 
-    # 3. บันทึกผลผลิต (ตัดบ่อสีและจำนวนรวมออก)
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
-        colors = get_options("colors", "color_id", "color_name")
+        all_colors = get_options("colors", "color_id", "color_name")
 
-        if prods and jigs and colors:
+        if prods and jigs and all_colors:
+            # 1. เลือกสินค้าและจิ๊ก
+            sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
+            sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
+            
+            # 2. Logic: หาสีล่าสุดจากจิ๊กที่เลือก
+            jig_id = jigs[sel_j]
+            default_color_idx = 0
+            try:
+                # ดึง log ล่าสุดของจิ๊กนี้
+                hist = supabase.table("jig_usage_log").select("color_id").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
+                if hist.data:
+                    last_color_id = hist.data[0]['color_id']
+                    # หา index ของสีล่าสุดใน List เพื่อตั้งเป็นค่า Default
+                    color_names = list(all_colors.keys())
+                    # กลับค่าเพื่อหาชื่อจาก ID
+                    rev_colors = {v: k for k, v in all_colors.items()}
+                    if last_color_id in rev_colors:
+                        last_color_name = rev_colors[last_color_id]
+                        if last_color_name in color_names:
+                            default_color_idx = color_names.index(last_color_name)
+            except:
+                pass
+
             with st.form("log_prod_form", clear_on_submit=True):
-                sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
-                sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
-                sel_c = st.selectbox("เลือกสี", list(colors.keys()))
+                # 3. เลือกสี (ตั้งค่า default ตามที่หามาได้)
+                sel_c = st.selectbox("เลือกสี", list(all_colors.keys()), index=default_color_idx)
                 pcs_jig = st.number_input("จำนวนต่อจิ๊ก", min_value=1)
                 
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
-                        # บันทึกข้อมูล (ไม่ส่ง tank_id และ total_pieces)
                         supabase.table("jig_usage_log").insert({
                             "product_id": prods[sel_p],
-                            "jig_id": jigs[sel_j],
-                            "color_id": colors[sel_c],
+                            "jig_id": jig_id,
+                            "color_id": all_colors[sel_c],
                             "pcs_per_jig": pcs_jig,
                             "recorded_date": str(datetime.date.today())
                         }).execute()
@@ -143,4 +161,4 @@ with tab3:
                     except Exception as e:
                         st.error(f"Error: {e}")
         else:
-            st.warning("กรุณาลงทะเบียน สินค้า, จิ๊ก และ สี ให้ครบก่อนบันทึกข้อมูล")
+            st.warning("กรุณาลงทะเบียน สินค้า, จิ๊ก และเพิ่มรายชื่อสี ให้ครบก่อน")
