@@ -82,7 +82,8 @@ with tab3:
                 supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
                 st.success("สำเร็จ!")
 
-   with sub_log:
+  # เริ่มต้น Tab 3
+    with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
         all_colors = get_options("colors", "color_id", "color_name") 
@@ -91,7 +92,6 @@ with tab3:
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
             
-            # ดึงค่าสีล่าสุดมาแสดง
             jig_id = jigs[sel_j]
             last_color = None
             try:
@@ -106,23 +106,19 @@ with tab3:
 
             with st.form("log_prod_form", clear_on_submit=True):
                 sel_c = st.selectbox("เลือกสี", color_names, index=default_idx)
-                
-                # เก็บค่าทั้ง 2 คอลัมน์ที่ฐานข้อมูลบังคับไว้
                 pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
                 pcs_per_jig = st.number_input("จำนวนต่อจิ๊ก (pcs_per_jig)", min_value=0, step=1)
                 
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
-                        # ระบุข้อมูลให้ครบถ้วนตามชื่อคอลัมน์ในตาราง jig_usage_log
                         insert_data = {
                             "product_id": prods[sel_p],
                             "jig_id": jig_id,
-                            "clor": sel_c,            # ชื่อคอลัมน์สี
-                            "pcs_per_row": pcs_per_row, 
-                            "pcs_per_jig": pcs_per_jig, 
+                            "clor": sel_c,
+                            "pcs_per_row": pcs_per_row,
+                            "pcs_per_jig": pcs_per_jig,
                             "recorded_date": str(datetime.date.today())
                         }
-                        
                         supabase.table("jig_usage_log").insert(insert_data).execute()
                         st.success("บันทึกผลผลิตสำเร็จ!")
                     except Exception as e:
