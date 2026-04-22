@@ -103,62 +103,43 @@ with tab3:
                 supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
                 st.success("สำเร็จ!")
 
-with sub_log:
-        prods = get_options("products", "product_id", "product_code")
-        jigs = get_options("jigs", "jig_id", "jig_model_code")
-        
-        color_hex_map = {
-            "Black": "#222222", "Red": "#FF0000", "Violet": "#9400D3", 
-            "Green": "#008000", "Banana leaf Green": "#90EE90", "Gold": "#FFD700", 
-            "Orange": "#FFA500", "Light Blue": "#ADD8E6", "Blue": "#0000FF", 
-            "Dark Blue": "#00008B", "Dark Titanium": "#4A4E69", "Dark Red": "#8B0000", 
-            "Pink": "#FFC0CB", "Copper": "#B87333", "Titanium": "#808080", "Rose Gold": "#B76E79"
-        }
-        
-        if prods and jigs:
-            sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
-            sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
-            jig_id = jigs[sel_j]
+# --- วางไว้ข้างนอกฟอร์ม เพื่อให้แสดงผลทันที ---
+sel_c = st.pills("เลือกสี", list(color_hex_map.keys()), selection_mode="single")
 
-            with st.form("log_prod_form", clear_on_submit=True):
-                # 1. เลือกสี
-                sel_c = st.pills("เลือกสี", list(color_hex_map.keys()), selection_mode="single")
-                
-                # 2. แสดงตัวอย่างสี
-                if sel_c:
-                    st.markdown(
-                        f"""<div style="display: flex; align-items: center; margin-bottom: 10px;">
-                            <div style="width: 20px; height: 20px; background-color: {color_hex_map[sel_c]}; border-radius: 4px; margin-right: 10px;"></div>
-                            <span>เลือกสี: <b>{sel_c}</b></span>
-                        </div>""", unsafe_allow_html=True
-                    )
-                
-                # 3. Input จำนวนงาน
-                pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
-                rows_filled = st.number_input("จำนวนแถวที่เต็ม (Rows Filled)", min_value=0, step=1)
-                partial_pieces = st.number_input("เศษชิ้นงาน (Partial Pieces)", min_value=0, step=1)
-                
-                # 4. ปุ่มบันทึก
-                if st.form_submit_button("บันทึกการผลิต"):
-                    if not sel_c:
-                        st.error("กรุณาเลือกสีก่อนบันทึก!")
-                    else:
-                        try:
-                            total_pieces = (rows_filled * pcs_per_row) + partial_pieces
-                            current_time_th = datetime.now(ICT).isoformat()
-                            
-                            insert_data = {
-                                "product_id": prods[sel_p],
-                                "jig_id": jig_id,
-                                "color": sel_c,
-                                "pcs_per_row": pcs_per_row,
-                                "rows_filled": rows_filled,
-                                "partial_pieces": partial_pieces,
-                                "total_pieces": total_pieces,
-                                "recorded_date": current_time_th
-                            }
-                            
-                            supabase.table("jig_usage_log").insert(insert_data).execute()
-                            st.success(f"บันทึกข้อมูลสำเร็จ! ({total_pieces} ชิ้น)")
-                        except Exception as e:
-                            st.error(f"Error: {e}")
+if sel_c:
+    st.markdown(
+        f"""<div style="display: flex; align-items: center; margin-bottom: 10px;">
+            <div style="width: 20px; height: 20px; background-color: {color_hex_map[sel_c]}; border-radius: 4px; margin-right: 10px;"></div>
+            <span>เลือกสี: <b>{sel_c}</b></span>
+        </div>""", unsafe_allow_html=True
+    )
+
+# --- ส่วนของฟอร์ม (ไว้ข้างล่าง) ---
+with st.form("log_prod_form", clear_on_submit=True):
+    # ช่องกรอกข้อมูลต่างๆ
+    pcs_per_row = st.number_input("จำนวนต่อแถว", min_value=0, step=1)
+    rows_filled = st.number_input("จำนวนแถวที่เต็ม", min_value=0, step=1)
+    partial_pieces = st.number_input("เศษชิ้นงาน", min_value=0, step=1)
+    
+    if st.form_submit_button("บันทึกการผลิต"):
+        # ตรวจสอบว่าเลือกสีแล้วหรือยัง
+        if not sel_c:
+            st.error("กรุณาเลือกสีก่อนกดบันทึก!")
+        else:
+            # ใช้ sel_c จากด้านบนได้เลย เพราะมันค้างอยู่ในตัวแปรแล้ว
+            total_pieces = (rows_filled * pcs_per_row) + partial_pieces
+            try:
+                insert_data = {
+                    "product_id": prods[sel_p],
+                    "jig_id": jig_id,
+                    "color": sel_c,  # ใช้ตัวแปร sel_c ที่เลือกไว้ด้านบน
+                    "pcs_per_row": pcs_per_row,
+                    "rows_filled": rows_filled,
+                    "partial_pieces": partial_pieces,
+                    "total_pieces": total_pieces,
+                    "recorded_date": datetime.now(ICT).isoformat()
+                }
+                supabase.table("jig_usage_log").insert(insert_data).execute()
+                st.success(f"บันทึกข้อมูลสำเร็จ! ({total_pieces} ชิ้น)")
+            except Exception as e:
+                st.error(f"Error: {e}")
