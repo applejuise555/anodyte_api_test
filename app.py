@@ -48,7 +48,12 @@ with tab1:
             ph_value = st.number_input("ค่า pH", step=0.1)
             temperature = st.number_input("อุณหภูมิ (°C)", step=0.1)
             if st.form_submit_button("บันทึกข้อมูลบ่อสี"):
-                supabase.table("color_tank_logs").insert({"tank_id": tanks[selected_tank], "ph_value": ph, "temperature": temp}).execute()
+                # ใส่ข้อมูลตาม Schema: tank_id, ph_value, temperature
+                supabase.table("color_tank_logs").insert({
+                    "tank_id": tanks[selected_tank], 
+                    "ph_value": ph_value, 
+                    "temperature": temperature
+                }).execute()
                 st.success("บันทึกสำเร็จ!")
 
 with tab2:
@@ -61,7 +66,13 @@ with tab2:
             temperature = st.number_input("อุณหภูมิ (°C)", step=0.1)
             density = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
             if st.form_submit_button("บันทึกข้อมูลบ่ออโนไดซ์"):
-                supabase.table("anodize_tank_logs").insert({"tank_id": tanks[selected_tank], "ph_value": ph, "temperature": temp, "density": density}).execute()
+                # ใส่ข้อมูลตาม Schema: tank_id, ph_value, temperature, density
+                supabase.table("anodize_tank_logs").insert({
+                    "tank_id": tanks[selected_tank], 
+                    "ph_value": ph_value, 
+                    "temperature": temperature, 
+                    "density": density
+                }).execute()
                 st.success("บันทึกสำเร็จ!")
 
 with tab3:
@@ -73,7 +84,6 @@ with tab3:
             p_name = st.text_input("ชื่อชิ้นงาน")
             surf = st.text_input("ลักษณะพื้นผิว (Surface Finish)")
             
-            # ฟิลด์ขนาดที่คงไว้ตามเดิม
             col1, col2 = st.columns(2)
             with col1:
                 h = st.number_input("Height", 0.0, format="%.2f")
@@ -85,6 +95,7 @@ with tab3:
                 id_val = st.number_input("Inner Diameter", 0.0, format="%.2f")
             
             if st.form_submit_button("บันทึกสินค้า"):
+                # ใส่ข้อมูลตาม Schema: product_code, product_name, surface_finish, height, width, thickness, depth, outer_diameter, inner_diameter
                 supabase.table("products").insert({
                     "product_code": p_code, 
                     "product_name": p_name, 
@@ -99,7 +110,7 @@ with tab3:
             jig_code = st.text_input("รหัสจิ๊ก")
             if st.form_submit_button("บันทึกจิ๊ก"):
                 supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
-                st.success("สำเร็จ!")
+                st.success("บันทึกจิ๊กสำเร็จ!")
 
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
@@ -127,15 +138,7 @@ with tab3:
                         st.error("กรุณาเลือกสีก่อน!")
                     else:
                         total = (rows_filled * pcs_per_row) + partial
+                        # ใส่ข้อมูลตาม Schema: product_id, jig_id, color, pcs_per_row, rows_filled, partial_pieces, total_pieces, recorded_date
                         data = {
                             "product_id": prods[sel_p],
                             "jig_id": jigs[sel_j],
-                            "color": sel_c,
-                            "pcs_per_row": pcs_per_row,
-                            "rows_filled": rows_filled,
-                            "partial_pieces": partial,
-                            "total_pieces": total,
-                            "recorded_date": datetime.now(ICT).isoformat()
-                        }
-                        supabase.table("jig_usage_log").insert(data).execute()
-                        st.success(f"บันทึกสำเร็จ! ยอดรวม {total} ชิ้น")
