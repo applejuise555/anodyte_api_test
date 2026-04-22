@@ -103,59 +103,62 @@ with tab3:
                 supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
                 st.success("สำเร็จ!")
 
-    with sub_log:
+with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
-        all_colors = get_options("colors", "color_id", "color_name") 
-
+        
+        color_hex_map = {
+            "Black": "#222222", "Red": "#FF0000", "Violet": "#9400D3", 
+            "Green": "#008000", "Banana leaf Green": "#90EE90", "Gold": "#FFD700", 
+            "Orange": "#FFA500", "Light Blue": "#ADD8E6", "Blue": "#0000FF", 
+            "Dark Blue": "#00008B", "Dark Titanium": "#4A4E69", "Dark Red": "#8B0000", 
+            "Pink": "#FFC0CB", "Copper": "#B87333", "Titanium": "#808080", "Rose Gold": "#B76E79"
+        }
+        
         if prods and jigs:
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
-            
             jig_id = jigs[sel_j]
-            last_color = None
-            try:
-                # แก้ไขชื่อคอลัมน์เป็น "color" ให้ตรงกับ DB
-                hist = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
-                if hist.data:
-                    last_color = hist.data[0]['color']
-            except:
-                pass
-            
-            color_names = list(all_colors.keys())
-            default_idx = color_names.index(last_color) if last_color in color_names else 0
 
             with st.form("log_prod_form", clear_on_submit=True):
-                sel_c = st.selectbox("เลือกสี", color_names, index=default_idx)
+                # 1. เลือกสี
+                sel_c = st.pills("เลือกสี", list(color_hex_map.keys()), selection_mode="single")
                 
-                # Input สำหรับคอลัมน์ที่บังคับ (Not Null ตามฐานข้อมูล)
+                # 2. แสดงตัวอย่างสี
+                if sel_c:
+                    st.markdown(
+                        f"""<div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <div style="width: 20px; height: 20px; background-color: {color_hex_map[sel_c]}; border-radius: 4px; margin-right: 10px;"></div>
+                            <span>เลือกสี: <b>{sel_c}</b></span>
+                        </div>""", unsafe_allow_html=True
+                    )
+                
+                # 3. Input จำนวนงาน
                 pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
-                #pcs_per_jig = st.number_input("จำนวนต่อจิ๊ก (pcs_per_jig)", min_value=0, step=1)
-                total_pieces = st.number_input("จำนวนรวม (total_pieces)", min_value=0, step=1)
                 rows_filled = st.number_input("จำนวนแถวที่เต็ม (Rows Filled)", min_value=0, step=1)
-                partial_pieces = st.number_input("เศษชิ้นงานแถวสุดท้าย (Partial Pieces)", min_value=0, step=1)
-            
-                # คำนวณยอดรวมให้อัตโนมัติ (เป็นตัวเลือกที่ดีเพื่อให้ User เห็นภาพ)
-                total_pieces = (rows_filled * pcs_per_row) + partial_pieces
-                st.write(f"ยอดรวมทั้งหมด: {total_pieces} ชิ้น")
+                partial_pieces = st.number_input("เศษชิ้นงาน (Partial Pieces)", min_value=0, step=1)
+                
+                # 4. ปุ่มบันทึก
                 if st.form_submit_button("บันทึกการผลิต"):
-                    try:
-                        current_time_th = datetime.now(ICT).isoformat()
-                        # สร้าง Dictionary โดยรวมคอลัมน์ใหม่ที่เพิ่มเข้าไป
-                        insert_data = {
-                            "product_id": prods[sel_p],
-                            "jig_id": jig_id,
-                            "color": sel_c,
-                            "pcs_per_row": pcs_per_row,
-                            "rows_filled": rows_filled,      # เพิ่มเข้ามา
-                            "partial_pieces": partial_pieces,# เพิ่มเข้ามา
-                            #"pcs_per_jig": total_pieces,     # ยอดรวมต่อจิ๊ก
-                            "total_pieces": total_pieces,    # ยอดรวมรวม
-                            "recorded_date": current_time_th  # ใช้ตัวแปรนี้แทน str(datetime.date.today())
-        }
-                        
-                        
-                        supabase.table("jig_usage_log").insert(insert_data).execute()
-                        st.success("บันทึกข้อมูลพร้อมรายละเอียดการผลิตสำเร็จ!")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                    if not sel_c:
+                        st.error("กรุณาเลือกสีก่อนบันทึก!")
+                    else:
+                        try:
+                            total_pieces = (rows_filled * pcs_per_row) + partial_pieces
+                            current_time_th = datetime.now(ICT).isoformat()
+                            
+                            insert_data = {
+                                "product_id": prods[sel_p],
+                                "jig_id": jig_id,
+                                "color": sel_c,
+                                "pcs_per_row": pcs_per_row,
+                                "rows_filled": rows_filled,
+                                "partial_pieces": partial_pieces,
+                                "total_pieces": total_pieces,
+                                "recorded_date": current_time_th
+                            }
+                            
+                            supabase.table("jig_usage_log").insert(insert_data).execute()
+                            st.success(f"บันทึกข้อมูลสำเร็จ! ({total_pieces} ชิ้น)")
+                        except Exception as e:
+                            st.error(f"Error: {e}")
