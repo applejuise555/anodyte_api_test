@@ -67,22 +67,46 @@ with tab2:
                         st.error(f"Error: {e}")
 
 # --- TAB 3: งานจิ๊ก ---
-with tab3:
-    sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
-
-    with sub_prod:
+with sub_prod:
         with st.form("new_product_form", clear_on_submit=True):
-            p_code = st.text_input("รหัสสินค้า")
+            st.subheader("ข้อมูลทั่วไป")
+            p_code = st.text_input("รหัสสินค้า (Unique)")
             p_name = st.text_input("ชื่อชิ้นงาน")
+            
+            st.subheader("ขนาดและมิติ (Dimensions)")
+            # จัดเรียงแบบ 2 คอลัมน์เพื่อให้ฟอร์มไม่ยาวเกินไป
+            col1, col2 = st.columns(2)
+            height = col1.number_input("ความสูง (height)", min_value=0.0, format="%.2f")
+            width = col2.number_input("ความกว้าง (width)", min_value=0.0, format="%.2f")
+            
+            col3, col4 = st.columns(2)
+            thickness = col3.number_input("ความหนา (thickness)", min_value=0.0, format="%.2f")
+            depth = col4.number_input("ความลึก (depth)", min_value=0.0, format="%.2f")
+            
+            col5, col6 = st.columns(2)
+            outer_d = col5.number_input("เส้นผ่านศูนย์กลางภายนอก (outer_diameter)", min_value=0.0, format="%.2f")
+            inner_d = col6.number_input("เส้นผ่านศูนย์กลางภายใน (inner_diameter)", min_value=0.0, format="%.2f")
+            
             if st.form_submit_button("บันทึกสินค้า"):
+                # ตรวจสอบว่ามีข้อมูลจำเป็นครบถ้วน
                 if not p_code or not p_name:
-                    st.warning("กรุณากรอกรหัสและชื่อสินค้า")
+                    st.error("กรุณากรอกรหัสสินค้าและชื่อชิ้นงานให้ครบถ้วน")
                 else:
                     try:
-                        supabase.table("products").insert({"product_code": p_code, "product_name": p_name}).execute()
-                        st.success("ลงทะเบียนสินค้าสำเร็จ")
+                        # บันทึกข้อมูลลง Database ตาม Schema ใหม่
+                        supabase.table("products").insert({
+                            "product_code": p_code,
+                            "product_name": p_name,
+                            "height": height,
+                            "width": width,
+                            "thickness": thickness,
+                            "depth": depth,
+                            "outer_diameter": outer_d,
+                            "inner_diameter": inner_d
+                        }).execute()
+                        st.success(f"ลงทะเบียนสินค้า {p_name} สำเร็จ!")
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        st.error(f"เกิดข้อผิดพลาด: {e}")
 
     with sub_jig:
         with st.form("new_jig_form", clear_on_submit=True):
