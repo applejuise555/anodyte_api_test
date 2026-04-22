@@ -152,7 +152,7 @@ with tab3:
                             "total_pieces": total_pieces,    # ยอดรวมรวม
                             "recorded_date": current_time_th  # ใช้ตัวแปรนี้แทน str(datetime.date.today())
         }
-                        }
+                        
                         
                         supabase.table("jig_usage_log").insert(insert_data).execute()
                         st.success("บันทึกข้อมูลพร้อมรายละเอียดการผลิตสำเร็จ!")
