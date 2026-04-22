@@ -11,7 +11,7 @@ except Exception as e:
     st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
 
 st.set_page_config(page_title="Production Log System", layout="wide")
-st.title("ระบบบันทึกข้อมูลการผลิต (Updated System)")
+st.title("ระบบบันทึกข้อมูลการผลิต (Complete System)")
 
 # ฟังก์ชันดึงข้อมูลมาทำ Dropdown
 def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
@@ -116,34 +116,31 @@ with tab3:
                     except Exception as e:
                         st.error(f"Error: {e}")
 
-    # 3. บันทึกผลผลิต (อัปเดตใหม่: ตัด tank ออก)
+    # 3. บันทึกผลผลิต (ตัดบ่อสีและจำนวนรวมออก)
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
-        all_colors = get_options("colors", "color_id", "color_name")
+        colors = get_options("colors", "color_id", "color_name")
 
-        if prods and jigs and all_colors:
+        if prods and jigs and colors:
             with st.form("log_prod_form", clear_on_submit=True):
                 sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
                 sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
-                sel_c = st.selectbox("เลือกสี", list(all_colors.keys()))
-                
+                sel_c = st.selectbox("เลือกสี", list(colors.keys()))
                 pcs_jig = st.number_input("จำนวนต่อจิ๊ก", min_value=1)
-                total = st.number_input("จำนวนรวม", min_value=1)
                 
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
-                        # บันทึกโดยไม่มี tank_id
+                        # บันทึกข้อมูล (ไม่ส่ง tank_id และ total_pieces)
                         supabase.table("jig_usage_log").insert({
                             "product_id": prods[sel_p],
                             "jig_id": jigs[sel_j],
-                            "color_id": all_colors[sel_c],
+                            "color_id": colors[sel_c],
                             "pcs_per_jig": pcs_jig,
-                            "total_pieces": total,
                             "recorded_date": str(datetime.date.today())
                         }).execute()
                         st.success("บันทึกผลผลิตสำเร็จ!")
                     except Exception as e:
                         st.error(f"Error: {e}")
         else:
-            st.warning("กรุณาลงทะเบียน สินค้า, จิ๊ก และ สี ในระบบให้ครบก่อนบันทึกข้อมูล")
+            st.warning("กรุณาลงทะเบียน สินค้า, จิ๊ก และ สี ให้ครบก่อนบันทึกข้อมูล")
