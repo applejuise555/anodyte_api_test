@@ -5,7 +5,8 @@ from datetime import datetime, timezone, timedelta
 
 # 1. สร้างตัวแปร Timezone สำหรับประเทศไทย (UTC +7)
 ICT = timezone(timedelta(hours=7))
-# --- 1. การตั้งค่าเชื่อมต่อ ---
+
+# --- การตั้งค่าเชื่อมต่อ ---
 try:
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
@@ -16,6 +17,7 @@ except Exception as e:
 st.set_page_config(page_title="Production Log System", layout="wide")
 st.title("ระบบบันทึกข้อมูลการผลิต")
 
+# ฟังก์ชันดึงข้อมูลจาก Supabase
 def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
     try:
         query = supabase.table(table).select(f"{id_col}, {name_col}")
@@ -25,6 +27,15 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
         return {item[name_col]: item[id_col] for item in response.data}
     except Exception as e:
         return {}
+
+# Dictionary สำหรับแสดงสี (รหัสสีตามชื่อสี)
+color_hex_map = {
+    "Black": "#222222", "Red": "#FF0000", "Violet": "#9400D3", 
+    "Green": "#008000", "Banana leaf Green": "#90EE90", "Gold": "#FFD700", 
+    "Orange": "#FFA500", "Light Blue": "#ADD8E6", "Blue": "#0000FF", 
+    "Dark Blue": "#00008B", "Dark Titanium": "#4A4E69", "Dark Red": "#8B0000", 
+    "Pink": "#FFC0CB", "Copper": "#B87333", "Titanium": "#808080", "Rose Gold": "#B76E79"
+}
 
 # --- โครงสร้าง Tabs ---
 tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
@@ -58,16 +69,12 @@ with tab2:
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
     sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
+    
     with sub_prod:
         with st.form("new_product_form", clear_on_submit=True):
             p_code = st.text_input("รหัสสินค้า")
             p_name = st.text_input("ชื่อชิ้นงาน")
-            
-            # --- เพิ่มฟิลด์ลักษณะพื้นผิวตรงนี้ ---
             surface_finish = st.text_input("ลักษณะพื้นผิว (Surface Finish)")
-            # หรือถ้ามีรายการที่ใช้บ่อย ให้เปลี่ยนเป็น selectbox แบบนี้ครับ:
-            # surface_finish = st.selectbox("ลักษณะพื้นผิว", ["Polished", "Matte", "Sandblasted", "Anodized"])
-            
             col1, col2 = st.columns(2)
             with col1:
                 h = st.number_input("Height", 0.0, format="%.2f")
@@ -77,20 +84,11 @@ with tab3:
                 d = st.number_input("Depth", 0.0, format="%.2f")
                 od = st.number_input("Outer Diameter", 0.0, format="%.2f")
                 id_val = st.number_input("Inner Diameter", 0.0, format="%.2f")
-            
             if st.form_submit_button("บันทึกสินค้า"):
                 try:
-                    # เพิ่ม "surface_finish": surface_finish เข้าไปในนี้
                     supabase.table("products").insert({
-                        "product_code": p_code, 
-                        "product_name": p_name,
-                        "surface_finish": surface_finish, # เพิ่มบรรทัดนี้
-                        "height": h, 
-                        "width": w, 
-                        "thickness": t,
-                        "depth": d, 
-                        "outer_diameter": od, 
-                        "inner_diameter": id_val
+                        "product_code": p_code, "product_name": p_name, "surface_finish": surface_finish, 
+                        "height": h, "width": w, "thickness": t, "depth": d, "outer_diameter": od, "inner_diameter": id_val
                     }).execute()
                     st.success("บันทึกสินค้าสำเร็จ!")
                 except Exception as e:
@@ -103,43 +101,51 @@ with tab3:
                 supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
                 st.success("สำเร็จ!")
 
-# --- วางไว้ข้างนอกฟอร์ม เพื่อให้แสดงผลทันที ---
-sel_c = st.pills("เลือกสี", list(color_hex_map.keys()), selection_mode="single")
+    with sub_log:
+        prods = get_options("products", "product_id", "product_code")
+        jigs = get_options("jigs", "jig_id", "jig_model_code")
+        
+        if prods and jigs:
+            sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
+            sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
+            jig_id = jigs[sel_j]
 
-if sel_c:
-    st.markdown(
-        f"""<div style="display: flex; align-items: center; margin-bottom: 10px;">
-            <div style="width: 20px; height: 20px; background-color: {color_hex_map[sel_c]}; border-radius: 4px; margin-right: 10px;"></div>
-            <span>เลือกสี: <b>{sel_c}</b></span>
-        </div>""", unsafe_allow_html=True
-    )
-
-# --- ส่วนของฟอร์ม (ไว้ข้างล่าง) ---
-with st.form("log_prod_form", clear_on_submit=True):
-    # ช่องกรอกข้อมูลต่างๆ
-    pcs_per_row = st.number_input("จำนวนต่อแถว", min_value=0, step=1)
-    rows_filled = st.number_input("จำนวนแถวที่เต็ม", min_value=0, step=1)
-    partial_pieces = st.number_input("เศษชิ้นงาน", min_value=0, step=1)
-    
-    if st.form_submit_button("บันทึกการผลิต"):
-        # ตรวจสอบว่าเลือกสีแล้วหรือยัง
-        if not sel_c:
-            st.error("กรุณาเลือกสีก่อนกดบันทึก!")
-        else:
-            # ใช้ sel_c จากด้านบนได้เลย เพราะมันค้างอยู่ในตัวแปรแล้ว
-            total_pieces = (rows_filled * pcs_per_row) + partial_pieces
-            try:
-                insert_data = {
-                    "product_id": prods[sel_p],
-                    "jig_id": jig_id,
-                    "color": sel_c,  # ใช้ตัวแปร sel_c ที่เลือกไว้ด้านบน
-                    "pcs_per_row": pcs_per_row,
-                    "rows_filled": rows_filled,
-                    "partial_pieces": partial_pieces,
-                    "total_pieces": total_pieces,
-                    "recorded_date": datetime.now(ICT).isoformat()
-                }
-                supabase.table("jig_usage_log").insert(insert_data).execute()
-                st.success(f"บันทึกข้อมูลสำเร็จ! ({total_pieces} ชิ้น)")
-            except Exception as e:
-                st.error(f"Error: {e}")
+            # --- เริ่มฟอร์มบันทึกการผลิต ---
+            with st.form("log_prod_form", clear_on_submit=True):
+                # 1. เลือกสี
+                sel_c = st.selectbox("เลือกสี", list(color_hex_map.keys()))
+                
+                # 2. แสดงตัวอย่างสี (Visual Swatch)
+                st.markdown(
+                    f"""<div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <div style="width: 25px; height: 25px; background-color: {color_hex_map[sel_c]}; border-radius: 5px; border: 1px solid #ddd; margin-right: 10px;"></div>
+                        <span>สีที่เลือก: <b>{sel_c}</b></span>
+                    </div>""", unsafe_allow_html=True
+                )
+                
+                # 3. Input จำนวนงาน
+                pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
+                rows_filled = st.number_input("จำนวนแถวที่เต็ม (Rows Filled)", min_value=0, step=1)
+                partial_pieces = st.number_input("เศษชิ้นงาน (Partial Pieces)", min_value=0, step=1)
+                
+                # คำนวณอัตโนมัติ
+                total_pieces = (rows_filled * pcs_per_row) + partial_pieces
+                st.info(f"ยอดรวมทั้งหมด: {total_pieces} ชิ้น")
+                
+                if st.form_submit_button("บันทึกการผลิต"):
+                    try:
+                        current_time_th = datetime.now(ICT).isoformat()
+                        insert_data = {
+                            "product_id": prods[sel_p],
+                            "jig_id": jig_id,
+                            "color": sel_c,
+                            "pcs_per_row": pcs_per_row,
+                            "rows_filled": rows_filled,
+                            "partial_pieces": partial_pieces,
+                            "total_pieces": total_pieces,
+                            "recorded_date": current_time_th
+                        }
+                        supabase.table("jig_usage_log").insert(insert_data).execute()
+                        st.success("บันทึกข้อมูลพร้อมรายละเอียดการผลิตสำเร็จ!")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
