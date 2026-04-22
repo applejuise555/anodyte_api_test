@@ -68,44 +68,73 @@ with tab2:
         st.warning("ยังไม่มีข้อมูลบ่ออโนไดซ์ในระบบ")
 
 # --- TAB 3: การจัดการ (งานจิ๊ก + สินค้า) ---
+# --- TAB 3: งานจิ๊ก ---
 with tab3:
-    sub1, sub2, sub3 = st.tabs(["1. จิ๊กใหม่", "2. สินค้าใหม่", "3. บันทึกผลผลิต"])
+    # แยกเป็น 2 Sub-tab ชัดเจน
+    sub_register, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงานใหม่", "2. บันทึกผลผลิตรายวัน"])
 
-    # 1. ลงทะเบียนจิ๊ก (เหมือนเดิม)
-    with sub1:
-        with st.form("new_jig_form"):
-            jig_code = st.text_input("รหัสจิ๊ก (ป/ด/ว/จิ๊กที่ เช่น 20260422001)")
-            if st.form_submit_button("สร้างจิ๊ก"):
-                supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
-                st.success("สร้างจิ๊กสำเร็จ!")
-
-    # 2. ลงทะเบียนสินค้าใหม่ (ย้ายข้อมูลที่ต้องการเก็บมาไว้ตรงนี้)
-    with sub2:
-        with st.form("new_product_form"):
-            st.subheader("ลงทะเบียนสินค้า")
+    # ส่วนที่ 1: ลงทะเบียนสินค้า (Master Data)
+    with sub_register:
+        st.subheader("เพิ่มฐานข้อมูลชิ้นงานใหม่")
+        with st.form("register_product_form"):
             col1, col2 = st.columns(2)
             with col1:
                 p_code = st.text_input("รหัสสินค้า (ใช้ค้นหา)")
                 p_name = st.text_input("ชื่อชิ้นงาน")
                 p_color = st.text_input("สี")
-                height = st.number_input("สูง")
-                width = st.number_input("กว้าง")
+                height = st.number_input("สูง (Height)")
+                width = st.number_input("กว้าง (Width)")
             with col2:
-                thickness = st.number_input("หนา")
-                depth = st.number_input("ลึก")
-                surface_area = st.text_input("ลักษณะผิว")
+                thickness = st.number_input("หนา (Thickness)")
+                depth = st.number_input("ลึก (Depth)")
+                surface_area = st.text_input("พื้นที่ผิว")
                 outer_dia = st.number_input("เส้นผ่านศูนย์กลางนอก")
                 inner_dia = st.number_input("เส้นผ่านศูนย์กลางใน")
             
-            if st.form_submit_button("บันทึกสินค้า"):
+            if st.form_submit_button("บันทึกฐานข้อมูลสินค้า"):
                 data = {
-                    "product_code": p_code, "name": p_name, "color": p_color,
+                    "product_code": p_code, "product_name": p_name, "color": p_color,
                     "height": height, "width": width, "thickness": thickness,
                     "depth": depth, "surface_area": surface_area,
                     "outer_diameter": outer_dia, "inner_diameter": inner_dia
                 }
-                supabase.table("products").insert(data).execute()
-                st.success(f"บันทึกสินค้า {p_code} สำเร็จ!")
+                supabase.table("product_specifications").insert(data).execute()
+                st.success(f"บันทึกสินค้า {p_code} เรียบร้อย!")
+
+    # ส่วนที่ 2: บันทึกการผลิต (Transactional Data)
+    with sub_log:
+        st.subheader("บันทึกข้อมูลการผลิตรายวัน")
+        
+        # ดึงข้อมูลมาแสดงเป็นตัวเลือก
+        product_list = get_dropdown_options("product_specifications", "product_code", "product_code")
+        jig_list = get_dropdown_options("jigs", "jig_id", "jig_model_code")
+        
+        if product_list and jig_list:
+            with st.form("daily_production_form"):
+                sel_product = st.selectbox("เลือกรหัสสินค้า", list(product_list.keys()))
+                sel_jig = st.selectbox("เลือกจิ๊กที่ใช้", list(jig_list.keys()))
+                
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    pcs_jig = st.number_input("จำนวนชิ้นต่อจิ๊ก", step=1)
+                with col_b:
+                    pcs_row = st.number_input("จำนวนชิ้นต่อแถว", step=1)
+                
+                total_pieces = st.number_input("จำนวนชิ้นงานรวมทั้งหมด", step=1)
+                
+                if st.form_submit_button("บันทึกผลผลิต"):
+                    data = {
+                        "product_code": sel_product, # เก็บแค่ Code ไปอ้างอิง
+                        "jig_id": jig_list[sel_jig],
+                        "pcs_per_jig": pcs_jig,
+                        "pcs_per_row": pcs_row,
+                        "total_pieces": total_pieces,
+                        "recorded_date": str(datetime.date.today())
+                    }
+                    supabase.table("jig_usage_log").insert(data).execute()
+                    st.success("บันทึกยอดการผลิตสำเร็จ!")
+        else:
+            st.warning("ต้องลงทะเบียนสินค้าหรือจิ๊กก่อนเริ่มบันทึก")
 
     # 3. บันทึกผลผลิต (ลิงก์ จิ๊ก + สินค้า)
     with sub3:
