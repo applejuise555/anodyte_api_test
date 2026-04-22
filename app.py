@@ -45,8 +45,8 @@ with tab1:
     if tanks:
         selected_tank = st.selectbox("เลือกบ่อสี", list(tanks.keys()), key="tank_color")
         with st.form("color_log_form", clear_on_submit=True):
-            ph = st.number_input("ค่า pH", step=0.1)
-            temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
+            ph_value = st.number_input("ค่า pH", step=0.1)
+            temperature = st.number_input("อุณหภูมิ (°C)", step=0.1)
             if st.form_submit_button("บันทึกข้อมูลบ่อสี"):
                 supabase.table("color_tank_logs").insert({"tank_id": tanks[selected_tank], "ph_value": ph, "temperature": temp}).execute()
                 st.success("บันทึกสำเร็จ!")
@@ -57,8 +57,8 @@ with tab2:
     if tanks:
         selected_tank = st.selectbox("เลือกบ่ออโนไดซ์", list(tanks.keys()), key="tank_anodize")
         with st.form("anodize_log_form", clear_on_submit=True):
-            ph = st.number_input("ค่า pH", step=0.1)
-            temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
+            ph_value = st.number_input("ค่า pH", step=0.1)
+            temperature = st.number_input("อุณหภูมิ (°C)", step=0.1)
             density = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
             if st.form_submit_button("บันทึกข้อมูลบ่ออโนไดซ์"):
                 supabase.table("anodize_tank_logs").insert({"tank_id": tanks[selected_tank], "ph_value": ph, "temperature": temp, "density": density}).execute()
