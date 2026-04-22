@@ -82,7 +82,6 @@ with tab3:
                 supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
                 st.success("สำเร็จ!")
 
-  # เริ่มต้น Tab 3
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
@@ -95,6 +94,7 @@ with tab3:
             jig_id = jigs[sel_j]
             last_color = None
             try:
+                # พยายามดึงสีล่าสุด
                 hist = supabase.table("jig_usage_log").select("clor").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
                 if hist.data:
                     last_color = hist.data[0]['clor']
@@ -106,19 +106,23 @@ with tab3:
 
             with st.form("log_prod_form", clear_on_submit=True):
                 sel_c = st.selectbox("เลือกสี", color_names, index=default_idx)
+                
+                # Input สำหรับคอลัมน์ที่บังคับ (Not Null)
                 pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
                 pcs_per_jig = st.number_input("จำนวนต่อจิ๊ก (pcs_per_jig)", min_value=0, step=1)
                 
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
+                        # สร้าง Dictionary ให้ตรงชื่อคอลัมน์ในฐานข้อมูลเป๊ะๆ
                         insert_data = {
                             "product_id": prods[sel_p],
                             "jig_id": jig_id,
-                            "clor": sel_c,
+                            "clor": sel_c,            # ชื่อคอลัมน์ต้องเป็น 'clor'
                             "pcs_per_row": pcs_per_row,
                             "pcs_per_jig": pcs_per_jig,
                             "recorded_date": str(datetime.date.today())
                         }
+                        
                         supabase.table("jig_usage_log").insert(insert_data).execute()
                         st.success("บันทึกผลผลิตสำเร็จ!")
                     except Exception as e:
