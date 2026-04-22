@@ -20,20 +20,14 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
         if filter_col and filter_val:
             query = query.eq(filter_col, filter_val)
         response = query.execute()
+        # ส่งค่ากลับในรูปแบบ Dictionary {ชื่อ: ไอดี}
         return {item[name_col]: item[id_col] for item in response.data}
-    except:
+    except Exception as e:
+        st.error(f"Error fetching {table}: {e}")
         return {}
 
 # --- Tabs หลัก ---
 tab1, tab2, tab3 = st.tabs(["บ่อสี", "บ่ออโนไดซ์", "งานจิ๊ก"])
-
-# --- TAB 1: บ่อสี ---
-with tab1:
-    st.header("บันทึกข้อมูลบ่อสี")
-
-# --- TAB 2: บ่ออโนไดซ์ ---
-with tab2:
-    st.header("บันทึกข้อมูลบ่ออโนไดซ์")
 
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
@@ -74,13 +68,13 @@ with tab3:
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
-        # รายการสี
-        color_options = ["Red", "Blue", "Black", "Gold", "Silver", "Clear"]
+        # ดึงข้อมูลสีจากตาราง 'colors'
+        colors = get_options("colors", "color_id", "color_name")
         
-        if prods and jigs:
+        if prods and jigs and colors:
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
-            sel_c = st.selectbox("เลือกสี", color_options)
+            sel_c = st.selectbox("เลือกสี", list(colors.keys()))
             
             with st.form("log_prod_form", clear_on_submit=True):
                 pcs_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
@@ -89,11 +83,12 @@ with tab3:
                 
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
-                        # บันทึกข้อมูลโดยระบุคอลัมน์ 'color' ให้ถูกต้อง
+                        # บันทึกข้อมูล
+                        # ใช้ sel_c (ซึ่งเป็นชื่อสี เช่น 'Red') ส่งเข้าไปในคอลัมน์ 'color'
                         supabase.table("jig_usage_log").insert({
                             "product_id": prods[sel_p],
                             "jig_id": jigs[sel_j],
-                            "color": sel_c, 
+                            "color": sel_c,
                             "pcs_per_row": int(pcs_row),
                             "pcs_per_jig": int(pcs_jig),
                             "total_pieces": int(total_pcs),
@@ -101,6 +96,6 @@ with tab3:
                         }).execute()
                         st.success("บันทึกผลผลิตสำเร็จ!")
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        st.error(f"ไม่สามารถบันทึกได้: {e}")
         else:
-            st.warning("กรุณาลงทะเบียนสินค้าและจิ๊กก่อนเริ่มบันทึกผลผลิต")
+            st.warning("กรุณาตรวจสอบว่ามีข้อมูล สินค้า, จิ๊ก และ สี ในฐานข้อมูลครบถ้วน")
