@@ -129,7 +129,13 @@ with tab3:
                 pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
                 pcs_per_jig = st.number_input("จำนวนต่อจิ๊ก (pcs_per_jig)", min_value=0, step=1)
                 total_pieces = st.number_input("จำนวนรวม (total_pieces)", min_value=0, step=1)
-                
+                pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
+                rows_filled = st.number_input("จำนวนแถวที่เต็ม (Rows Filled)", min_value=0, step=1)
+                partial_pieces = st.number_input("เศษชิ้นงานแถวสุดท้าย (Partial Pieces)", min_value=0, step=1)
+            
+                # คำนวณยอดรวมให้อัตโนมัติ (เป็นตัวเลือกที่ดีเพื่อให้ User เห็นภาพ)
+                total_pieces = (rows_filled * pcs_per_row) + partial_pieces
+            st.write(f"ยอดรวมทั้งหมด: {total_pieces} ชิ้น")
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
                         # สร้าง Dictionary โดยรวมคอลัมน์ใหม่ที่เพิ่มเข้าไป
