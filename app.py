@@ -82,7 +82,7 @@ with tab3:
                 supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
                 st.success("สำเร็จ!")
 
-    with sub_log:
+   with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
         all_colors = get_options("colors", "color_id", "color_name") 
@@ -91,6 +91,7 @@ with tab3:
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
             
+            # ดึงค่าสีล่าสุดมาแสดง
             jig_id = jigs[sel_j]
             last_color = None
             try:
@@ -105,21 +106,22 @@ with tab3:
 
             with st.form("log_prod_form", clear_on_submit=True):
                 sel_c = st.selectbox("เลือกสี", color_names, index=default_idx)
-                pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=1)
+                
+                # เก็บค่าทั้ง 2 คอลัมน์ที่ฐานข้อมูลบังคับไว้
+                pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
+                pcs_per_jig = st.number_input("จำนวนต่อจิ๊ก (pcs_per_jig)", min_value=0, step=1)
                 
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
-                        # --- ส่วนสำคัญ: ใส่ข้อมูลให้ครบตามที่ Database ต้องการ ---
+                        # ระบุข้อมูลให้ครบถ้วนตามชื่อคอลัมน์ในตาราง jig_usage_log
                         insert_data = {
                             "product_id": prods[sel_p],
                             "jig_id": jig_id,
-                            "color": sel_c,            # ชื่อคอลัมน์ที่ถูกต้อง
-                            "pcs_per_row": pcs_per_row, # ชื่อคอลัมน์ที่ถูกต้อง
+                            "clor": sel_c,            # ชื่อคอลัมน์สี
+                            "pcs_per_row": pcs_per_row, 
+                            "pcs_per_jig": pcs_per_jig, 
                             "recorded_date": str(datetime.date.today())
                         }
-                        
-                        # หากตารางของคุณยังบังคับ Not Null คอลัมน์อื่นๆ เช่น tank_id หรือ total_pieces
-                        # ให้เพิ่มเข้าไปที่นี่ เช่น: insert_data["tank_id"] = ...
                         
                         supabase.table("jig_usage_log").insert(insert_data).execute()
                         st.success("บันทึกผลผลิตสำเร็จ!")
