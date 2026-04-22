@@ -132,18 +132,20 @@ with tab3:
                 
                 if st.form_submit_button("บันทึกการผลิต"):
                     try:
-                        # สร้าง Dictionary ให้ตรงชื่อคอลัมน์ในฐานข้อมูลเป๊ะๆ
+                        # สร้าง Dictionary โดยรวมคอลัมน์ใหม่ที่เพิ่มเข้าไป
                         insert_data = {
                             "product_id": prods[sel_p],
                             "jig_id": jig_id,
-                            "color": sel_c,            # ชื่อคอลัมน์คือ 'color'
+                            "color": sel_c,
                             "pcs_per_row": pcs_per_row,
-                            "pcs_per_jig": pcs_per_jig,
-                            "total_pieces": total_pieces, # เพิ่มเพื่อให้ครบ Not-null
+                            "rows_filled": rows_filled,      # เพิ่มเข้ามา
+                            "partial_pieces": partial_pieces,# เพิ่มเข้ามา
+                            "pcs_per_jig": total_pieces,     # ยอดรวมต่อจิ๊ก
+                            "total_pieces": total_pieces,    # ยอดรวมรวม
                             "recorded_date": str(datetime.date.today())
                         }
                         
                         supabase.table("jig_usage_log").insert(insert_data).execute()
-                        st.success("บันทึกผลผลิตสำเร็จ!")
+                        st.success("บันทึกข้อมูลพร้อมรายละเอียดการผลิตสำเร็จ!")
                     except Exception as e:
                         st.error(f"Error: {e}")
