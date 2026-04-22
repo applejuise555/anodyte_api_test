@@ -127,7 +127,7 @@ with tab3:
                 
                 # Input สำหรับคอลัมน์ที่บังคับ (Not Null ตามฐานข้อมูล)
                 pcs_per_row = st.number_input("จำนวนต่อแถว (pcs_per_row)", min_value=0, step=1)
-                pcs_per_jig = st.number_input("จำนวนต่อจิ๊ก (pcs_per_jig)", min_value=0, step=1)
+                #pcs_per_jig = st.number_input("จำนวนต่อจิ๊ก (pcs_per_jig)", min_value=0, step=1)
                 total_pieces = st.number_input("จำนวนรวม (total_pieces)", min_value=0, step=1)
                 rows_filled = st.number_input("จำนวนแถวที่เต็ม (Rows Filled)", min_value=0, step=1)
                 partial_pieces = st.number_input("เศษชิ้นงานแถวสุดท้าย (Partial Pieces)", min_value=0, step=1)
@@ -145,7 +145,7 @@ with tab3:
                             "pcs_per_row": pcs_per_row,
                             "rows_filled": rows_filled,      # เพิ่มเข้ามา
                             "partial_pieces": partial_pieces,# เพิ่มเข้ามา
-                            "pcs_per_jig": total_pieces,     # ยอดรวมต่อจิ๊ก
+                            #"pcs_per_jig": total_pieces,     # ยอดรวมต่อจิ๊ก
                             "total_pieces": total_pieces,    # ยอดรวมรวม
                             "recorded_date": str(datetime.date.today())
                         }
