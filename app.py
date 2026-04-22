@@ -35,9 +35,12 @@ with tab1:
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
             if st.form_submit_button("บันทึกข้อมูลบ่อสี"):
-                data = {"tank_id": color_tanks[selected_tank], "ph_value": ph, "temperature": temp}
-                supabase.table("color_tank_logs").insert(data).execute()
-                st.success("บันทึกสำเร็จ!")
+                if ph == 0 or temp == 0:
+                    st.error("กรุณากรอกค่า pH และอุณหภูมิให้ครบถ้วน")
+                else:
+                    data = {"tank_id": color_tanks[selected_tank], "ph_value": ph, "temperature": temp}
+                    supabase.table("color_tank_logs").insert(data).execute()
+                    st.success("บันทึกสำเร็จ!")
     else:
         st.warning("ยังไม่มีข้อมูลบ่อสีในระบบ")
 
@@ -52,56 +55,52 @@ with tab2:
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
             density = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
             if st.form_submit_button("บันทึกข้อมูลบ่ออโนไดซ์"):
-                data = {"tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, "density": density}
-                supabase.table("anodize_tank_logs").insert(data).execute()
-                st.success("บันทึกสำเร็จ!")
+                if ph == 0 or temp == 0 or density == 0:
+                    st.error("กรุณากรอกข้อมูลบ่ออโนไดซ์ให้ครบถ้วน")
+                else:
+                    data = {"tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, "density": density}
+                    supabase.table("anodize_tank_logs").insert(data).execute()
+                    st.success("บันทึกสำเร็จ!")
     else:
         st.warning("ยังไม่มีข้อมูลบ่ออโนไดซ์ในระบบ")
 
-# --- TAB 3: งานจิ๊ก (ปรับปรุงโครงสร้างใหม่) ---
+# --- TAB 3: งานจิ๊ก ---
 with tab3:
     sub_prod_reg, sub_jig_reg, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงานใหม่", "2. ลงทะเบียนจิ๊กใหม่", "3. บันทึกผลผลิตรายวัน"])
 
     # ส่วนที่ 1: ลงทะเบียนสินค้า
     with sub_prod_reg:
-        st.subheader("สำหรับกรณีมีชิ้นงานที่ไม่ได้บันทึกไว้เท่านั้น!")
+        st.subheader("เพิ่มฐานข้อมูลชิ้นงานใหม่")
         with st.form("register_product_form"):
             col1, col2 = st.columns(2)
             with col1:
-                p_code = st.text_input("รหัสสินค้า")
+                p_code = st.text_input("รหัสสินค้า (ใช้ค้นหา)")
                 p_name = st.text_input("ชื่อชิ้นงาน")
+            with col2:
                 height = st.number_input("สูง (Height)")
                 width = st.number_input("กว้าง (Width)")
-            with col2:
-                thickness = st.number_input("หนา (Thickness)")
-                depth = st.number_input("ลึก (Depth)")
-                surface_area = st.text_input("ลักษณะผิว")
-                outer_dia = st.number_input("เส้นผ่านศูนย์กลางนอก")
-                inner_dia = st.number_input("เส้นผ่านศูนย์กลางใน")
             
             if st.form_submit_button("บันทึกฐานข้อมูลสินค้า"):
-                data = {
-                    "product_code": p_code, "product_name": p_name,
-                    "height": height, "width": width, "thickness": thickness,
-                    "depth": depth, "surface_area": surface_area,
-                    "outer_diameter": outer_dia, "inner_diameter": inner_dia
-                }
-                supabase.table("product_specifications").insert(data).execute()
-                st.success(f"บันทึกสินค้า {p_code} เรียบร้อย!")
+                if not p_code or not p_name:
+                    st.error("กรุณากรอก รหัสสินค้า และ ชื่อชิ้นงาน ให้ครบ")
+                else:
+                    data = {"product_code": p_code, "product_name": p_name, "height": height, "width": width}
+                    supabase.table("product_specifications").insert(data).execute()
+                    st.success(f"บันทึกสินค้า {p_code} เรียบร้อย!")
 
-    # ส่วนที่ 2: ลงทะเบียนจิ๊กใหม่ (แยกออกมาที่นี่)
+    # ส่วนที่ 2: ลงทะเบียนจิ๊กใหม่
     with sub_jig_reg:
         st.subheader("เพิ่มข้อมูลจิ๊กใหม่")
         with st.form("new_jig_form"):
             new_jig_code = st.text_input("ตั้งรหัสจิ๊กใหม่ (Jig Model Code)")
             if st.form_submit_button("บันทึกจิ๊กใหม่"):
-                if new_jig_code:
+                if not new_jig_code:
+                    st.error("กรุณาระบุรหัสจิ๊กใหม่")
+                else:
                     supabase.table("jigs").insert({"jig_model_code": new_jig_code}).execute()
                     st.success(f"บันทึกจิ๊ก {new_jig_code} เรียบร้อย!")
-                else:
-                    st.error("กรุณาระบุรหัสจิ๊ก")
 
-    # ส่วนที่ 3: บันทึกการผลิต (แสดงเฉพาะรายการที่มีอยู่)
+    # ส่วนที่ 3: บันทึกการผลิต
     with sub_log:
         st.subheader("บันทึกข้อมูลการผลิตรายวัน")
         product_list = get_dropdown_options("product_specifications", "product_code", "product_code")
@@ -122,17 +121,21 @@ with tab3:
                 total_pieces = st.number_input("จำนวนชิ้นงานรวมทั้งหมด", step=1)
                 
                 if st.form_submit_button("บันทึกผลผลิต"):
-                    target_jig_id = jig_list[selected_jig_name]
-                    data = {
-                        "product_code": sel_product,
-                        "color": sel_color,
-                        "jig_id": target_jig_id,
-                        "pcs_per_jig": pcs_jig,
-                        "pcs_per_row": pcs_row,
-                        "total_pieces": total_pieces,
-                        "recorded_date": str(datetime.date.today())
-                    }
-                    supabase.table("jig_usage_log").insert(data).execute()
-                    st.success(f"บันทึกยอดการผลิตสำหรับจิ๊ก {selected_jig_name} สำเร็จ!")
+                    # Validate ว่าข้อมูลห้ามว่าง
+                    if not sel_color or total_pieces == 0 or pcs_jig == 0:
+                        st.error("กรุณากรอก สี, จำนวนชิ้นต่อจิ๊ก และ ยอดรวม ให้ครบถ้วน")
+                    else:
+                        target_jig_id = jig_list[selected_jig_name]
+                        data = {
+                            "product_code": sel_product,
+                            "color": sel_color,
+                            "jig_id": target_jig_id,
+                            "pcs_per_jig": pcs_jig,
+                            "pcs_per_row": pcs_row,
+                            "total_pieces": total_pieces,
+                            "recorded_date": str(datetime.date.today())
+                        }
+                        supabase.table("jig_usage_log").insert(data).execute()
+                        st.success(f"บันทึกยอดการผลิตสำหรับจิ๊ก {selected_jig_name} สำเร็จ!")
         else:
             st.warning("โปรดตรวจสอบว่ามีการลงทะเบียน สินค้า หรือ จิ๊ก ในระบบแล้ว")
