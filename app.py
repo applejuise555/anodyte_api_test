@@ -117,7 +117,7 @@ with tab3:
                         insert_data = {
                             "product_id": prods[sel_p],
                             "jig_id": jig_id,
-                            "clor": sel_c,            # ชื่อคอลัมน์ต้องเป็น 'clor'
+                            "color": sel_c,            # ชื่อคอลัมน์ต้องเป็น 'clor'
                             "pcs_per_row": pcs_per_row,
                             "pcs_per_jig": pcs_per_jig,
                             "recorded_date": str(datetime.date.today())
