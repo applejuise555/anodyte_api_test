@@ -54,7 +54,7 @@ with tab2:
 
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
-with sub_prod:
+    with sub_prod:
         with st.form("new_product_form", clear_on_submit=True):
             p_code = st.text_input("รหัสสินค้า")
             p_name = st.text_input("ชื่อชิ้นงาน")
