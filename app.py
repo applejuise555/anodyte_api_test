@@ -141,4 +141,4 @@ with tab3:
                         # ใส่ข้อมูลตาม Schema: product_id, jig_id, color, pcs_per_row, rows_filled, partial_pieces, total_pieces, recorded_date
                         data = {
                             "product_id": prods[sel_p],
-                            "jig_id": jigs[sel_j],
+                            "jig_id": jigs[sel_j],}
