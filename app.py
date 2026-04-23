@@ -1,7 +1,6 @@
 import streamlit as st
 from supabase import create_client
 
-# ตั้งค่าหน้าจอ
 st.set_page_config(page_title="Production Layout", layout="wide")
 
 # เชื่อมต่อ Supabase
@@ -12,30 +11,29 @@ supabase = create_client(url, key)
 @st.cache_data(ttl=60)
 def get_tanks_data():
     res = supabase.table("tanks").select("tank_id, tank_name, tank_type").execute()
-    # สร้าง Dictionary เพื่อให้หาชื่อได้ง่าย
     return {i['tank_name']: {"id": i['tank_id'], "type": i['tank_type']} for i in res.data}
 
-# ฟังก์ชันวาดปุ่ม
+# ฟังก์ชันวาดปุ่มที่แก้ไขแล้ว (ใส่ key กำกับทุกปุ่ม)
 def draw_tank(data, label, db_name):
     if db_name in data:
         info = data[db_name]
-        if st.button(label, key=f"btn_{db_name}", use_container_width=True):
+        # ปุ่มที่มีข้อมูล (ใช้ db_name เป็น key)
+        if st.button(label, key=f"btn_active_{db_name}", use_container_width=True):
             st.session_state['sel_id'] = info['id']
             st.session_state['sel_name'] = label
             st.session_state['sel_type'] = info['type']
             st.rerun()
     else:
-        st.button(f"{label} (N/A)", disabled=True, use_container_width=True)
+        # ปุ่มที่ไม่มีข้อมูล (ใช้ db_name ต่อท้ายด้วย _disabled เป็น key ป้องกันซ้ำ)
+        st.button(f"{label} (N/A)", key=f"btn_disabled_{db_name}", disabled=True, use_container_width=True)
 
 data = get_tanks_data()
 
-# --- หน้าหลัก ---
 if 'sel_id' not in st.session_state:
     st.title("🏭 ระบบจัดการบ่ออโนไดซ์และสี")
     
-    # ROW 1: ส่วนบนของผัง
+    # ROW 1
     col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
-    
     with col1: draw_tank(data, "5 Black", "5Black")
     with col2: draw_tank(data, "2 Red", "2Red"); draw_tank(data, "3 Violet", "3Violet"); draw_tank(data, "RO 1", "RO1")
     with col3: draw_tank(data, "8 Green", "8Green"); draw_tank(data, "17 Black", "17Black")
@@ -46,9 +44,8 @@ if 'sel_id' not in st.session_state:
 
     st.divider()
 
-    # ROW 2: ส่วนล่างของผัง
+    # ROW 2
     col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
-    
     with col1: st.info("🧪 Almite Sealer")
     with col2: draw_tank(data, "20 Black", "20Black"); draw_tank(data, "1 Dark Red", "1DarkRed_A")
     with col3: draw_tank(data, "7 Pink", "7Pink"); draw_tank(data, "RO 3", "RO3")
