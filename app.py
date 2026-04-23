@@ -49,77 +49,66 @@ def reset_selection():
     st.session_state.selected_tank_id = None
     st.session_state.selected_tank_name = None
 
-# --- TAB 1: บ่อสี ---
-with tab1:
-    st.header("เลือกบ่อสีเพื่อบันทึกข้อมูล")
-    
-    # ดึงรายการบ่อ
-    color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
-    
-    if st.session_state.selected_tank_id is None:
-        # แสดงรายการบ่อแบบปุ่ม (Grid)
-        cols = st.columns(4) # ปรับจำนวนคอลัมน์ตามจำนวนบ่อที่มี
-        idx = 0
-        for name, tid in color_tanks.items():
-            with cols[idx % 4]:
-                if st.button(name, key=f"color_{tid}"):
-                    st.session_state.selected_tank_id = tid
-                    st.session_state.selected_tank_name = name
-                    st.rerun()
-            idx += 1
-    else:
-        # แสดงฟอร์มกรอกข้อมูลเมื่อเลือกบ่อแล้ว
-        st.subheader(f"บ่อ: {st.session_state.selected_tank_name}")
-        if st.button("⬅️ เปลี่ยนบ่อ"):
-            reset_selection()
-            st.rerun()
-            
-        with st.form("color_log_form", clear_on_submit=True):
-            ph = st.number_input("ค่า pH", step=0.1)
-            temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
-            if st.form_submit_button("บันทึกข้อมูล"):
-                supabase.table("color_tank_logs").insert({
-                    "tank_id": st.session_state.selected_tank_id, 
-                    "ph_value": ph, 
-                    "temperature": temp
-                }).execute()
-                st.success(f"บันทึกข้อมูล {st.session_state.selected_tank_name} สำเร็จ!")
+import streamlit as st
 
-# --- TAB 2: บ่ออโนไดซ์ ---
-with tab2:
-    st.header("เลือกบ่ออโนไดซ์เพื่อบันทึกข้อมูล")
+# --- ฟังก์ชันช่วยเหลือสำหรับแสดง Grid บ่อ ---
+def render_tank_grid(tanks_dict, type_label):
+    st.subheader(f"📍 {type_label}")
+    # สร้าง Grid (ตัวอย่าง 4 คอลัมน์)
+    cols = st.columns(4) 
+    i = 0
+    for name, tid in tanks_dict.items():
+        with cols[i % 4]:
+            # ปุ่มแสดงชื่อบ่อ
+            if st.button(f"{name}", key=f"btn_{tid}_{type_label}"):
+                st.session_state['selected_tank_id'] = tid
+                st.session_state['selected_tank_name'] = name
+                st.session_state['active_type'] = type_label
+        i += 1
+
+# --- หน้าหลัก (Dashboard) ---
+st.title("🏭 ระบบจัดการบ่ออโนไดซ์และสี")
+
+# ดึงข้อมูลบ่อจาก DB
+color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
+ano_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
+
+# ส่วนแสดงบ่อทั้งหมด
+if 'selected_tank_id' not in st.session_state:
+    col_l, col_r = st.columns(2)
+    with col_l:
+        render_tank_grid(color_tanks, "Color Bath")
+    with col_r:
+        render_tank_grid(ano_tanks, "Anodize")
+else:
+    # ส่วนกรอกข้อมูลเมื่อเลือกบ่อแล้ว
+    st.info(f"กำลังบันทึกข้อมูล: **{st.session_state['selected_tank_name']}** ({st.session_state['active_type']})")
     
-    anodize_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
-    
-    if st.session_state.selected_tank_id is None:
-        # แสดงปุ่มบ่ออโนไดซ์
-        cols = st.columns(4)
-        idx = 0
-        for name, tid in anodize_tanks.items():
-            with cols[idx % 4]:
-                if st.button(name, key=f"ano_{tid}"):
-                    st.session_state.selected_tank_id = tid
-                    st.session_state.selected_tank_name = name
-                    st.rerun()
-            idx += 1
-    else:
-        st.subheader(f"บ่อ: {st.session_state.selected_tank_name}")
-        if st.button("⬅️ เปลี่ยนบ่อ"):
-            reset_selection()
-            st.rerun()
-            
-        with st.form("anodize_log_form", clear_on_submit=True):
-            ph = st.number_input("ค่า pH", step=0.1)
-            temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
+    if st.button("⬅️ กลับไปหน้าหลัก"):
+        del st.session_state['selected_tank_id']
+        st.rerun()
+
+    with st.form("input_form", clear_on_submit=True):
+        ph = st.number_input("ค่า pH", step=0.1)
+        temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
+        
+        # แสดงฟิลด์เพิ่มเติมถ้าเป็นบ่ออโนไดซ์
+        if st.session_state['active_type'] == "Anodize":
             density = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
-            if st.form_submit_button("บันทึกข้อมูล"):
-                supabase.table("anodize_tank_logs").insert({
-                    "tank_id": st.session_state.selected_tank_id, 
-                    "ph_value": ph, 
-                    "temperature": temp, 
-                    "density": density
-                }).execute()
-                st.success(f"บันทึกข้อมูล {st.session_state.selected_tank_name} สำเร็จ!")
+        else:
+            density = None
+
+        if st.form_submit_button("บันทึกข้อมูล"):
+            try:
+                table_name = "color_tank_logs" if st.session_state['active_type'] == "Color Bath" else "anodize_tank_logs"
+                data = {"tank_id": st.session_state['selected_tank_id'], "ph_value": ph, "temperature": temp}
+                if density: data["density"] = density
+                
+                supabase.table(table_name).insert(data).execute()
+                st.success("บันทึกสำเร็จ!")
+            except Exception as e:
+                # แก้ปัญหา APIError: แสดง Error ออกมาให้เห็นชัดๆ ตรงนี้
+                st.error(f"เกิดข้อผิดพลาดจากฐานข้อมูล: {str(e)}")
 
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
