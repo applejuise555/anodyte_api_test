@@ -2,69 +2,107 @@ import streamlit as st
 from supabase import create_client
 from datetime import datetime, timezone, timedelta
 
-# 1. ตั้งค่า Timezone (UTC +7)
+# --- ตั้งค่าพื้นฐาน ---
 ICT = timezone(timedelta(hours=7))
+st.set_page_config(page_title="Production Log System", layout="wide")
 
-# --- การตั้งค่าเชื่อมต่อ ---
-try:
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    supabase = create_client(url, key)
-except Exception as e:
-    st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
+# เชื่อมต่อ Supabase
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
+supabase = create_client(url, key)
 
-# --- กำหนดค่าสี (ใช้สำหรับแสดงผล Visual) ---
+# --- ข้อมูลสี (ใส่เพิ่มเข้าไป) ---
 color_hex_map = {
-    "Black": "#000000", "Red": "#FF0000", "Violet": "#9400D3", 
-    "Green": "#008000", "Banana leaf Green": "#90EE90", "Gold": "#FFD700", 
-    "Orange": "#FFA500", "Light Blue": "#ADD8E6", "Blue": "#0000FF", 
-    "Dark Blue": "#00008B", "Dark Titanium": "#4A4E69", "Dark Red": "#8B0000", 
-    "Pink": "#FFC0CB", "Copper": "#B87333", "Titanium": "#808080", "Rose Gold": "#B76E79"
+    "5 Black": "#000000", "2 Red": "#FF0000", "3 Violet": "#9400D3", 
+    "8 Green": "#008000", "6 Banana leaf Green": "#90EE90", "15 Gold": "#FFD700", 
+    "9 Orange": "#FFA500", "10 Lt.Blue": "#ADD8E6", "16 Blue": "#0000FF", 
+    "4 Dk.Blue": "#00008B", "Dark Titanium": "#4A4E69", "17 Black": "#333333",
+    "7 Pink": "#FFC0CB", "19 Copper": "#B87333", "12 Ti": "#808080", "14 Rose G.": "#B76E79",
+    "RO 1": "#78909c", "RO 2": "#78909c", "RO 3": "#78909c", "RO 4": "#78909c", 
+    "RO 5": "#78909c", "RO 6": "#78909c", "RO 7": "#78909c", "RO 8": "#78909c", "RO 9": "#78909c"
 }
 
-st.set_page_config(page_title="Production Log System", layout="wide")
-st.title("ระบบบันทึกข้อมูลการผลิต")
+# ฟังก์ชันสำหรับฉีด CSS เพื่อเปลี่ยนสีปุ่ม
+def inject_button_style(key, color):
+    # CSS ตัวนี้จะไปหาปุ่มที่มี key นั้นๆ แล้วเปลี่ยนสีพื้นหลังและสีตัวอักษร
+    st.markdown(f"""
+    <style>
+    div[data-testid="stButton"] button[key="{key}"] {{
+        background-color: {color} !important;
+        color: white !important;
+        border: 1px solid #ffffff !important;
+        width: 100%;
+        height: 50px;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
-def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
-    try:
-        query = supabase.table(table).select(f"{id_col}, {name_col}")
-        if filter_col and filter_val:
-            query = query.eq(filter_col, filter_val)
-        response = query.execute()
-        return {item[name_col]: item[id_col] for item in response.data}
-    except:
-        return {}
+# --- จัดการ State สำหรับระบบคลิกเลือกบ่อ ---
+if "selected_tank" not in st.session_state:
+    st.session_state.selected_tank = None
 
-# --- โครงสร้าง Tabs ---
+# --- หน้าแสดงผลแผนที่บ่อ ---
+def render_tank_map(tab_name):
+    st.subheader(f"ผังบ่อ {tab_name}")
+    
+    tanks_data = supabase.table("tanks").select("tank_id, tank_name, tank_type").eq("tank_type", tab_name).execute()
+    
+    # สร้าง Grid (6 บ่อต่อแถว)
+    cols = st.columns(6) 
+    for i, tank in enumerate(tanks_data.data):
+        tank_name = tank['tank_name']
+        btn_key = f"btn_{tank['tank_id']}"
+        
+        # ใส่สีให้ปุ่ม
+        color = color_hex_map.get(tank_name, "#cccccc") # ถ้าไม่มีสีใน map ให้ใช้สีเทา
+        inject_button_style(btn_key, color)
+        
+        if cols[i % 6].button(tank_name, key=btn_key):
+            st.session_state.selected_tank = tank
+            st.rerun()
+
+# --- หน้าฟอร์มบันทึกข้อมูล ---
+def render_log_form():
+    tank = st.session_state.selected_tank
+    st.subheader(f"บันทึกข้อมูล: {tank['tank_name']}")
+    
+    if st.button("⬅️ กลับไปหน้าแผนที่"):
+        st.session_state.selected_tank = None
+        st.rerun()
+
+    with st.form("log_form"):
+        ph = st.number_input("ค่า pH", step=0.1)
+        temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
+        
+        density = None
+        if tank['tank_type'] == "Anodize":
+            density = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
+            
+        if st.form_submit_button("บันทึกข้อมูล"):
+            try:
+                table_name = "anodize_tank_logs" if tank['tank_type'] == "Anodize" else "color_tank_logs"
+                data_to_insert = {"tank_id": tank['tank_id'], "ph_value": ph, "temperature": temp}
+                if density: data_to_insert["density"] = density
+                
+                supabase.table(table_name).insert(data_to_insert).execute()
+                st.success("บันทึกข้อมูลสำเร็จ!")
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+# --- โครงสร้างหลัก ---
 tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
 
-# --- TAB 1: บ่อสี ---
 with tab1:
-    st.header("บันทึกข้อมูลบ่อสี")
-    color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
-    if color_tanks:
-        selected_tank = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()))
-        with st.form("color_log_form", clear_on_submit=True):
-            ph = st.number_input("ค่า pH", step=0.1)
-            temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
-            if st.form_submit_button("บันทึก"):
-                supabase.table("color_tank_logs").insert({"tank_id": color_tanks[selected_tank], "ph_value": ph, "temperature": temp}).execute()
-                st.success("บันทึกข้อมูลสำเร็จ!")
+    if st.session_state.selected_tank is None:
+        render_tank_map("Color")
+    else:
+        render_log_form()
 
-# --- TAB 2: บ่ออโนไดซ์ ---
 with tab2:
-    st.header("บันทึกข้อมูลบ่ออโนไดซ์")
-    anodize_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
-    if anodize_tanks:
-        selected_tank = st.selectbox("เลือกบ่ออโนไดซ์", list(anodize_tanks.keys()))
-        with st.form("anodize_log_form", clear_on_submit=True):
-            ph = st.number_input("ค่า pH", step=0.1)
-            temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
-            density = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
-            if st.form_submit_button("บันทึก"):
-                supabase.table("anodize_tank_logs").insert({"tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, "density": density}).execute()
-                st.success("บันทึกข้อมูลสำเร็จ!")
-
+    if st.session_state.selected_tank is None:
+        render_tank_map("Anodize")
+    else:
+        render_log_form()
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
     # 1. ประกาศ Tab ก่อนเสมอ เพื่อไม่ให้เกิด NameError
