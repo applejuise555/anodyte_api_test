@@ -96,7 +96,7 @@ with tab3:
                 supabase.table("jigs").insert({"jig_model_code": jig_code}).execute()
                 st.success("สำเร็จ!")
 
-    with sub_log:
+with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
         all_colors = get_options("colors", "color_id", "color_name") 
@@ -105,20 +105,27 @@ with tab3:
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
             
-            # --- ส่วน Visual Color Feedback ---
             jig_id = jigs[sel_j]
-            last_color = None
+            first_color = None
+            
+            # 1. ดึงประวัติ "สีแรกสุด" โดยใช้ order(desc=False) คือการเรียงจากเก่าไปใหม่
             try:
-                hist = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
-                if hist.data: last_color = hist.data[0]['color']
-            except: pass
+                hist = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=False).limit(1).execute()
+                if hist.data:
+                    first_color = hist.data[0]['color']
+            except:
+                pass
             
-            color_names = list(all_colors.keys())
-            default_idx = color_names.index(last_color) if last_color in color_names else 0
+            # 2. กำหนดค่า UI ตามสถานะของ first_color
+            if first_color:
+                st.warning(f"จิ๊กนี้ถูกกำหนดสีไว้แล้ว: {first_color} (ไม่อนุญาตให้เปลี่ยนสี)")
+                # บังคับล็อกค่าสีด้วย disabled=True
+                sel_c = st.selectbox("เลือกสี", [first_color], index=0, disabled=True)
+            else:
+                # กรณีไม่เคยมีประวัติ ให้เลือกสีได้ปกติ
+                sel_c = st.selectbox("เลือกสี", list(all_colors.keys()))
             
-            sel_c = st.selectbox("เลือกสี", color_names, index=default_idx)
-            
-            # แสดงกล่องสีตัวอย่าง
+            # 3. แสดงกล่องสีตัวอย่าง (ใช้ตัวแปร sel_c ที่เลือกไว้แล้ว)
             if sel_c in color_hex_map:
                 st.markdown(f"""
                     <div style="background-color: {color_hex_map[sel_c]}; width: 100%; height: 30px; 
