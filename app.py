@@ -242,11 +242,31 @@ with tab3:
             # --- ตรวจสอบสถานะจิ๊ก (ล็อคสี) ---
             active_check = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).eq("status_type", "In-Process").execute()
             
-            if active_check.data:
-                last_color_log = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
-                locked_color = last_color_log.data[0]['color'] if last_color_log.data else "Unknown"
-                st.warning(f"⚠️ จิ๊กนี้กำลังอยู่ในสถานะ In-Process (สีที่ใช้: {locked_color})")
-                sel_c = st.selectbox("เลือกสี", options=[locked_color], disabled=True)
+# --- ในส่วนของ sub_log ที่เช็ค active_check.data ---
+if active_check.data:
+    last_color_log = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
+    locked_color = last_color_log.data[0]['color'] if last_color_log.data else "Unknown"
+    
+    st.warning(f"⚠️ จิ๊กนี้กำลังอยู่ในสถานะ In-Process (สีที่ใช้: {locked_color})")
+    
+    # --- เพิ่มปุ่มปลดล็อคจิ๊กตรงนี้ ---
+    if st.button("✅ เสร็จสิ้นงาน / ปลดล็อคจิ๊ก (Release Jig)"):
+        try:
+            # เปลี่ยน status_type เป็น Available เพื่อให้กลับมาใช้งานใหม่ได้
+            supabase.table("jig_status").update({
+                "status_type": "Available", 
+                "updated_at": datetime.now(ICT).isoformat()
+            }).eq("jig_id", jig_id).execute()
+            
+            st.success("ปลดล็อคจิ๊กเรียบร้อย! จิ๊กพร้อมสำหรับการใช้งานใหม่แล้ว")
+            st.rerun() # รีเฟรชหน้าจอเพื่อให้ค่า Update ทันที
+        except Exception as e:
+            st.error(f"เกิดข้อผิดพลาด: {e}")
+    # --------------------------------
+    
+    sel_c = st.selectbox("เลือกสี", options=[locked_color], disabled=True)
+else:
+    # ... กรณีปกติที่สถานะไม่ใช่ In-Process ...
             else:
                 # ถ้าไม่ได้ล็อค ให้เลือกสีปกติ (ใช้ keys ของ TANK_COLOR_MAP เพื่อให้เป็นตัวเลือกสี)
                 unique_colors = list(set(TANK_COLOR_MAP.values()))
