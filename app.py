@@ -73,11 +73,14 @@ with tab1:
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
             if st.form_submit_button("บันทึกค่ามาตรฐาน"):
-                supabase.table("color_tank_logs").insert({
-                    "tank_id": color_tanks[selected_tank], "ph_value": ph, "temperature": temp,
-                    "recorded_at": datetime.now(ICT).isoformat()
-                }).execute()
-                st.success("บันทึกข้อมูลมาตรฐานสำเร็จ!")
+                if ph == 0 or temp == 0:
+                    st.error("กรุณากรอกค่า pH และอุณหภูมิให้ถูกต้อง")
+                else:
+                    supabase.table("color_tank_logs").insert({
+                        "tank_id": color_tanks[selected_tank], "ph_value": ph, "temperature": temp,
+                        "recorded_at": datetime.now(ICT).isoformat()
+                    }).execute()
+                    st.success("บันทึกข้อมูลมาตรฐานสำเร็จ!")
 
         # 2. บันทึกความถี่สูง
         with st.expander("บันทึกอุณหภูมิความถี่สูง (High Frequency)"):
@@ -85,11 +88,14 @@ with tab1:
                 target_temp = st.number_input("อุณหภูมิเป้าหมาย (°C)", step=0.1)
                 actual_temp = st.number_input("อุณหภูมิที่วัดได้จริง (°C)", step=0.1)
                 if st.form_submit_button("บันทึกข้อมูลความถี่สูง"):
-                    supabase.table("temp_frequent_logs").insert({
-                        "tank_id": color_tanks[selected_tank], "temp_target": target_temp, "temp_actual": actual_temp,
-                        "recorded_at": datetime.now(ICT).isoformat()
-                    }).execute()
-                    st.success("บันทึกค่าความถี่สูงสำเร็จ!")
+                    if target_temp == 0 or actual_temp == 0:
+                        st.error("กรุณากรอกอุณหภูมิให้ครบถ้วน")
+                    else:
+                        supabase.table("temp_frequent_logs").insert({
+                            "tank_id": color_tanks[selected_tank], "temp_target": target_temp, "temp_actual": actual_temp,
+                            "recorded_at": datetime.now(ICT).isoformat()
+                        }).execute()
+                        st.success("บันทึกค่าความถี่สูงสำเร็จ!")
 
 # --- TAB 2: บ่ออโนไดซ์ ---
 with tab2:
@@ -104,23 +110,29 @@ with tab2:
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
             density = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
             if st.form_submit_button("บันทึก"):
-                supabase.table("anodize_tank_logs").insert({
-                    "tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, 
-                    "density": density, "recorded_at": datetime.now(ICT).isoformat()
-                }).execute()
-                st.success("บันทึกข้อมูลมาตรฐานสำเร็จ!")
+                if ph == 0 or temp == 0 or density == 0:
+                    st.error("กรุณากรอกข้อมูล pH, อุณหภูมิ และความหนาแน่น ให้ครบถ้วน")
+                else:
+                    supabase.table("anodize_tank_logs").insert({
+                        "tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, 
+                        "density": density, "recorded_at": datetime.now(ICT).isoformat()
+                    }).execute()
+                    st.success("บันทึกข้อมูลมาตรฐานสำเร็จ!")
         
-        # 2. บันทึกความถี่สูง (เพิ่มใหม่)
+        # 2. บันทึกความถี่สูง
         with st.expander("บันทึกอุณหภูมิความถี่สูง (High Frequency)"):
             with st.form("anodize_temp_frequent_form", clear_on_submit=True):
                 target_temp = st.number_input("อุณหภูมิเป้าหมาย (°C)", step=0.1)
                 actual_temp = st.number_input("อุณหภูมิที่วัดได้จริง (°C)", step=0.1)
                 if st.form_submit_button("บันทึกข้อมูลความถี่สูง"):
-                    supabase.table("temp_frequent_logs").insert({
-                        "tank_id": anodize_tanks[selected_tank], "temp_target": target_temp, "temp_actual": actual_temp,
-                        "recorded_at": datetime.now(ICT).isoformat()
-                    }).execute()
-                    st.success("บันทึกค่าความถี่สูงสำเร็จ!")
+                    if target_temp == 0 or actual_temp == 0:
+                        st.error("กรุณากรอกอุณหภูมิให้ครบถ้วน")
+                    else:
+                        supabase.table("temp_frequent_logs").insert({
+                            "tank_id": anodize_tanks[selected_tank], "temp_target": target_temp, "temp_actual": actual_temp,
+                            "recorded_at": datetime.now(ICT).isoformat()
+                        }).execute()
+                        st.success("บันทึกค่าความถี่สูงสำเร็จ!")
 
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
@@ -143,22 +155,28 @@ with tab3:
                 s_finish = st.text_input("พื้นผิว (Surface Finish)")
                 
             if st.form_submit_button("ลงทะเบียนชิ้นงาน"):
-                data = {
-                    "product_code": p_code, "product_name": p_name,
-                    "height": height, "width": width, "thickness": thickness,
-                    "depth": depth, "outer_diameter": outer_d, 
-                    "inner_diameter": inner_d, "surface_finish": s_finish
-                }
-                supabase.table("products").insert(data).execute()
-                st.success("ลงทะเบียนชิ้นงานสำเร็จ")
+                if not p_code or not p_name:
+                    st.error("กรุณากรอก รหัสสินค้า และ ชื่อสินค้า ให้ครบถ้วน")
+                else:
+                    data = {
+                        "product_code": p_code, "product_name": p_name,
+                        "height": height, "width": width, "thickness": thickness,
+                        "depth": depth, "outer_diameter": outer_d, 
+                        "inner_diameter": inner_d, "surface_finish": s_finish
+                    }
+                    supabase.table("products").insert(data).execute()
+                    st.success("ลงทะเบียนชิ้นงานสำเร็จ")
 
     # 2. ลงทะเบียนจิ๊ก
     with sub_jig:
         with st.form("add_jig_form", clear_on_submit=True):
             j_code = st.text_input("รหัสจิ๊ก (Jig Model Code)")
             if st.form_submit_button("ลงทะเบียนจิ๊ก"):
-                supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
-                st.success("ลงทะเบียนจิ๊กสำเร็จ")
+                if not j_code:
+                    st.error("กรุณากรอกรหัสจิ๊ก")
+                else:
+                    supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
+                    st.success("ลงทะเบียนจิ๊กสำเร็จ")
 
     # 3. บันทึกผลผลิต
     with sub_log:
@@ -189,14 +207,17 @@ with tab3:
                 rows = st.number_input("แถวที่เต็ม", min_value=0)
                 partial = st.number_input("เศษชิ้นงาน", min_value=0)
                 if st.form_submit_button("บันทึกการผลิต"):
-                    supabase.table("jig_usage_log").insert({
-                        "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c,
-                        "pcs_per_row": pcs, "rows_filled": rows, "partial_pieces": partial,
-                        "total_pieces": (rows * pcs) + partial,
-                        "recorded_date": datetime.now(ICT).isoformat()
-                    }).execute()
-                    
-                    supabase.table("jig_status").upsert({
-                        "jig_id": jig_id, "status_type": "In-Process", "updated_at": datetime.now(ICT).isoformat()
-                    }).execute()
-                    st.success("บันทึกการผลิตและอัปเดตสถานะจิ๊กเรียบร้อย!")
+                    if pcs == 0 and rows == 0 and partial == 0:
+                        st.error("กรุณากรอกจำนวนผลผลิตให้ถูกต้อง")
+                    else:
+                        supabase.table("jig_usage_log").insert({
+                            "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c,
+                            "pcs_per_row": pcs, "rows_filled": rows, "partial_pieces": partial,
+                            "total_pieces": (rows * pcs) + partial,
+                            "recorded_date": datetime.now(ICT).isoformat()
+                        }).execute()
+                        
+                        supabase.table("jig_status").upsert({
+                            "jig_id": jig_id, "status_type": "In-Process", "updated_at": datetime.now(ICT).isoformat()
+                        }).execute()
+                        st.success("บันทึกการผลิตและอัปเดตสถานะจิ๊กเรียบร้อย!")
