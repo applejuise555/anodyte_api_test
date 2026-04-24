@@ -13,30 +13,32 @@ try:
 except Exception as e:
     st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
 
-# --- กำหนดค่าสี (อัปเดตให้ตรงกับรูปภาพ) ---
+# --- กำหนดค่าสี ---
 color_hex_map = {
     "Black": "#000000",
     "Red": "#FF0000",
-    "Dark Red": "#CC0000",
+    "Dark Red": "#8B0000",
     "Violet": "#9400D3",
     "Green": "#008000",
-    "Banana leaf Green": "#66FFCC",
+    "Banana leaf Green": "#90EE90",
     "Gold": "#FFD700",
     "Orange": "#FFA500",
     "Light Blue": "#ADD8E6",
     "Blue": "#0000FF",
     "Dark Blue": "#00008B",
     "Pink": "#FFC0CB",
-    "Copper": "#FFCC99",
+    "Copper": "#B87333",
     "Titanium": "#808080",
     "Dark Titanium": "#4A4E69",
-    "Rose Gold": "#FF9999"
+    "Rose Gold": "#B76E79" # ปรับให้เป็นเฉด Rose Gold ที่ถูกต้อง
 }
 
-# --- ฟังก์ชันตัวช่วยหาค่าสี (รองรับการค้นหาคำในชื่อ) ---
+# --- ฟังก์ชันตัวช่วยหาค่าสี (แก้ไขบั๊กการซ้อนทับของชื่อ) ---
 def get_hex_from_name(name):
-    # วนลูปเพื่อเช็คว่าชื่อสีอยู่ในชื่อบ่อหรือไม่
-    for color_name, hex_code in color_hex_map.items():
+    # เรียงลำดับชื่อสีจากยาวไปสั้น เพื่อให้เช็ค "Rose Gold" ก่อน "Gold"
+    sorted_colors = sorted(color_hex_map.items(), key=lambda x: len(x[0]), reverse=True)
+    
+    for color_name, hex_code in sorted_colors:
         if color_name.lower() in name.lower():
             return hex_code
     return None
