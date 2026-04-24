@@ -47,7 +47,6 @@ except Exception as e:
 st.set_page_config(page_title="Production Log System", layout="wide")
 st.title("ระบบบันทึกข้อมูลการผลิต")
 
-# --- ฟังก์ชันตัวช่วย ---
 def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
     try:
         query = supabase.table(table).select(f"{id_col}, {name_col}")
@@ -58,24 +57,10 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
     except:
         return {}
 
-# ฟังก์ชันตรวจสอบสีที่จิ๊กกำลังใช้งานอยู่
-def get_active_jig_color(jig_id):
-    try:
-        # เช็คว่าสถานะเป็น In-Process หรือไม่
-        status = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).eq("status_type", "In-Process").execute()
-        if status.data:
-            # ดึงสีล่าสุดที่เคยบันทึกไว้ของจิ๊กนี้
-            log = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
-            if log.data:
-                return log.data[0]['color']
-    except:
-        return None
-    return None
-
 # --- โครงสร้าง Tabs ---
 tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
 
-# --- TAB 1: บ่อสี ---
+# --- TAB 1 & 2 (คงเดิม) ---
 with tab1:
     st.header("บันทึกข้อมูลบ่อสี")
     color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
@@ -85,25 +70,10 @@ with tab1:
         with st.form("color_log_form", clear_on_submit=True):
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
-            if st.form_submit_button("บันทึกค่ามาตรฐาน"):
-                supabase.table("color_tank_logs").insert({
-                    "tank_id": color_tanks[selected_tank], "ph_value": ph, "temperature": temp,
-                    "recorded_at": datetime.now(ICT).isoformat()
-                }).execute()
-                st.success("บันทึกข้อมูลมาตรฐานสำเร็จ!")
+            if st.form_submit_button("บันทึก"):
+                supabase.table("color_tank_logs").insert({"tank_id": color_tanks[selected_tank], "ph_value": ph, "temperature": temp, "recorded_at": datetime.now(ICT).isoformat()}).execute()
+                st.success("บันทึกสำเร็จ!")
 
-        with st.expander("บันทึกอุณหภูมิความถี่สูง (High Frequency)"):
-            with st.form("color_temp_frequent_form", clear_on_submit=True):
-                target_temp = st.number_input("อุณหภูมิเป้าหมาย (°C)", step=0.1)
-                actual_temp = st.number_input("อุณหภูมิที่วัดได้จริง (°C)", step=0.1)
-                if st.form_submit_button("บันทึกข้อมูลความถี่สูง"):
-                    supabase.table("temp_frequent_logs").insert({
-                        "tank_id": color_tanks[selected_tank], "temp_target": target_temp, "temp_actual": actual_temp,
-                        "recorded_at": datetime.now(ICT).isoformat()
-                    }).execute()
-                    st.success("บันทึกค่าความถี่สูงสำเร็จ!")
-
-# --- TAB 2: บ่ออโนไดซ์ ---
 with tab2:
     st.header("บันทึกข้อมูลบ่ออโนไดซ์")
     anodize_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
@@ -112,28 +82,33 @@ with tab2:
         with st.form("anodize_log_form", clear_on_submit=True):
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
-            density = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
+            density = st.number_input("ความหนาแน่น", step=0.001, format="%.3f")
             if st.form_submit_button("บันทึก"):
-                supabase.table("anodize_tank_logs").insert({
-                    "tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, 
-                    "density": density, "recorded_at": datetime.now(ICT).isoformat()
-                }).execute()
-                st.success("บันทึกข้อมูลมาตรฐานสำเร็จ!")
-        
-        with st.expander("บันทึกอุณหภูมิความถี่สูง (High Frequency)"):
-            with st.form("anodize_temp_frequent_form", clear_on_submit=True):
-                target_temp = st.number_input("อุณหภูมิเป้าหมาย (°C)", step=0.1)
-                actual_temp = st.number_input("อุณหภูมิที่วัดได้จริง (°C)", step=0.1)
-                if st.form_submit_button("บันทึกข้อมูลความถี่สูง"):
-                    supabase.table("temp_frequent_logs").insert({
-                        "tank_id": anodize_tanks[selected_tank], "temp_target": target_temp, "temp_actual": actual_temp,
-                        "recorded_at": datetime.now(ICT).isoformat()
-                    }).execute()
-                    st.success("บันทึกค่าความถี่สูงสำเร็จ!")
+                supabase.table("anodize_tank_logs").insert({"tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, "density": density, "recorded_at": datetime.now(ICT).isoformat()}).execute()
+                st.success("บันทึกสำเร็จ!")
 
-# --- TAB 3: งานจิ๊ก ---
+# --- TAB 3: งานจิ๊ก (เพิ่มระบบลงทะเบียน) ---
 with tab3:
     sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
+    
+    with sub_prod:
+        st.subheader("ลงทะเบียนชิ้นงานใหม่")
+        with st.form("add_product_form", clear_on_submit=True):
+            p_code = st.text_input("รหัสสินค้า (Product Code)")
+            p_desc = st.text_input("รายละเอียดสินค้า")
+            if st.form_submit_button("บันทึกสินค้า"):
+                supabase.table("products").insert({"product_code": p_code, "product_name": p_desc}).execute()
+                st.success("ลงทะเบียนสินค้าเรียบร้อย!")
+
+    with sub_jig:
+        st.subheader("ลงทะเบียนจิ๊กใหม่")
+        with st.form("add_jig_form", clear_on_submit=True):
+            j_code = st.text_input("รหัสจิ๊ก (Jig Model Code)")
+            capacity = st.number_input("ความจุต่อแถว", min_value=1)
+            if st.form_submit_button("บันทึกจิ๊ก"):
+                supabase.table("jigs").insert({"jig_model_code": j_code, "capacity_per_row": capacity}).execute()
+                st.success("ลงทะเบียนจิ๊กเรียบร้อย!")
+
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
@@ -142,21 +117,28 @@ with tab3:
         if prods and jigs and colors:
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
-            
-            # ตรวจสอบว่าจิ๊กนี้ถูกใช้งานอยู่หรือไม่
             jig_id = jigs[sel_j]
-            active_color = get_active_jig_color(jig_id)
             
-            if active_color:
-                st.warning(f"⚠️ จิ๊กนี้กำลังอยู่ในสถานะ In-Process ด้วยสี: {active_color}")
-                sel_c = st.selectbox("เลือกสี", options=[active_color], disabled=True)
+            # --- ระบบล็อคสีถ้าจิ๊กติดสถานะ In-Process ---
+            active_check = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).eq("status_type", "In-Process").execute()
+            
+            if active_check.data:
+                # ดึงสีล่าสุดที่จิ๊กนี้ใช้อยู่
+                last_log = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
+                current_color = last_log.data[0]['color'] if last_log.data else "Unknown"
+                
+                st.warning(f"⚠️ จิ๊กนี้กำลังใช้งานอยู่ (In-Process) โดยใช้สี: {current_color}")
+                sel_c = st.selectbox("เลือกสี", options=[current_color], disabled=True)
             else:
                 sel_c = st.selectbox("เลือกสี", list(colors.keys()))
-                
+            
             render_color_bar(sel_c)
             
             with st.form("log_prod_form", clear_on_submit=True):
-                pcs = st.number_input("จำนวนต่อแถว", min_value=0); rows = st.number_input("แถวที่เต็ม", min_value=0); partial = st.number_input("เศษชิ้นงาน", min_value=0)
+                pcs = st.number_input("จำนวนต่อแถว", min_value=0)
+                rows = st.number_input("แถวที่เต็ม", min_value=0)
+                partial = st.number_input("เศษชิ้นงาน", min_value=0)
+                
                 if st.form_submit_button("บันทึกการผลิต"):
                     supabase.table("jig_usage_log").insert({
                         "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c,
