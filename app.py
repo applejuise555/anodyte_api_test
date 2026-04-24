@@ -17,20 +17,20 @@ except Exception as e:
 color_hex_map = {
     "Black": "#000000",
     "Red": "#FF0000",
-    "Dark Red": "#8B0000",
+    "Dark Red": "#CC0000",
     "Violet": "#9400D3",
     "Green": "#008000",
-    "Banana leaf Green": "#90EE90",
+    "Banana leaf Green": "#66FFCC",
     "Gold": "#FFD700",
     "Orange": "#FFA500",
     "Light Blue": "#ADD8E6",
     "Blue": "#0000FF",
     "Dark Blue": "#00008B",
     "Pink": "#FFC0CB",
-    "Copper": "#B87333",
+    "Copper": "#FFCC99",
     "Titanium": "#808080",
     "Dark Titanium": "#4A4E69",
-    "Rose Gold": "#B76E79"
+    "Rose Gold": "#FF9999"
 }
 
 # --- ฟังก์ชันตัวช่วยหาค่าสี (รองรับการค้นหาคำในชื่อ) ---
