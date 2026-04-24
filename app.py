@@ -260,11 +260,3 @@ with tab2:
                             st.rerun()
         else:
             st.warning("ไม่พบจิ๊กที่ว่างสำหรับการใช้งาน หรือข้อมูลไม่ครบถ้วน")
-                            supabase.table("jig_status").upsert({
-                                "jig_id": jig_id, "status_type": "In-Process", 
-                                "updated_at": datetime.now(ICT).isoformat()
-                            }).execute()
-                            st.success("เริ่มการผลิตสำเร็จ!")
-                            st.rerun()
-        else:
-            st.warning("ไม่พบจิ๊กที่ว่างสำหรับการใช้งาน หรือข้อมูลไม่ครบถ้วน กรุณาไปที่ 'ลงทะเบียนจิ๊ก' เพื่อเพิ่มจิ๊กใหม่")
