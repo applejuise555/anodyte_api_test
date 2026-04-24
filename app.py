@@ -209,16 +209,19 @@ with tab3:
         jig_list_res = response.data
         available_jigs = []
         
-        # --- Logic การกรองแบบใหม่ที่เข้มงวดขึ้น ---
+# --- Logic การกรองแบบใหม่ที่เข้มงวดขึ้น ---
         for j in jig_list_res:
             jig_status_list = j.get('jig_status')
             
             # ตรวจสอบสถานะ: ถ้าเจอ "Finished" แม้แต่อันเดียว ให้ถือว่าจิ๊กนี้ใช้งานไม่ได้
             is_finished = False
-            if jig_status_list:
+            
+            # เช็คว่ามีข้อมูลและเป็น List แน่นอน
+            if jig_status_list and isinstance(jig_status_list, list):
                 # ตรวจสอบว่าในรายการสถานะมี "Finished" อยู่หรือไม่
                 for item in jig_status_list:
-                    if item.get('status_type') == 'Finished':
+                    # ป้องกัน error ด้วยการเช็คว่า item ต้องเป็น dict ก่อน .get()
+                    if isinstance(item, dict) and item.get('status_type') == 'Finished':
                         is_finished = True
                         break
             
