@@ -226,7 +226,7 @@ with tab3:
                         # แสดงข้อความ error จริงๆ ออกมาดู
                         st.error(f"เกิดข้อผิดพลาดจากฐานข้อมูล: {e}")
 
-# 3. บันทึกผลผลิต (ส่วนที่แก้ไข)
+# 3. บันทึกผลผลิต (นำโค้ดนี้ไปวางแทนที่ได้เลย)
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
@@ -237,61 +237,55 @@ with tab3:
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
             jig_id = jigs[sel_j]
             
-            # ตรวจสอบสถานะจิ๊ก
+            # 1. ตรวจสอบสถานะจิ๊ก
             active_check = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).eq("status_type", "In-Process").execute()
             
-            # ตัวแปรสำหรับเก็บค่าสีและบ่อ (เพื่อให้ระบบทำงานต่อได้)
+            # เตรียมตัวแปร
             current_color = None
-            current_tank_id = None
+            sel_tank_id = None
             
-            # --- ส่วนแสดงผลสถานะ ---
+            # 2. เช็คสถานะจิ๊กและดึงข้อมูล
             if active_check.data:
-                # ดึงสีและบ่อที่เคยใช้ล่าสุดของจิ๊กนี้
+                # ดึงสี/บ่อ ล่าสุด
                 last_log = supabase.table("jig_usage_log").select("color, tank_id").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
                 if last_log.data:
                     current_color = last_log.data[0]['color']
-                    current_tank_id = last_log.data[0]['tank_id']
+                    sel_tank_id = last_log.data[0]['tank_id']
                 
                 st.warning(f"⚠️ จิ๊กนี้กำลังทำงานอยู่ (Status: In-Process) | สีที่ใช้: **{current_color}**")
                 
-                # ปุ่มปลดล็อคจิ๊ก (เอาไว้กดเมื่อทำงานเสร็จทั้งจิ๊ก)
                 if st.button("✅ เสร็จสิ้นงานทั้งหมด / ปลดล็อคจิ๊ก (Release Jig)"):
                     supabase.table("jig_status").update({"status_type": "Available"}).eq("jig_id", jig_id).execute()
                     st.success("ปลดล็อคจิ๊กเรียบร้อย!")
                     st.rerun()
-            
-            # --- ส่วนฟอร์มบันทึกข้อมูล (เปิดให้กรอกได้เสมอ) ---
-            if active_check.data:
-                # ถ้า In-Process ให้ใช้สีเดิม (ไม่ต้องเลือกใหม่)
-                st.write(f"เพิ่มงานเข้าจิ๊กนี้ (สี: {current_color})")
-                sel_c = current_color
-                sel_tank_id = current_tank_id
             else:
                 # ถ้าว่างอยู่ ให้เลือกสีใหม่
                 unique_colors = list(set(TANK_COLOR_MAP.values()))
-                sel_c = st.selectbox("เลือกสี", options=sorted(unique_colors))
-                filtered_tanks = {name: id for name, id in color_tanks_all.items() if TANK_COLOR_MAP.get(name) == sel_c}
+                sel_c_new = st.selectbox("เลือกสี", options=sorted(unique_colors))
+                filtered_tanks = {name: id for name, id in color_tanks_all.items() if TANK_COLOR_MAP.get(name) == sel_c_new}
                 
                 if filtered_tanks:
                     sel_tank_name = st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))
                     sel_tank_id = filtered_tanks[sel_tank_name]
+                    current_color = sel_c_new
                 else:
-                    sel_tank_id = None
                     st.error("ไม่พบบ่อสีนี้")
+                    sel_tank_id = None
 
-            # แสดงฟอร์มบันทึกจำนวน (ถ้ามี tank_id หรือเป็น In-Process อยู่แล้ว)
+            # 3. แสดงฟอร์มบันทึก (ถ้ามีค่า tank_id)
             if sel_tank_id:
+                st.write(f"เพิ่มงานเข้าจิ๊กนี้ (สี: {current_color})")
                 with st.form("log_prod_form", clear_on_submit=True):
                     pcs = st.number_input("จำนวนต่อแถว", min_value=0)
                     rows = st.number_input("แถวที่เต็ม", min_value=0)
                     partial = st.number_input("เศษชิ้นงาน", min_value=0)
                     
                     if st.form_submit_button("บันทึกการผลิต"):
-                        # บันทึก log การผลิต
+                        # บันทึก log
                         supabase.table("jig_usage_log").insert({
                             "product_id": prods[sel_p], 
                             "jig_id": jig_id, 
-                            "color": sel_c,
+                            "color": current_color,
                             "tank_id": sel_tank_id, 
                             "pcs_per_row": pcs, 
                             "rows_filled": rows, 
@@ -300,11 +294,11 @@ with tab3:
                             "recorded_date": datetime.now(ICT).isoformat()
                         }).execute()
                         
-                        # อัปเดตสถานะเป็น In-Process เสมอ (ถ้าว่างอยู่แล้ว ก็จะเปลี่ยนเป็น In-Process)
+                        # อัปเดตสถานะ
                         supabase.table("jig_status").upsert({
                             "jig_id": jig_id, 
                             "status_type": "In-Process", 
                             "updated_at": datetime.now(ICT).isoformat()
                         }).execute()
-                        st.success(f"บันทึกข้อมูลสำเร็จ (สี: {sel_c})")
+                        st.success(f"บันทึกข้อมูลสำเร็จ (สี: {current_color})")
                         st.rerun()
