@@ -65,19 +65,32 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
 
 # --- TAB 1: บ่อสี ---
+# --- TAB 1: บ่อสี ---
 with tab1:
     st.header("บันทึกข้อมูลบ่อสี")
     color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
+    
     if color_tanks:
-        selected_tank = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()), key="tank_select")
-        render_color_bar(selected_tank) # ใช้ฟังก์ชันมาตรฐาน
+        # ใช้ key เพื่อแยก session state ออกจาก tab อื่น
+        selected_tank = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()), key="tank_select_tab1")
+        
+        # --- เรียกใช้ฟังก์ชันมาตรฐานเดียวกับหน้าจิ๊ก ---
+        render_color_bar(selected_tank)
         
         with st.form("color_log_form", clear_on_submit=True):
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
+            
             if st.form_submit_button("บันทึก"):
-                supabase.table("color_tank_logs").insert({"tank_id": color_tanks[selected_tank], "ph_value": ph, "temperature": temp}).execute()
-                st.success("บันทึกข้อมูลสำเร็จ!")
+                try:
+                    supabase.table("color_tank_logs").insert({
+                        "tank_id": color_tanks[selected_tank], 
+                        "ph_value": ph, 
+                        "temperature": temp
+                    }).execute()
+                    st.success("บันทึกข้อมูลสำเร็จ!")
+                except Exception as e:
+                    st.error(f"เกิดข้อผิดพลาด: {e}")
 
 # --- TAB 2: บ่ออโนไดซ์ ---
 with tab2:
