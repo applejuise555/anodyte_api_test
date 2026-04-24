@@ -13,7 +13,7 @@ try:
 except Exception as e:
     st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
 
-# --- กำหนดค่าสี (ใช้สำหรับแสดงผล Visual) ---
+# --- กำหนดค่าสี ---
 color_hex_map = {
     "Black": "#000000", "Red": "#FF0000", "Violet": "#9400D3", 
     "Green": "#008000", "Banana leaf Green": "#90EE90", "Gold": "#FFD700", 
@@ -21,6 +21,14 @@ color_hex_map = {
     "Dark Blue": "#00008B", "Dark Titanium": "#4A4E69", "Dark Red": "#8B0000", 
     "Pink": "#FFC0CB", "Copper": "#B87333", "Titanium": "#808080", "Rose Gold": "#B76E79"
 }
+
+# --- ฟังก์ชันตัวช่วยหาค่าสี ---
+def get_hex_from_name(name):
+    # ตรวจสอบว่าชื่อบ่อมีชื่อสี (key) เป็นส่วนประกอบหรือไม่
+    for color_name, hex_code in color_hex_map.items():
+        if color_name.lower() in name.lower():
+            return hex_code
+    return None
 
 st.set_page_config(page_title="Production Log System", layout="wide")
 st.title("ระบบบันทึกข้อมูลการผลิต")
@@ -46,9 +54,10 @@ with tab1:
     if color_tanks:
         selected_tank = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()))
         
-        # แสดงแถบสีตามชื่อบ่อ (ตรวจสอบว่าชื่อบ่อตรงกับ Key ใน color_hex_map)
-        if selected_tank in color_hex_map:
-            st.markdown(f'<div style="background-color:{color_hex_map[selected_tank]}; width:100%; height:30px; border-radius:5px; border: 1px solid #ccc; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
+        # ใช้ฟังก์ชันใหม่เพื่อดึงค่าสี
+        tank_hex = get_hex_from_name(selected_tank)
+        if tank_hex:
+            st.markdown(f'<div style="background-color:{tank_hex}; width:100%; height:30px; border-radius:5px; border: 1px solid #ccc; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
         
         with st.form("color_log_form", clear_on_submit=True):
             ph = st.number_input("ค่า pH", step=0.1)
@@ -144,8 +153,10 @@ with tab3:
             else:
                 sel_c = st.selectbox("เลือกสี", list(all_colors.keys()))
             
-            if sel_c in color_hex_map:
-                st.markdown(f'<div style="background-color:{color_hex_map[sel_c]}; width:100%; height:30px; border-radius:5px; border: 1px solid #ccc; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
+            # ใช้ฟังก์ชันใหม่เพื่อแสดงสี
+            color_hex = get_hex_from_name(sel_c)
+            if color_hex:
+                st.markdown(f'<div style="background-color:{color_hex}; width:100%; height:30px; border-radius:5px; border: 1px solid #ccc; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
             
             with st.form("log_prod_form", clear_on_submit=True):
                 pcs_per_row = st.number_input("จำนวนต่อแถว", min_value=0, step=1)
