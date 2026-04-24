@@ -198,6 +198,7 @@ with tab3:
                     except Exception as e:
                         st.error(f"เกิดข้อผิดพลาดจากฐานข้อมูล: {e}")
 
+# 3. บันทึกผลผลิต (ส่วนที่แก้ไข)
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
@@ -208,11 +209,16 @@ with tab3:
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
             jig_id = jigs[sel_j]
             
+            # 1. เช็คสถานะปัจจุบัน
             active_check = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).eq("status_type", "In-Process").execute()
+            
+            # 2. เช็คประวัติการใช้สี (เพื่อดูว่าเคยใช้สีอะไรมาก่อน)
+            history_check = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
             
             current_color = None
             sel_tank_id = None
             
+            # กรณีที่ 1: จิ๊กกำลังทำงานอยู่ (In-Process)
             if active_check.data:
                 last_log = supabase.table("jig_usage_log").select("color, tank_id").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
                 if last_log.data:
@@ -225,12 +231,26 @@ with tab3:
                     supabase.table("jig_status").update({"status_type": "Available"}).eq("jig_id", jig_id).execute()
                     st.success("ปลดล็อคจิ๊กเรียบร้อย!")
                     st.rerun()
+
+            # กรณีที่ 2: จิ๊กว่าง แต่เคยมีประวัติการใช้งาน (ระบบล็อคสี)
+            elif history_check.data:
+                current_color = history_check.data[0]['color']
+                st.info(f"🔒 จิ๊กนี้เคยใช้กับสี: **{current_color}** (ระบบล็อคสีไว้ให้)")
+                render_color_bar(current_color)
+                
+                # กรองบ่อสีตามสีที่ล็อคไว้
+                filtered_tanks = {name: id for name, id in color_tanks_all.items() if TANK_COLOR_MAP.get(name) == current_color}
+                
+                if filtered_tanks:
+                    sel_tank_name = st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))
+                    sel_tank_id = filtered_tanks[sel_tank_name]
+                else:
+                    st.error(f"ไม่พบบ่อสีสำหรับสี {current_color}")
+
+            # กรณีที่ 3: จิ๊กว่าง และไม่มีประวัติการใช้งาน (ให้เลือกสีอิสระ)
             else:
-                # ถ้าจิ๊กว่างอยู่ ให้เลือกสีใหม่
                 unique_colors = list(set(TANK_COLOR_MAP.values()))
                 sel_c_new = st.selectbox("เลือกสี", options=sorted(unique_colors))
-                
-                # แสดงแถบสีที่เลือก
                 render_color_bar(sel_c_new)
                 
                 filtered_tanks = {name: id for name, id in color_tanks_all.items() if TANK_COLOR_MAP.get(name) == sel_c_new}
@@ -245,7 +265,8 @@ with tab3:
 
             # 3. แสดงฟอร์มบันทึก (ถ้ามีค่า tank_id)
             if sel_tank_id:
-                st.write(f"เพิ่มงานเข้าจิ๊กนี้ (สี: {current_color})")
+                st.write(f"---")
+                st.write(f"กำลังจะบันทึกงานเข้าจิ๊ก (สี: {current_color})")
                 with st.form("log_prod_form", clear_on_submit=True):
                     pcs = st.number_input("จำนวนต่อแถว", min_value=0)
                     rows = st.number_input("แถวที่เต็ม", min_value=0)
