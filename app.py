@@ -87,17 +87,34 @@ with tab2:
                 supabase.table("anodize_tank_logs").insert({"tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, "density": density, "recorded_at": datetime.now(ICT).isoformat()}).execute()
                 st.success("บันทึกสำเร็จ!")
 
-# --- TAB 3: งานจิ๊ก (เพิ่มระบบลงทะเบียน) ---
+# --- TAB 3: งานจิ๊ก ---
 with tab3:
     sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
     
-    # 1. ลงทะเบียนชิ้นงาน
+    # 1. ลงทะเบียนชิ้นงาน (อัปเดตให้ครบทุกฟิลด์ตามรูป)
     with sub_prod:
         with st.form("add_prod_form", clear_on_submit=True):
-            p_code = st.text_input("รหัสสินค้า (Product Code)")
-            p_name = st.text_input("ชื่อ/รายละเอียดสินค้า")
+            col1, col2 = st.columns(2)
+            with col1:
+                p_code = st.text_input("รหัสสินค้า (Product Code)")
+                p_name = st.text_input("ชื่อ/รายละเอียดสินค้า")
+                height = st.number_input("ความสูง (Height)", step=0.01)
+                width = st.number_input("ความกว้าง (Width)", step=0.01)
+                thickness = st.number_input("ความหนา (Thickness)", step=0.01)
+            with col2:
+                depth = st.number_input("ความลึก (Depth)", step=0.01)
+                outer_d = st.number_input("Outer Diameter", step=0.01)
+                inner_d = st.number_input("Inner Diameter", step=0.01)
+                s_finish = st.text_input("พื้นผิว (Surface Finish)")
+                
             if st.form_submit_button("ลงทะเบียนชิ้นงาน"):
-                supabase.table("products").insert({"product_code": p_code, "product_name": p_name}).execute()
+                data = {
+                    "product_code": p_code, "product_name": p_name,
+                    "height": height, "width": width, "thickness": thickness,
+                    "depth": depth, "outer_diameter": outer_d, 
+                    "inner_diameter": inner_d, "surface_finish": s_finish
+                }
+                supabase.table("products").insert(data).execute()
                 st.success("ลงทะเบียนชิ้นงานสำเร็จ")
 
     # 2. ลงทะเบียนจิ๊ก
@@ -123,7 +140,6 @@ with tab3:
             active_check = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).eq("status_type", "In-Process").execute()
             
             if active_check.data:
-                # ดึงสีล่าสุดที่จิ๊กนี้ใช้อยู่
                 last_color_log = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
                 locked_color = last_color_log.data[0]['color'] if last_color_log.data else "Unknown"
                 st.warning(f"⚠️ จิ๊กนี้กำลังอยู่ในสถานะ In-Process (สีที่ใช้: {locked_color})")
