@@ -210,10 +210,17 @@ with sub_log:
     
     # กรองเฉพาะจิ๊กที่ไม่ได้อยู่ในสถานะ 'Finished' ให้เลือกใช้งาน
     # หมายเหตุ: จิ๊กใหม่ที่ยังไม่มีสถานะในตารางอาจต้องจัดการ (ในตัวอย่างนี้ถือว่าถ้าไม่มีสถานะคือพร้อมใช้งาน)
-    available_jigs = []
+available_jigs = []
     for j in all_jigs_data:
-        # เช็คว่ามี status หรือไม่ ถ้าไม่มีให้ถือว่าว่าง
-        current_status = j['jig_status'][0]['status_type'] if j['jig_status'] else "Available"
+        # ใช้ .get() เพื่อป้องกัน KeyError และเช็คว่าข้อมูลเป็น List ที่มีค่าข้างในหรือไม่
+        jig_status_list = j.get('jig_status', [])
+        
+        # ตรวจสอบว่าใน List มีค่า status_type หรือไม่
+        if jig_status_list and isinstance(jig_status_list, list) and len(jig_status_list) > 0:
+            current_status = jig_status_list[0].get('status_type', 'Available')
+        else:
+            current_status = "Available"
+            
         if current_status != "Finished":
             available_jigs.append(j)
             
