@@ -13,18 +13,29 @@ try:
 except Exception as e:
     st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
 
-# --- กำหนดค่าสี ---
+# --- กำหนดค่าสี (อัปเดตให้ตรงกับรูปภาพ) ---
 color_hex_map = {
-    "Black": "#000000", "Red": "#FF0000", "Violet": "#9400D3", 
-    "Green": "#008000", "Banana leaf Green": "#90EE90", "Gold": "#FFD700", 
-    "Orange": "#FFA500", "Light Blue": "#ADD8E6", "Blue": "#0000FF", 
-    "Dark Blue": "#00008B", "Dark Titanium": "#4A4E69", "Dark Red": "#8B0000", 
-    "Pink": "#FFC0CB", "Copper": "#B87333", "Titanium": "#808080", "Rose Gold": "#B76E79"
+    "Black": "#000000",
+    "Red": "#FF0000",
+    "Dark Red": "#8B0000",
+    "Violet": "#9400D3",
+    "Green": "#008000",
+    "Banana leaf Green": "#90EE90",
+    "Gold": "#FFD700",
+    "Orange": "#FFA500",
+    "Light Blue": "#ADD8E6",
+    "Blue": "#0000FF",
+    "Dark Blue": "#00008B",
+    "Pink": "#FFC0CB",
+    "Copper": "#B87333",
+    "Titanium": "#808080",
+    "Dark Titanium": "#4A4E69",
+    "Rose Gold": "#B76E79"
 }
 
-# --- ฟังก์ชันตัวช่วยหาค่าสี ---
+# --- ฟังก์ชันตัวช่วยหาค่าสี (รองรับการค้นหาคำในชื่อ) ---
 def get_hex_from_name(name):
-    # ตรวจสอบว่าชื่อบ่อมีชื่อสี (key) เป็นส่วนประกอบหรือไม่
+    # วนลูปเพื่อเช็คว่าชื่อสีอยู่ในชื่อบ่อหรือไม่
     for color_name, hex_code in color_hex_map.items():
         if color_name.lower() in name.lower():
             return hex_code
@@ -54,7 +65,7 @@ with tab1:
     if color_tanks:
         selected_tank = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()))
         
-        # ใช้ฟังก์ชันใหม่เพื่อดึงค่าสี
+        # แสดงแถบสี
         tank_hex = get_hex_from_name(selected_tank)
         if tank_hex:
             st.markdown(f'<div style="background-color:{tank_hex}; width:100%; height:30px; border-radius:5px; border: 1px solid #ccc; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
@@ -153,7 +164,7 @@ with tab3:
             else:
                 sel_c = st.selectbox("เลือกสี", list(all_colors.keys()))
             
-            # ใช้ฟังก์ชันใหม่เพื่อแสดงสี
+            # แสดงสีของจิ๊กที่เลือก
             color_hex = get_hex_from_name(sel_c)
             if color_hex:
                 st.markdown(f'<div style="background-color:{color_hex}; width:100%; height:30px; border-radius:5px; border: 1px solid #ccc; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
