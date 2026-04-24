@@ -23,17 +23,21 @@ color_hex_map = {
     "Rose Gold": "#B76E79"
 }
 
-# --- ฟังก์ชันตัวช่วย ---
+# --- ฟังก์ชันตัวช่วย (แก้ไขให้แม่นยำ) ---
 def get_hex_from_name(name):
-    # เรียงลำดับ key จากยาวไปสั้น เพื่อให้หาเจอ "Rose Gold" ก่อน "Gold"
-    sorted_keys = sorted(color_hex_map.keys(), key=len, reverse=True)
-    for color_name in sorted_keys:
-        if color_name.lower() in name.lower():
+    # เรียงลำดับชื่อสีจากยาวไปสั้น (สำคัญมาก: เพื่อป้องกันกรณี Light Blue โดนทับด้วย Blue)
+    sorted_colors = sorted(color_hex_map.keys(), key=len, reverse=True)
+    
+    # แปลงชื่อบ่อเป็นตัวเล็กเพื่อเปรียบเทียบ
+    name_lower = name.lower()
+    
+    for color_name in sorted_colors:
+        if color_name.lower() in name_lower:
             return color_hex_map[color_name]
     return None
 
 def render_color_bar(name):
-    """ฟังก์ชันแสดงแถบสีแบบมาตรฐานเดียวกันทั้งระบบ"""
+    """ฟังก์ชันแสดงแถบสีแบบมาตรฐาน (ใช้ได้ทุกหน้า)"""
     hex_code = get_hex_from_name(name)
     if hex_code:
         st.markdown(f"""
@@ -65,32 +69,20 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
 
 # --- TAB 1: บ่อสี ---
-# --- TAB 1: บ่อสี ---
 with tab1:
     st.header("บันทึกข้อมูลบ่อสี")
     color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
     
     if color_tanks:
-        # ใช้ key เพื่อแยก session state ออกจาก tab อื่น
-        selected_tank = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()), key="tank_select_tab1")
-        
-        # --- เรียกใช้ฟังก์ชันมาตรฐานเดียวกับหน้าจิ๊ก ---
-        render_color_bar(selected_tank)
+        selected_tank = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()), key="tank_select_t1")
+        render_color_bar(selected_tank) # แสดงสีที่ถูกต้อง
         
         with st.form("color_log_form", clear_on_submit=True):
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
-            
             if st.form_submit_button("บันทึก"):
-                try:
-                    supabase.table("color_tank_logs").insert({
-                        "tank_id": color_tanks[selected_tank], 
-                        "ph_value": ph, 
-                        "temperature": temp
-                    }).execute()
-                    st.success("บันทึกข้อมูลสำเร็จ!")
-                except Exception as e:
-                    st.error(f"เกิดข้อผิดพลาด: {e}")
+                supabase.table("color_tank_logs").insert({"tank_id": color_tanks[selected_tank], "ph_value": ph, "temperature": temp}).execute()
+                st.success("บันทึกข้อมูลสำเร็จ!")
 
 # --- TAB 2: บ่ออโนไดซ์ ---
 with tab2:
@@ -111,12 +103,10 @@ with tab3:
     sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
     
     with sub_prod:
-        # ... (ส่วนเดิมของคุณ) ...
         with st.form("new_product_form", clear_on_submit=True):
             p_code = st.text_input("รหัสสินค้า *")
             p_name = st.text_input("ชื่อชิ้นงาน *")
             surface_finish = st.text_input("ลักษณะพื้นผิว (Surface Finish) *")
-            
             col1, col2 = st.columns(2)
             with col1:
                 h = st.number_input("Height", 0.0, format="%.2f")
@@ -126,9 +116,7 @@ with tab3:
                 d = st.number_input("Depth", 0.0, format="%.2f")
                 od = st.number_input("Outer Diameter", 0.0, format="%.2f")
                 id_val = st.number_input("Inner Diameter", 0.0, format="%.2f")
-            
             if st.form_submit_button("บันทึกสินค้า"):
-                # (Logic เดิม)
                 supabase.table("products").insert({"product_code": p_code, "product_name": p_name, "surface_finish": surface_finish, "height": h, "width": w, "thickness": t, "depth": d, "outer_diameter": od, "inner_diameter": id_val}).execute()
                 st.success("บันทึกสินค้าสำเร็จ!")
 
@@ -161,7 +149,7 @@ with tab3:
             else:
                 sel_c = st.selectbox("เลือกสี", list(all_colors.keys()))
             
-            # --- ตรงนี้เรียกใช้ฟังก์ชันมาตรฐาน ---
+            # --- แสดงแถบสี (ใช้ฟังก์ชันเดียวกัน) ---
             render_color_bar(sel_c)
             
             with st.form("log_prod_form", clear_on_submit=True):
