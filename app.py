@@ -197,7 +197,7 @@ with tab3:
                     supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
                     st.success("ลงทะเบียนจิ๊กสำเร็จ")
 
-    # 4. ส่วนบันทึกผลผลิต (ส่วนที่แก้ไข Logic กรองจิ๊ก)
+# 4. ส่วนบันทึกผลผลิต (ส่วนที่แก้ไข Logic กรองจิ๊กใหม่)
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         
@@ -209,21 +209,24 @@ with tab3:
         jig_list_res = response.data
         available_jigs = []
         
-        # กรองข้อมูล: ถ้าสถานะเป็น Finished ให้ตัดทิ้ง
+        # --- Logic การกรองแบบใหม่ที่เข้มงวดขึ้น ---
         for j in jig_list_res:
-            status_data = j.get('jig_status')
+            jig_status_list = j.get('jig_status')
             
-            # ตรวจสอบสถานะแบบปลอดภัย (รองรับกรณีที่เป็น List)
-            current_status = "Available" # Default
-            if isinstance(status_data, list) and len(status_data) > 0:
-                current_status = status_data[0].get('status_type', 'Available')
+            # ตรวจสอบสถานะ: ถ้าเจอ "Finished" แม้แต่อันเดียว ให้ถือว่าจิ๊กนี้ใช้งานไม่ได้
+            is_finished = False
+            if jig_status_list:
+                # ตรวจสอบว่าในรายการสถานะมี "Finished" อยู่หรือไม่
+                for item in jig_status_list:
+                    if item.get('status_type') == 'Finished':
+                        is_finished = True
+                        break
             
-            # ถ้าสถานะคือ Finished ไม่ต้องเอาเข้า List
-            if current_status == "Finished":
-                continue
-            
-            available_jigs.append(j)
+            # ถ้าไม่ได้ Finished ให้เพิ่มเข้าไปในรายการที่เลือกได้
+            if not is_finished:
+                available_jigs.append(j)
         
+        # สร้าง Mapping สำหรับ Selectbox
         jig_map = {j['jig_model_code']: j['jig_id'] for j in available_jigs}
         color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
         
@@ -232,7 +235,7 @@ with tab3:
             jig_id = jig_map[sel_j]
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             
-            # ตรวจสอบสถานะจริงอีกรอบเพื่อเลือกฟอร์ม
+            # ตรวจสอบสถานะปัจจุบันของจิ๊กตัวที่เลือก
             status_res = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).maybe_single().execute()
             status = status_res.data['status_type'] if status_res.data else "Available"
             
