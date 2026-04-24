@@ -203,9 +203,9 @@ with sub_log:
     prods = get_options("products", "product_id", "product_code")
     
     # 1. ดึงข้อมูลจิ๊กทั้งหมดพร้อมสถานะ
-    all_jigs_data = supabase.table("jigs") \
-        .select("jig_id, jig_model_code, jig_status(status_type)") \
-        .execute().data
+    # เลือก jig_id, code และสถานะ
+    response = supabase.table("jigs").select("jig_id, jig_model_code, jig_status(status_type)").execute()
+    all_jigs_data = response.data
     
     # 2. ทำการกรอง (Filter) เฉพาะจิ๊กที่ไม่ได้อยู่ในสถานะ 'Finished'
     available_jigs = []
@@ -214,7 +214,7 @@ with sub_log:
         status_list = j.get('jig_status', [])
         current_status = status_list[0]['status_type'] if status_list else "Available"
         
-        # กรองเอาเฉพาะจิ๊กที่ไม่ได้ Finished
+        # กรองเอาเฉพาะจิ๊กที่ "ไม่เท่ากับ" Finished
         if current_status != "Finished":
             available_jigs.append(j)
             
@@ -222,21 +222,34 @@ with sub_log:
     jig_map = {j['jig_model_code']: j['jig_id'] for j in available_jigs}
     
     if prods and available_jigs:
-        # ใช้รายการจิ๊กที่กรองแล้วมาแสดง
+        # เลือกจิ๊กและสินค้า
         sel_j = st.selectbox("เลือกจิ๊กที่ใช้งานได้", list(jig_map.keys()))
         jig_id = jig_map[sel_j]
         sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
         
-        # ส่วนที่เหลือของโค้ด (การตรวจสอบสถานะและบันทึกข้อมูล)
-        # ตรวจสอบสถานะปัจจุบันอีกครั้งจากฐานข้อมูลเพื่อความชัวร์
+        # ตรวจสอบสถานะปัจจุบันของจิ๊กตัวที่เลือก
         status_res = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).maybe_single().execute()
         status = status_res.data['status_type'] if status_res.data else "Available"
 
-        # --- Logic ต่อจากนี้คงเดิม ---
+        # แสดงสถานะปัจจุบัน
+        st.info(f"จิ๊กนี้กำลังอยู่ในสถานะ: {status}")
+
+        # --- Logic จัดการสถานะ ---
         if status == "In-Process":
-             # ... (โค้ดส่วน In-Process ของคุณ)
+            st.warning("จิ๊กนี้กำลังถูกใช้งานอยู่")
+            if st.button("เสร็จสิ้นงาน / ปลดล็อกจิ๊ก (Release Jig)"):
+                # ใส่โค้ดของคุณที่นี่ เช่น:
+                # supabase.table("jig_status").update({"status_type": "Finished"}).eq("jig_id", jig_id).execute()
+                st.success("ปลดล็อกสำเร็จ!")
+                st.rerun()
         else:
-             # ... (โค้ดส่วน Available ของคุณ)
+            st.success("จิ๊กนี้ว่างอยู่")
+            if st.button("เริ่มรอบการผลิตใหม่"):
+                # ใส่โค้ดของคุณที่นี่ เช่น:
+                # supabase.table("jig_status").insert({"jig_id": jig_id, "status_type": "In-Process"}).execute()
+                st.success("เริ่มผลิตแล้ว!")
+                st.rerun()
              
     else:
         st.warning("ไม่มีจิ๊กที่พร้อมใช้งาน (จิ๊กทั้งหมดอาจอยู่ในสถานะ Finished หรือยังไม่ได้ลงทะเบียน)")
+        
