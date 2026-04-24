@@ -153,28 +153,72 @@ with tab2:
                         }).execute()
                         st.success("บันทึกค่าความถี่สูงสำเร็จ!")
 
-# 3. บันทึกผลผลิต (ส่วนที่ปรับปรุงให้ปลอดภัยและจัดการสถานะ Finished)
+# --- TAB 3: งานจิ๊ก ---
+with tab3:
+    sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
+    
+    with sub_prod:
+        with st.form("add_prod_form", clear_on_submit=True):
+            col1, col2 = st.columns(2)
+            with col1:
+                p_code = st.text_input("รหัสสินค้า (Product Code)")
+                p_name = st.text_input("ชื่อ/รายละเอียดสินค้า")
+                height = st.number_input("ความสูง (Height)", step=0.01)
+                width = st.number_input("ความกว้าง (Width)", step=0.01)
+                thickness = st.number_input("ความหนา (Thickness)", step=0.01)
+            with col2:
+                depth = st.number_input("ความลึก (Depth)", step=0.01)
+                outer_d = st.number_input("Outer Diameter", step=0.01)
+                inner_d = st.number_input("Inner Diameter", step=0.01)
+                s_finish = st.text_input("พื้นผิว (Surface Finish)")
+                
+            if st.form_submit_button("ลงทะเบียนชิ้นงาน"):
+                if not p_code or not p_name:
+                    st.error("กรุณากรอก รหัสสินค้า และ ชื่อสินค้า ให้ครบถ้วน")
+                else:
+                    data = {
+                        "product_code": p_code, "product_name": p_name,
+                        "height": height, "width": width, "thickness": thickness,
+                        "depth": depth, "outer_diameter": outer_d, 
+                        "inner_diameter": inner_d, "surface_finish": s_finish
+                    }
+                    supabase.table("products").insert(data).execute()
+                    st.success("ลงทะเบียนชิ้นงานสำเร็จ")
+
+    with sub_jig:
+        with st.form("add_jig_form", clear_on_submit=True):
+            j_code = st.text_input("รหัสจิ๊ก (Jig Model Code)")
+            if st.form_submit_button("ลงทะเบียนจิ๊ก"):
+                if not j_code:
+                    st.error("กรุณากรอกรหัสจิ๊ก")
+                else:
+                    try:
+                        supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
+                        st.success("ลงทะเบียนจิ๊กสำเร็จ")
+                    except Exception as e:
+                        st.error(f"เกิดข้อผิดพลาดจากฐานข้อมูล: {e}")
+
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         
-        # ดึงรายชื่อจิ๊กทั้งหมดพร้อมสถานะจากตาราง jig_status
-        # เราดึงข้อมูลจากตาราง jig_status โดยตรงเพื่อให้แน่ใจว่าสถานะเป็นปัจจุบันที่สุด
-        jig_list_res = supabase.table("jigs") \
+        # ดึงรายชื่อจิ๊กทั้งหมดพร้อมสถานะ
+        all_jigs_data = supabase.table("jigs") \
             .select("jig_id, jig_model_code, jig_status(status_type)") \
             .execute().data
         
-        # กรองจิ๊กที่สถานะยังไม่เป็น 'Finished' หรือยังไม่มีสถานะในระบบ (ถือว่าว่าง)
         available_jigs = []
-        for j in jig_list_res:
-            status_data = j.get('jig_status')
-            # ตรวจสอบสถานะ: ถ้ามีข้อมูลสถานะและเป็น 'Finished' ให้ข้ามจิ๊กนี้ไป
-            if status_data and isinstance(status_data, list) and len(status_data) > 0:
-                current_status = status_data[0].get('status_type', 'Available')
-                if current_status == "Finished":
-                    continue # ข้ามจิ๊กนี้ไปเลย ไม่ต้องเอาใส่ list
+        
+        # กรองจิ๊ก: ถ้าสถานะเป็น Finished จะไม่เอาเข้า list
+        for j in all_jigs_data:
+            jig_status_list = j.get('jig_status', [])
+            current_status = "Available" # Default
             
-            # ถ้าไม่ใช่ Finished (หรือยังไม่มีสถานะ) ให้เพิ่มเข้าในรายการใช้งาน
-            available_jigs.append(j)
+            if jig_status_list and isinstance(jig_status_list, list) and len(jig_status_list) > 0:
+                current_status = jig_status_list[0].get('status_type', 'Available')
+            
+            # ตรวจสอบ: ถ้าสถานะไม่ใช่ Finished ให้เพิ่มเข้า List ให้เลือกใช้งาน
+            if current_status != "Finished":
+                available_jigs.append(j)
         
         # สร้าง Mapping สำหรับ Selectbox
         jig_map = {j['jig_model_code']: j['jig_id'] for j in available_jigs}
@@ -185,11 +229,10 @@ with tab2:
             jig_id = jig_map[sel_j]
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             
-            # --- ดึงสถานะปัจจุบันของจิ๊กตัวที่เลือกเพื่อแสดง UI ---
+            # เช็คสถานะล่าสุดอีกครั้ง
             status_res = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).maybe_single().execute()
             status = status_res.data['status_type'] if status_res and status_res.data else "Available"
             
-            # --- CASE 1: จิ๊กกำลังผลิต (In-Process) ---
             if status == "In-Process":
                 last_log = supabase.table("jig_usage_log").select("color, tank_id").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
                 current_color = last_log.data[0]['color'] if last_log.data else "ไม่ระบุ"
@@ -214,16 +257,13 @@ with tab2:
                         st.rerun()
 
                 if st.button("🏁 เสร็จสิ้นงาน (Finish - จิ๊กนี้จะไม่สามารถใช้งานได้อีก)"):
-                    # อัปเดตสถานะเป็น Finished
                     supabase.table("jig_status").upsert({
                         "jig_id": jig_id, 
-                        "status_type": "Finished",
-                        "updated_at": datetime.now(ICT).isoformat()
+                        "status_type": "Finished"
                     }).execute()
                     st.success("จิ๊กถูกปิดการใช้งานเรียบร้อยแล้ว!")
                     st.rerun()
 
-            # --- CASE 2: จิ๊กว่าง (Available) ---
             else:
                 st.info("✅ จิ๊กว่างอยู่ - เริ่มรอบการผลิตใหม่")
                 unique_colors = list(set(TANK_COLOR_MAP.values()))
@@ -243,7 +283,6 @@ with tab2:
                         partial = st.number_input("เศษชิ้นงาน", min_value=0)
                         
                         if st.form_submit_button("เริ่มการผลิต (Start Production)"):
-                            # บันทึก log การผลิต
                             supabase.table("jig_usage_log").insert({
                                 "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c_new,
                                 "tank_id": sel_tank_id, "pcs_per_row": pcs, "rows_filled": rows, 
@@ -251,7 +290,6 @@ with tab2:
                                 "recorded_date": datetime.now(ICT).isoformat()
                             }).execute()
                             
-                            # อัปเดตสถานะจิ๊กเป็น In-Process
                             supabase.table("jig_status").upsert({
                                 "jig_id": jig_id, "status_type": "In-Process", 
                                 "updated_at": datetime.now(ICT).isoformat()
