@@ -226,12 +226,10 @@ with tab3:
                         # แสดงข้อความ error จริงๆ ออกมาดู
                         st.error(f"เกิดข้อผิดพลาดจากฐานข้อมูล: {e}")
 
-# 3. บันทึกผลผลิต
+# 3. บันทึกผลผลิต (ส่วนที่แก้ไข)
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
-        
-        # ดึงบ่อสีทั้งหมด (กรองเฉพาะ type 'Color')
         color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
         
         if prods and jigs and color_tanks_all:
@@ -239,82 +237,67 @@ with tab3:
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
             jig_id = jigs[sel_j]
             
-            # --- ตรวจสอบสถานะจิ๊ก (ล็อคสี) ---
+            # ตรวจสอบสถานะจิ๊ก (ดึงข้อมูลล่าสุด)
             active_check = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).eq("status_type", "In-Process").execute()
             
-# --- ในส่วนของ sub_log ที่เช็ค active_check.data ---
-if active_check.data:
-    last_color_log = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
-    locked_color = last_color_log.data[0]['color'] if last_color_log.data else "Unknown"
-    
-    st.warning(f"⚠️ จิ๊กนี้กำลังอยู่ในสถานะ In-Process (สีที่ใช้: {locked_color})")
-    
-    # --- เพิ่มปุ่มปลดล็อคจิ๊กตรงนี้ ---
-    if st.button("✅ เสร็จสิ้นงาน / ปลดล็อคจิ๊ก (Release Jig)"):
-        try:
-            # เปลี่ยน status_type เป็น Available เพื่อให้กลับมาใช้งานใหม่ได้
-            supabase.table("jig_status").update({
-                "status_type": "Available", 
-                "updated_at": datetime.now(ICT).isoformat()
-            }).eq("jig_id", jig_id).execute()
+            if active_check.data:
+                # กรณีจิ๊กติดสถานะ In-Process
+                last_color_log = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
+                locked_color = last_color_log.data[0]['color'] if last_color_log.data else "Unknown"
+                
+                st.warning(f"⚠️ จิ๊กนี้กำลังอยู่ในสถานะ In-Process (สีที่ใช้: {locked_color})")
+                
+                # ปุ่มปลดล็อคจิ๊ก (ไม่ต้องกรอกข้อมูลเพิ่ม)
+                if st.button("✅ เสร็จสิ้นงาน / ปลดล็อคจิ๊ก (Release Jig)"):
+                    try:
+                        supabase.table("jig_status").update({
+                            "status_type": "Available", 
+                            "updated_at": datetime.now(ICT).isoformat()
+                        }).eq("jig_id", jig_id).execute()
+                        st.success("ปลดล็อคจิ๊กเรียบร้อย! จิ๊กพร้อมสำหรับการใช้งานใหม่แล้ว")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"เกิดข้อผิดพลาด: {e}")
+                
+                st.info("ไม่สามารถเลือกสีใหม่ได้จนกว่าจะปลดล็อคจิ๊ก")
             
-            st.success("ปลดล็อคจิ๊กเรียบร้อย! จิ๊กพร้อมสำหรับการใช้งานใหม่แล้ว")
-            st.rerun() # รีเฟรชหน้าจอเพื่อให้ค่า Update ทันที
-        except Exception as e:
-            st.error(f"เกิดข้อผิดพลาด: {e}")
-    # --------------------------------
-    
-    sel_c = st.selectbox("เลือกสี", options=[locked_color], disabled=True)
-else:
-    # ... กรณีปกติที่สถานะไม่ใช่ In-Process ...
             else:
-                # ถ้าไม่ได้ล็อค ให้เลือกสีปกติ (ใช้ keys ของ TANK_COLOR_MAP เพื่อให้เป็นตัวเลือกสี)
+                # กรณีจิ๊กว่าง (Available) - ให้กรอกข้อมูลปกติ
                 unique_colors = list(set(TANK_COLOR_MAP.values()))
                 sel_c = st.selectbox("เลือกสี", options=sorted(unique_colors))
-            
-            # --- ส่วนที่เพิ่มเข้ามา: กรองบ่อสีตามสีที่เลือก ---
-            # กรอง Dictionary ของบ่อสี ให้เหลือเฉพาะบ่อที่ตรงกับสีที่เลือก
-            filtered_tanks = {
-                name: id for name, id in color_tanks_all.items() 
-                if TANK_COLOR_MAP.get(name) == sel_c
-            }
-            
-            if filtered_tanks:
-                sel_tank_name = st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))
-                sel_tank_id = filtered_tanks[sel_tank_name]
-                render_color_bar(sel_c)
-            else:
-                st.error(f"ไม่พบบ่อสีที่ตรงกับสี {sel_c} ในระบบ")
-                sel_tank_id = None
-            
-            # --- บันทึกการผลิต ---
-            with st.form("log_prod_form", clear_on_submit=True):
-                pcs = st.number_input("จำนวนต่อแถว", min_value=0)
-                rows = st.number_input("แถวที่เต็ม", min_value=0)
-                partial = st.number_input("เศษชิ้นงาน", min_value=0)
                 
-                if st.form_submit_button("บันทึกการผลิต"):
-                    if not sel_tank_id:
-                        st.error("ไม่สามารถบันทึกได้เนื่องจากไม่พบบ่อสี")
-                    elif pcs == 0 and rows == 0 and partial == 0:
-                        st.error("กรุณากรอกจำนวนผลผลิตให้ถูกต้อง")
-                    else:
-                        # บันทึก log การผลิต (เพิ่ม tank_id เข้าไป)
-                        supabase.table("jig_usage_log").insert({
-                            "product_id": prods[sel_p], 
-                            "jig_id": jig_id, 
-                            "color": sel_c,
-                            "tank_id": sel_tank_id, # บันทึก tank_id ที่เลือกไปด้วย
-                            "pcs_per_row": pcs, 
-                            "rows_filled": rows, 
-                            "partial_pieces": partial,
-                            "total_pieces": (rows * pcs) + partial,
-                            "recorded_date": datetime.now(ICT).isoformat()
-                        }).execute()
+                filtered_tanks = {name: id for name, id in color_tanks_all.items() if TANK_COLOR_MAP.get(name) == sel_c}
+                
+                if filtered_tanks:
+                    sel_tank_name = st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))
+                    sel_tank_id = filtered_tanks[sel_tank_name]
+                    render_color_bar(sel_c)
+                    
+                    with st.form("log_prod_form", clear_on_submit=True):
+                        pcs = st.number_input("จำนวนต่อแถว", min_value=0)
+                        rows = st.number_input("แถวที่เต็ม", min_value=0)
+                        partial = st.number_input("เศษชิ้นงาน", min_value=0)
                         
-                        supabase.table("jig_status").upsert({
-                            "jig_id": jig_id, 
-                            "status_type": "In-Process", 
-                            "updated_at": datetime.now(ICT).isoformat()
-                        }).execute()
-                        st.success(f"บันทึกการผลิต ({sel_tank_name}) เรียบร้อย!")
+                        if st.form_submit_button("บันทึกการผลิต"):
+                            # Logic การบันทึก...
+                            supabase.table("jig_usage_log").insert({
+                                "product_id": prods[sel_p], 
+                                "jig_id": jig_id, 
+                                "color": sel_c,
+                                "tank_id": sel_tank_id, 
+                                "pcs_per_row": pcs, 
+                                "rows_filled": rows, 
+                                "partial_pieces": partial,
+                                "total_pieces": (rows * pcs) + partial,
+                                "recorded_date": datetime.now(ICT).isoformat()
+                            }).execute()
+                            
+                            supabase.table("jig_status").upsert({
+                                "jig_id": jig_id, 
+                                "status_type": "In-Process", 
+                                "updated_at": datetime.now(ICT).isoformat()
+                            }).execute()
+                            st.success(f"บันทึกการผลิต ({sel_tank_name}) เรียบร้อย!")
+                            st.rerun()
+                else:
+                    st.error(f"ไม่พบบ่อสีที่ตรงกับสี {sel_c}")
