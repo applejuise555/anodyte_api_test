@@ -17,7 +17,7 @@ COLOR_HEX_MAP = {
 
 def get_hex_from_name(name):
     sorted_colors = sorted(COLOR_HEX_MAP.keys(), key=len, reverse=True)
-    name_lower = name.lower()
+    name_lower = str(name).lower()
     for color_name in sorted_colors:
         if color_name.lower() in name_lower:
             return COLOR_HEX_MAP[color_name]
@@ -47,6 +47,7 @@ except Exception as e:
 st.set_page_config(page_title="Production Log System", layout="wide")
 st.title("ระบบบันทึกข้อมูลการผลิต")
 
+# --- ฟังก์ชันตัวช่วย ---
 def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
     try:
         query = supabase.table(table).select(f"{id_col}, {name_col}")
@@ -56,6 +57,20 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
         return {item[name_col]: item[id_col] for item in response.data}
     except:
         return {}
+
+# ฟังก์ชันตรวจสอบสีที่จิ๊กกำลังใช้งานอยู่
+def get_active_jig_color(jig_id):
+    try:
+        # เช็คว่าสถานะเป็น In-Process หรือไม่
+        status = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).eq("status_type", "In-Process").execute()
+        if status.data:
+            # ดึงสีล่าสุดที่เคยบันทึกไว้ของจิ๊กนี้
+            log = supabase.table("jig_usage_log").select("color").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
+            if log.data:
+                return log.data[0]['color']
+    except:
+        return None
+    return None
 
 # --- โครงสร้าง Tabs ---
 tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
@@ -67,8 +82,6 @@ with tab1:
     if color_tanks:
         selected_tank = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()), key="tank_select_t1")
         render_color_bar(selected_tank)
-        
-        # 1. บันทึกข้อมูลมาตรฐาน
         with st.form("color_log_form", clear_on_submit=True):
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
@@ -79,7 +92,6 @@ with tab1:
                 }).execute()
                 st.success("บันทึกข้อมูลมาตรฐานสำเร็จ!")
 
-        # 2. บันทึกความถี่สูง
         with st.expander("บันทึกอุณหภูมิความถี่สูง (High Frequency)"):
             with st.form("color_temp_frequent_form", clear_on_submit=True):
                 target_temp = st.number_input("อุณหภูมิเป้าหมาย (°C)", step=0.1)
@@ -97,8 +109,6 @@ with tab2:
     anodize_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
     if anodize_tanks:
         selected_tank = st.selectbox("เลือกบ่ออโนไดซ์", list(anodize_tanks.keys()))
-        
-        # 1. บันทึกข้อมูลมาตรฐาน
         with st.form("anodize_log_form", clear_on_submit=True):
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
@@ -110,7 +120,6 @@ with tab2:
                 }).execute()
                 st.success("บันทึกข้อมูลมาตรฐานสำเร็จ!")
         
-        # 2. บันทึกความถี่สูง
         with st.expander("บันทึกอุณหภูมิความถี่สูง (High Frequency)"):
             with st.form("anodize_temp_frequent_form", clear_on_submit=True):
                 target_temp = st.number_input("อุณหภูมิเป้าหมาย (°C)", step=0.1)
@@ -133,13 +142,22 @@ with tab3:
         if prods and jigs and colors:
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
-            sel_c = st.selectbox("เลือกสี", list(colors.keys())) 
+            
+            # ตรวจสอบว่าจิ๊กนี้ถูกใช้งานอยู่หรือไม่
+            jig_id = jigs[sel_j]
+            active_color = get_active_jig_color(jig_id)
+            
+            if active_color:
+                st.warning(f"⚠️ จิ๊กนี้กำลังอยู่ในสถานะ In-Process ด้วยสี: {active_color}")
+                sel_c = st.selectbox("เลือกสี", options=[active_color], disabled=True)
+            else:
+                sel_c = st.selectbox("เลือกสี", list(colors.keys()))
+                
             render_color_bar(sel_c)
             
             with st.form("log_prod_form", clear_on_submit=True):
                 pcs = st.number_input("จำนวนต่อแถว", min_value=0); rows = st.number_input("แถวที่เต็ม", min_value=0); partial = st.number_input("เศษชิ้นงาน", min_value=0)
                 if st.form_submit_button("บันทึกการผลิต"):
-                    jig_id = jigs[sel_j]
                     supabase.table("jig_usage_log").insert({
                         "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c,
                         "pcs_per_row": pcs, "rows_filled": rows, "partial_pieces": partial,
@@ -150,4 +168,4 @@ with tab3:
                     supabase.table("jig_status").upsert({
                         "jig_id": jig_id, "status_type": "In-Process", "updated_at": datetime.now(ICT).isoformat()
                     }).execute()
-                    st.success("บันทึกการผลิตและอัปเดตสถานะจิ๊กเรียบร้อย!")
+                    st.success("บันทึกการผลิตเรียบร้อย!")
