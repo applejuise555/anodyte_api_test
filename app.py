@@ -209,25 +209,22 @@ with tab3:
         jig_list_res = response.data
         available_jigs = []
         
-# --- Logic การกรองแบบใหม่ที่เข้มงวดขึ้น ---
-        for j in jig_list_res:
-            jig_status_list = j.get('jig_status')
-            
-            # ตรวจสอบสถานะ: ถ้าเจอ "Finished" แม้แต่อันเดียว ให้ถือว่าจิ๊กนี้ใช้งานไม่ได้
-            is_finished = False
-            
-            # เช็คว่ามีข้อมูลและเป็น List แน่นอน
-            if jig_status_list and isinstance(jig_status_list, list):
-                # ตรวจสอบว่าในรายการสถานะมี "Finished" อยู่หรือไม่
-                for item in jig_status_list:
-                    # ป้องกัน error ด้วยการเช็คว่า item ต้องเป็น dict ก่อน .get()
-                    if isinstance(item, dict) and item.get('status_type') == 'Finished':
-                        is_finished = True
-                        break
-            
-            # ถ้าไม่ได้ Finished ให้เพิ่มเข้าไปในรายการที่เลือกได้
-            if not is_finished:
-                available_jigs.append(j)
+jigs = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
+
+available_jigs = []
+
+for j in jigs:
+    status_res = supabase.table("jig_status") \
+        .select("status_type") \
+        .eq("jig_id", j["jig_id"]) \
+        .order("updated_at", desc=True) \
+        .limit(1) \
+        .execute()
+
+    latest_status = status_res.data[0]["status_type"] if status_res.data else "Available"
+
+    if latest_status != "Finished":
+        available_jigs.append(j)
         
         # สร้าง Mapping สำหรับ Selectbox
         jig_map = {j['jig_model_code']: j['jig_id'] for j in available_jigs}
