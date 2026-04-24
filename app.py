@@ -226,13 +226,15 @@ with tab3:
                         # แสดงข้อความ error จริงๆ ออกมาดู
                         st.error(f"เกิดข้อผิดพลาดจากฐานข้อมูล: {e}")
 
-    # 3. บันทึกผลผลิต
+# 3. บันทึกผลผลิต
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
         jigs = get_options("jigs", "jig_id", "jig_model_code")
-        colors = get_options("colors", "color_id", "color_name")
         
-        if prods and jigs and colors:
+        # ดึงบ่อสีทั้งหมด (กรองเฉพาะ type 'Color')
+        color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
+        
+        if prods and jigs and color_tanks_all:
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
             sel_j = st.selectbox("เลือกจิ๊ก", list(jigs.keys()))
             jig_id = jigs[sel_j]
@@ -246,26 +248,53 @@ with tab3:
                 st.warning(f"⚠️ จิ๊กนี้กำลังอยู่ในสถานะ In-Process (สีที่ใช้: {locked_color})")
                 sel_c = st.selectbox("เลือกสี", options=[locked_color], disabled=True)
             else:
-                sel_c = st.selectbox("เลือกสี", list(colors.keys()))
+                # ถ้าไม่ได้ล็อค ให้เลือกสีปกติ (ใช้ keys ของ TANK_COLOR_MAP เพื่อให้เป็นตัวเลือกสี)
+                unique_colors = list(set(TANK_COLOR_MAP.values()))
+                sel_c = st.selectbox("เลือกสี", options=sorted(unique_colors))
             
-            render_color_bar(sel_c)
+            # --- ส่วนที่เพิ่มเข้ามา: กรองบ่อสีตามสีที่เลือก ---
+            # กรอง Dictionary ของบ่อสี ให้เหลือเฉพาะบ่อที่ตรงกับสีที่เลือก
+            filtered_tanks = {
+                name: id for name, id in color_tanks_all.items() 
+                if TANK_COLOR_MAP.get(name) == sel_c
+            }
             
+            if filtered_tanks:
+                sel_tank_name = st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))
+                sel_tank_id = filtered_tanks[sel_tank_name]
+                render_color_bar(sel_c)
+            else:
+                st.error(f"ไม่พบบ่อสีที่ตรงกับสี {sel_c} ในระบบ")
+                sel_tank_id = None
+            
+            # --- บันทึกการผลิต ---
             with st.form("log_prod_form", clear_on_submit=True):
                 pcs = st.number_input("จำนวนต่อแถว", min_value=0)
                 rows = st.number_input("แถวที่เต็ม", min_value=0)
                 partial = st.number_input("เศษชิ้นงาน", min_value=0)
+                
                 if st.form_submit_button("บันทึกการผลิต"):
-                    if pcs == 0 and rows == 0 and partial == 0:
+                    if not sel_tank_id:
+                        st.error("ไม่สามารถบันทึกได้เนื่องจากไม่พบบ่อสี")
+                    elif pcs == 0 and rows == 0 and partial == 0:
                         st.error("กรุณากรอกจำนวนผลผลิตให้ถูกต้อง")
                     else:
+                        # บันทึก log การผลิต (เพิ่ม tank_id เข้าไป)
                         supabase.table("jig_usage_log").insert({
-                            "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c,
-                            "pcs_per_row": pcs, "rows_filled": rows, "partial_pieces": partial,
+                            "product_id": prods[sel_p], 
+                            "jig_id": jig_id, 
+                            "color": sel_c,
+                            "tank_id": sel_tank_id, # บันทึก tank_id ที่เลือกไปด้วย
+                            "pcs_per_row": pcs, 
+                            "rows_filled": rows, 
+                            "partial_pieces": partial,
                             "total_pieces": (rows * pcs) + partial,
                             "recorded_date": datetime.now(ICT).isoformat()
                         }).execute()
                         
                         supabase.table("jig_status").upsert({
-                            "jig_id": jig_id, "status_type": "In-Process", "updated_at": datetime.now(ICT).isoformat()
+                            "jig_id": jig_id, 
+                            "status_type": "In-Process", 
+                            "updated_at": datetime.now(ICT).isoformat()
                         }).execute()
-                        st.success("บันทึกการผลิตและอัปเดตสถานะจิ๊กเรียบร้อย!")
+                        st.success(f"บันทึกการผลิต ({sel_tank_name}) เรียบร้อย!")
