@@ -60,38 +60,73 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 # --- โครงสร้าง Tabs ---
 tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
 
-# --- TAB 1 & 2 ---
+# --- TAB 1: บ่อสี ---
 with tab1:
     st.header("บันทึกข้อมูลบ่อสี")
     color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
     if color_tanks:
         selected_tank = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()), key="tank_select_t1")
         render_color_bar(selected_tank)
+        
+        # 1. บันทึกข้อมูลมาตรฐาน
         with st.form("color_log_form", clear_on_submit=True):
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
             if st.form_submit_button("บันทึกค่ามาตรฐาน"):
-                supabase.table("color_tank_logs").insert({"tank_id": color_tanks[selected_tank], "ph_value": ph, "temperature": temp, "recorded_at": datetime.now(ICT).isoformat()}).execute()
-                st.success("บันทึกสำเร็จ!")
+                supabase.table("color_tank_logs").insert({
+                    "tank_id": color_tanks[selected_tank], "ph_value": ph, "temperature": temp,
+                    "recorded_at": datetime.now(ICT).isoformat()
+                }).execute()
+                st.success("บันทึกข้อมูลมาตรฐานสำเร็จ!")
 
+        # 2. บันทึกความถี่สูง
+        with st.expander("บันทึกอุณหภูมิความถี่สูง (High Frequency)"):
+            with st.form("color_temp_frequent_form", clear_on_submit=True):
+                target_temp = st.number_input("อุณหภูมิเป้าหมาย (°C)", step=0.1)
+                actual_temp = st.number_input("อุณหภูมิที่วัดได้จริง (°C)", step=0.1)
+                if st.form_submit_button("บันทึกข้อมูลความถี่สูง"):
+                    supabase.table("temp_frequent_logs").insert({
+                        "tank_id": color_tanks[selected_tank], "temp_target": target_temp, "temp_actual": actual_temp,
+                        "recorded_at": datetime.now(ICT).isoformat()
+                    }).execute()
+                    st.success("บันทึกค่าความถี่สูงสำเร็จ!")
+
+# --- TAB 2: บ่ออโนไดซ์ ---
 with tab2:
     st.header("บันทึกข้อมูลบ่ออโนไดซ์")
     anodize_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
     if anodize_tanks:
         selected_tank = st.selectbox("เลือกบ่ออโนไดซ์", list(anodize_tanks.keys()))
+        
+        # 1. บันทึกข้อมูลมาตรฐาน
         with st.form("anodize_log_form", clear_on_submit=True):
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
             density = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
             if st.form_submit_button("บันทึก"):
-                supabase.table("anodize_tank_logs").insert({"tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, "density": density, "recorded_at": datetime.now(ICT).isoformat()}).execute()
-                st.success("บันทึกสำเร็จ!")
+                supabase.table("anodize_tank_logs").insert({
+                    "tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, 
+                    "density": density, "recorded_at": datetime.now(ICT).isoformat()
+                }).execute()
+                st.success("บันทึกข้อมูลมาตรฐานสำเร็จ!")
+        
+        # 2. บันทึกความถี่สูง (เพิ่มใหม่)
+        with st.expander("บันทึกอุณหภูมิความถี่สูง (High Frequency)"):
+            with st.form("anodize_temp_frequent_form", clear_on_submit=True):
+                target_temp = st.number_input("อุณหภูมิเป้าหมาย (°C)", step=0.1)
+                actual_temp = st.number_input("อุณหภูมิที่วัดได้จริง (°C)", step=0.1)
+                if st.form_submit_button("บันทึกข้อมูลความถี่สูง"):
+                    supabase.table("temp_frequent_logs").insert({
+                        "tank_id": anodize_tanks[selected_tank], "temp_target": target_temp, "temp_actual": actual_temp,
+                        "recorded_at": datetime.now(ICT).isoformat()
+                    }).execute()
+                    st.success("บันทึกค่าความถี่สูงสำเร็จ!")
 
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
     sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
     
-    # 1. ลงทะเบียนชิ้นงาน (อัปเดตให้ครบทุกฟิลด์ตามรูป)
+    # 1. ลงทะเบียนชิ้นงาน
     with sub_prod:
         with st.form("add_prod_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
