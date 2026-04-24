@@ -210,7 +210,7 @@ with tab3:
                     supabase.table("products").insert(data).execute()
                     st.success("ลงทะเบียนชิ้นงานสำเร็จ")
 
-    # 2. ลงทะเบียนจิ๊ก
+# 2. ลงทะเบียนจิ๊ก
     with sub_jig:
         with st.form("add_jig_form", clear_on_submit=True):
             j_code = st.text_input("รหัสจิ๊ก (Jig Model Code)")
@@ -218,8 +218,13 @@ with tab3:
                 if not j_code:
                     st.error("กรุณากรอกรหัสจิ๊ก")
                 else:
-                    supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
-                    st.success("ลงทะเบียนจิ๊กสำเร็จ")
+                    try:
+                        # พยายาม insert ข้อมูล
+                        supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
+                        st.success("ลงทะเบียนจิ๊กสำเร็จ")
+                    except Exception as e:
+                        # แสดงข้อความ error จริงๆ ออกมาดู
+                        st.error(f"เกิดข้อผิดพลาดจากฐานข้อมูล: {e}")
 
     # 3. บันทึกผลผลิต
     with sub_log:
