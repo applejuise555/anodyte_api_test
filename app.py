@@ -215,7 +215,8 @@ with tab3:
                             st.error(f"Error: {e}")
                 if st.button("🏁 เสร็จสิ้นงาน"):
                     try:
-                        supabase.table("jig_status").insert({"jig_id": jig_id, "status_type": "Finished", "updated_at": datetime.now(ICT).isoformat()}).execute()
+                        # แก้จาก insert เป็น upsert เพื่อป้องกัน error duplicate key
+                        supabase.table("jig_status").upsert({"jig_id": jig_id, "status_type": "Finished", "updated_at": datetime.now(ICT).isoformat()}).execute()
                         st.rerun()
                     except Exception as e:
                         st.error(f"Error: {e}")
@@ -238,7 +239,8 @@ with tab3:
                                     "partial_pieces": partial, "total_pieces": (rows * pcs) + partial, 
                                     "recorded_date": datetime.now(ICT).isoformat()
                                 }).execute()
-                                supabase.table("jig_status").insert({"jig_id": jig_id, "status_type": "In-Process", "updated_at": datetime.now(ICT).isoformat()}).execute()
+                                # แก้จาก insert เป็น upsert เพื่อป้องกัน error duplicate key
+                                supabase.table("jig_status").upsert({"jig_id": jig_id, "status_type": "In-Process", "updated_at": datetime.now(ICT).isoformat()}).execute()
                                 st.success("เริ่มสำเร็จ!")
                                 st.rerun()
                             except Exception as e:
