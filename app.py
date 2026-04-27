@@ -59,7 +59,7 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
             query = query.eq(filter_col, filter_val)
         response = query.execute()
         return {item[name_col]: item[id_col] for item in response.data}
-    except:
+    except Exception:
         return {}
 
 # --- Tabs ---
@@ -79,16 +79,22 @@ with tab1:
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
             if st.form_submit_button("บันทึกค่ามาตรฐาน"):
-                supabase.table("color_tank_logs").insert({"tank_id": color_tanks[selected_tank_name], "ph_value": ph, "temperature": temp, "recorded_at": datetime.now(ICT).isoformat()}).execute()
-                st.success("บันทึกสำเร็จ")
+                try:
+                    supabase.table("color_tank_logs").insert({"tank_id": color_tanks[selected_tank_name], "ph_value": ph, "temperature": temp, "recorded_at": datetime.now(ICT).isoformat()}).execute()
+                    st.success("บันทึกสำเร็จ")
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
         with st.expander("บันทึกอุณหภูมิความถี่สูง (High Frequency)"):
             with st.form("color_temp_frequent_form", clear_on_submit=True):
                 target_temp = st.number_input("อุณหภูมิเป้าหมาย (°C)", step=0.1)
                 actual_temp = st.number_input("อุณหภูมิที่วัดได้จริง (°C)", step=0.1)
                 if st.form_submit_button("บันทึกข้อมูลความถี่สูง"):
-                    supabase.table("temp_frequent_logs").insert({"tank_id": color_tanks[selected_tank_name], "temp_target": target_temp, "temp_actual": actual_temp, "color": detected_color, "recorded_at": datetime.now(ICT).isoformat()}).execute()
-                    st.success("บันทึกสำเร็จ!")
+                    try:
+                        supabase.table("temp_frequent_logs").insert({"tank_id": color_tanks[selected_tank_name], "temp_target": target_temp, "temp_actual": actual_temp, "color": detected_color, "recorded_at": datetime.now(ICT).isoformat()}).execute()
+                        st.success("บันทึกสำเร็จ!")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
 
 # --- TAB 2: บ่ออโนไดซ์ ---
 with tab2:
@@ -101,8 +107,12 @@ with tab2:
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
             density = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
             if st.form_submit_button("บันทึก"):
-                supabase.table("anodize_tank_logs").insert({"tank_id": anodize_tanks[selected_tank_name], "ph_value": ph, "temperature": temp, "density": density, "recorded_at": datetime.now(ICT).isoformat()}).execute()
-                st.success("บันทึกสำเร็จ")
+                try:
+                    supabase.table("anodize_tank_logs").insert({"tank_id": anodize_tanks[selected_tank_name], "ph_value": ph, "temperature": temp, "density": density, "recorded_at": datetime.now(ICT).isoformat()}).execute()
+                    st.success("บันทึกสำเร็จ")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
         with st.expander("บันทึกอุณหภูมิความถี่สูง"):
             with st.form("anodize_temp_frequent_form", clear_on_submit=True):
                 unique_colors = sorted(list(set(TANK_COLOR_MAP.values())))
@@ -110,8 +120,11 @@ with tab2:
                 sel_target = st.selectbox("อุณหภูมิเป้าหมาย", options=[18, 20, 22])
                 actual_temp = st.number_input("อุณหภูมิที่วัดได้จริง", step=0.1)
                 if st.form_submit_button("บันทึก"):
-                    supabase.table("temp_frequent_logs").insert({"tank_id": anodize_tanks[selected_tank_name], "temp_target": sel_target, "temp_actual": actual_temp, "color": sel_color, "recorded_at": datetime.now(ICT).isoformat()}).execute()
-                    st.success(f"บันทึกข้อมูลสำเร็จ!")
+                    try:
+                        supabase.table("temp_frequent_logs").insert({"tank_id": anodize_tanks[selected_tank_name], "temp_target": sel_target, "temp_actual": actual_temp, "color": sel_color, "recorded_at": datetime.now(ICT).isoformat()}).execute()
+                        st.success("บันทึกข้อมูลสำเร็จ!")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
 
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
@@ -145,11 +158,11 @@ with tab3:
                         }).execute()
                         st.success("ลงทะเบียนชิ้นงานสำเร็จ")
                     except Exception as e:
-                        st.error("ไม่สามารถบันทึกได้: รหัสสินค้าหรือชื่อสินค้านี้มีอยู่ในระบบแล้ว")
+                        st.error(f"Error: {e}")
 
     with sub_jig:
         with st.form("add_jig_form", clear_on_submit=True):
-            j_code = st.text_input("รหัสจิ๊ก (ตัวอย่างฟอเเมตรหัสจิ๊ก: ปปปปดดวว001(ชิ้นที่เท่าไหร่ของวัน) เช่น 20240427001")
+            j_code = st.text_input("รหัสจิ๊ก")
             if st.form_submit_button("ลงทะเบียนจิ๊ก"):
                 if not j_code:
                     st.error("กรุณากรอกรหัสจิ๊ก")
@@ -158,17 +171,18 @@ with tab3:
                         supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
                         st.success("ลงทะเบียนจิ๊กสำเร็จ")
                     except Exception as e:
-                        st.error("มีรหัสจิ๊กนี้อยู่ในระบบเเล้วกรุณาสร้างรหัสจิ๊กใหม่!")
+                        st.error(f"Error: {e}")
 
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
-        jigs = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
+        jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
         available_jigs = []
-        for j in jigs:
+        for j in jigs_data:
             status_res = supabase.table("jig_status").select("status_type").eq("jig_id", j["jig_id"]).order("updated_at", desc=True).limit(1).execute()
             latest_status = status_res.data[0].get("status_type", "Available") if (status_res.data and len(status_res.data) > 0) else "Available"
             if latest_status != "Finished":
                 available_jigs.append(j)
+        
         jig_map = {j['jig_model_code']: j['jig_id'] for j in available_jigs}
         color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
 
@@ -188,12 +202,23 @@ with tab3:
                     rows = st.number_input("แถวที่เต็ม", min_value=0)
                     partial = st.number_input("เศษ", min_value=0)
                     if st.form_submit_button("บันทึกเพิ่ม"):
-                        supabase.table("jig_usage_log").insert({"product_id": prods[sel_p], "jig_id": jig_id, "color": current_color, "tank_id": last_log.data[0]['tank_id'], "pcs_per_row": pcs, "rows_filled": rows, "partial_pieces": partial, "total_pieces": (rows * pcs) + partial, "recorded_date": datetime.now(ICT).isoformat()}).execute()
-                        st.success("บันทึกสำเร็จ!")
-                        st.rerun()
+                        try:
+                            supabase.table("jig_usage_log").insert({
+                                "product_id": prods[sel_p], "jig_id": jig_id, "color": current_color, 
+                                "tank_id": last_log.data[0]['tank_id'], "pcs_per_row": pcs, "rows_filled": rows, 
+                                "partial_pieces": partial, "total_pieces": (rows * pcs) + partial, 
+                                "recorded_date": datetime.now(ICT).isoformat()
+                            }).execute()
+                            st.success("บันทึกสำเร็จ!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
                 if st.button("🏁 เสร็จสิ้นงาน"):
-                    supabase.table("jig_status").insert({"jig_id": jig_id, "status_type": "Finished", "updated_at": datetime.now(ICT).isoformat()}).execute()
-                    st.rerun()
+                    try:
+                        supabase.table("jig_status").insert({"jig_id": jig_id, "status_type": "Finished", "updated_at": datetime.now(ICT).isoformat()}).execute()
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error: {e}")
             else:
                 st.info("✅ จิ๊กว่าง - เริ่มรอบใหม่")
                 sel_c_new = st.selectbox("เลือกสี", options=sorted(list(set(TANK_COLOR_MAP.values()))))
@@ -202,9 +227,19 @@ with tab3:
                 if filtered_tanks:
                     sel_tank_id = filtered_tanks[st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))]
                     with st.form("new_cycle_form", clear_on_submit=True):
-                        pcs, rows, partial = st.number_input("จำนวนต่อแถว"), st.number_input("แถวที่เต็ม"), st.number_input("เศษ")
+                        pcs = st.number_input("จำนวนต่อแถว", min_value=0)
+                        rows = st.number_input("แถวที่เต็ม", min_value=0)
+                        partial = st.number_input("เศษ", min_value=0)
                         if st.form_submit_button("เริ่มผลิต"):
-                            supabase.table("jig_usage_log").insert({"product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c_new, "tank_id": sel_tank_id, "pcs_per_row": pcs, "rows_filled": rows, "partial_pieces": partial, "total_pieces": (rows * pcs) + partial, "recorded_date": datetime.now(ICT).isoformat()}).execute()
-                            supabase.table("jig_status").insert({"jig_id": jig_id, "status_type": "In-Process", "updated_at": datetime.now(ICT).isoformat()}).execute()
-                            st.success("เริ่มสำเร็จ!")
-                            st.rerun()
+                            try:
+                                supabase.table("jig_usage_log").insert({
+                                    "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c_new, 
+                                    "tank_id": sel_tank_id, "pcs_per_row": pcs, "rows_filled": rows, 
+                                    "partial_pieces": partial, "total_pieces": (rows * pcs) + partial, 
+                                    "recorded_date": datetime.now(ICT).isoformat()
+                                }).execute()
+                                supabase.table("jig_status").insert({"jig_id": jig_id, "status_type": "In-Process", "updated_at": datetime.now(ICT).isoformat()}).execute()
+                                st.success("เริ่มสำเร็จ!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {e}")
