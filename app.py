@@ -149,7 +149,7 @@ with tab3:
 
     with sub_jig:
         with st.form("add_jig_form", clear_on_submit=True):
-            j_code = st.text_input("รหัสจิ๊ก (Jig Model Code)")
+            j_code = st.text_input("รหัสจิ๊ก (ตัวอย่างฟอเเมตรหัสจิ๊ก: ปปปปดดวว001(ชิ้นที่เท่าไหร่ของวัน) เช่น 20240427001")
             if st.form_submit_button("ลงทะเบียนจิ๊ก"):
                 if not j_code:
                     st.error("กรุณากรอกรหัสจิ๊ก")
@@ -158,7 +158,7 @@ with tab3:
                         supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
                         st.success("ลงทะเบียนจิ๊กสำเร็จ")
                     except Exception as e:
-                        st.error("เกิดข้อผิดพลาดในการบันทึกจิ๊ก")
+                        st.error("มีรหัสจิ๊กนี้อยู่ในระบบเเล้วกรุณาสร้างรหัสจิ๊กใหม่!")
 
     with sub_log:
         prods = get_options("products", "product_id", "product_code")
