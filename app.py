@@ -48,6 +48,47 @@ try:
     supabase = create_client(url, key)
 except Exception as e:
     st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
+# --- ฟังก์ชันช่วยเหลือ ---
+def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
+    try:
+        query = supabase.table(table).select(f"{id_col}, {name_col}")
+        if filter_col and filter_val:
+            query = query.eq(filter_col, filter_val)
+        response = query.execute()
+        return {item[name_col]: item[id_col] for item in response.data}
+    except: return {}
+
+def render_color_bar(name):
+    hex_code = COLOR_HEX_MAP.get(name, "#CCCCCC")
+    st.markdown(f'<div style="background-color:{hex_code}; width:100%; height:20px; border-radius:5px; border: 1px solid #ccc; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
+
+# --- หน้า Dashboard ---
+def dashboard_page():
+    st.title("📊 Real-time Dashboard")
+    if st.button("🔄 Refresh Data"):
+        st.rerun()
+
+    # 1. สรุปงานที่กำลังผลิต (In-Process)
+    st.subheader("งานที่กำลังผลิต (In-Process)")
+    active_jigs = supabase.table("jig_status").select("jig_id, updated_at").eq("status_type", "In-Process").execute().data
+    
+    if active_jigs:
+        df_active = pd.DataFrame(active_jigs)
+        st.dataframe(df_active, use_container_width=True)
+    else:
+        st.info("ไม่มีงานที่กำลังผลิตในขณะนี้")
+
+    # 2. บ่อสีล่าสุด
+    st.subheader("สถานะบ่อล่าสุด")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write("บันทึกล่าสุดบ่อสี")
+        logs = supabase.table("color_tank_logs").select("*").order("recorded_at", desc=True).limit(5).execute().data
+        if logs: st.table(pd.DataFrame(logs))
+    with col2:
+        st.write("บันทึกล่าสุดบ่ออโนไดซ์")
+        logs_ano = supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(5).execute().data
+        if logs_ano: st.table(pd.DataFrame(logs_ano))
 
 st.set_page_config(page_title="Production Log System", layout="wide")
 st.title("ระบบบันทึกข้อมูลการผลิต")
