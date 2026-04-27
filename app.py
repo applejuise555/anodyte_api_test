@@ -119,7 +119,6 @@ with tab1:
         st.warning("ไม่พบข้อมูลบ่อสีในระบบ")
 
 # --- TAB 2: บ่ออโนไดซ์ ---
-# --- TAB 2: บ่ออโนไดซ์ ---
 with tab2:
     st.header("บันทึกข้อมูลบ่ออโนไดซ์")
     anodize_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
@@ -127,7 +126,7 @@ with tab2:
     if anodize_tanks:
         selected_tank = st.selectbox("เลือกบ่ออโนไดซ์", list(anodize_tanks.keys()))
         
-        # ฟอร์มบันทึกข้อมูลมาตรฐาน
+        # ฟอร์มบันทึกค่ามาตรฐาน
         with st.form("anodize_log_form", clear_on_submit=True):
             ph = st.number_input("ค่า pH", step=0.1)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
@@ -137,37 +136,38 @@ with tab2:
                     st.error("กรุณากรอกข้อมูล pH, อุณหภูมิ และความหนาแน่น ให้ครบถ้วน")
                 else:
                     supabase.table("anodize_tank_logs").insert({
-                        "tank_id": anodize_tanks[selected_tank], 
-                        "ph_value": ph, 
-                        "temperature": temp, 
-                        "density": density, 
-                        "recorded_at": datetime.now(ICT).isoformat()
+                        "tank_id": anodize_tanks[selected_tank], "ph_value": ph, "temperature": temp, 
+                        "density": density, "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
                     st.success("บันทึกข้อมูลมาตรฐานสำเร็จ!")
 
-        # --- ส่วนที่แก้ไข: เพิ่มการบันทึกสีใน High Frequency ---
+        # ฟอร์มบันทึกอุณหภูมิความถี่สูง
         with st.expander("บันทึกอุณหภูมิความถี่สูง (High Frequency)"):
             with st.form("anodize_temp_frequent_form", clear_on_submit=True):
-                # 1. ดึงรายการสีจาก TANK_COLOR_MAP มาให้เลือก
+                # 1. เลือกสี
                 unique_colors = sorted(list(set(TANK_COLOR_MAP.values())))
                 selected_color = st.selectbox("เลือกสีที่กำลังผลิต", options=unique_colors)
                 
-                target_temp = st.number_input("อุณหภูมิเป้าหมาย (°C)", step=0.1)
+                # 2. เลือกอุณหภูมิเป้าหมาย (18, 20, 22)
+                target_temp = st.selectbox("อุณหภูมิเป้าหมาย (°C)", options=[18, 20, 22])
+                
+                # 3. อุณหภูมิที่วัดได้จริง
                 actual_temp = st.number_input("อุณหภูมิที่วัดได้จริง (°C)", step=0.1)
                 
                 if st.form_submit_button("บันทึกข้อมูลความถี่สูง"):
-                    if target_temp == 0 or actual_temp == 0:
-                        st.error("กรุณากรอกอุณหภูมิให้ครบถ้วน")
+                    if actual_temp == 0:
+                        st.error("กรุณากรอกอุณหภูมิที่วัดได้จริง")
                     else:
-                        # 2. บันทึกลงตาราง temp_frequent_logs พร้อมคอลัมน์ color
                         supabase.table("temp_frequent_logs").insert({
                             "tank_id": anodize_tanks[selected_tank], 
                             "temp_target": target_temp, 
                             "temp_actual": actual_temp,
-                            "color": selected_color, 
+                            "color": selected_color,
                             "recorded_at": datetime.now(ICT).isoformat()
                         }).execute()
                         st.success(f"บันทึกค่าความถี่สูง ({selected_color}) สำเร็จ!")
+    else:
+        st.warning("ไม่พบข้อมูลบ่ออโนไดซ์ในระบบ")
 # --- TAB 3: งานจิ๊ก ---
 with tab3:
     # 1. ประกาศ Tabs ย่อยภายใต้ Tab 3
