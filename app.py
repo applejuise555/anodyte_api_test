@@ -45,56 +45,65 @@ def input_page():
     with tab1:
         st.header("บันทึกค่าบ่อสี")
 
-        tanks = get_options("tanks","tank_id","tank_name","tank_type","Color")
+        color_tanks = get_options("tanks","tank_id","tank_name","tank_type","Color")
 
-        if tanks:
-            sel = st.selectbox("เลือกบ่อสี", list(tanks.keys()))
+        if color_tanks:
+            sel = st.selectbox("เลือกบ่อสี (ค่ามาตรฐาน)", list(color_tanks.keys()))
 
             # STANDARD
             with st.form("color_std"):
                 ph = st.number_input("ค่า pH")
                 temp = st.number_input("อุณหภูมิ (°C)")
-                if st.form_submit_button("💾 บันทึก"):
+                if st.form_submit_button("💾 บันทึกค่ามาตรฐาน"):
                     supabase.table("color_tank_logs").insert({
-                        "tank_id": tanks[sel],
+                        "tank_id": color_tanks[sel],
                         "ph_value": ph,
                         "temperature": temp,
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
                     st.success("บันทึกสำเร็จ")
 
-            # HF
-            with st.expander("📈 อุณหภูมิความถี่สูง"):
-                with st.form("color_hf"):
-                    target = st.number_input("Target Temp")
-                    actual = st.number_input("Actual Temp")
+            # 🔥 HF (เลือกบ่อแยก)
+            st.markdown("---")
+            st.subheader("📈 บันทึกอุณหภูมิความถี่สูง (เลือกบ่อแยกได้)")
 
-                    if st.form_submit_button("💾 บันทึก HF"):
-                        supabase.table("temp_frequent_logs").insert({
-                            "tank_id": tanks[sel],
-                            "temp_target": target,
-                            "temp_actual": actual,
-                            "recorded_at": datetime.now(ICT).isoformat()
-                        }).execute()
-                        st.success("บันทึก HF สำเร็จ")
+            hf_tank = st.selectbox(
+                "เลือกบ่อสำหรับบันทึก HF",
+                list(color_tanks.keys()),
+                key="color_hf_tank"
+            )
+
+            with st.form("color_hf"):
+                target = st.number_input("Target Temp", key="c_target")
+                actual = st.number_input("Actual Temp", key="c_actual")
+
+                if st.form_submit_button("💾 บันทึก HF"):
+                    supabase.table("temp_frequent_logs").insert({
+                        "tank_id": color_tanks[hf_tank],
+                        "temp_target": target,
+                        "temp_actual": actual,
+                        "recorded_at": datetime.now(ICT).isoformat()
+                    }).execute()
+                    st.success(f"บันทึก HF ที่บ่อ {hf_tank} สำเร็จ")
 
     # ---------------- ANODIZE ----------------
     with tab2:
         st.header("บันทึกค่าบ่ออโนไดซ์")
 
-        tanks = get_options("tanks","tank_id","tank_name","tank_type","Anodize")
+        anodize_tanks = get_options("tanks","tank_id","tank_name","tank_type","Anodize")
 
-        if tanks:
-            sel = st.selectbox("เลือกบ่ออโนไดซ์", list(tanks.keys()))
+        if anodize_tanks:
+            sel = st.selectbox("เลือกบ่ออโนไดซ์ (ค่ามาตรฐาน)", list(anodize_tanks.keys()))
 
+            # STANDARD
             with st.form("ano_std"):
                 ph = st.number_input("ค่า pH")
                 temp = st.number_input("อุณหภูมิ (°C)")
                 den = st.number_input("Density")
 
-                if st.form_submit_button("💾 บันทึก"):
+                if st.form_submit_button("💾 บันทึกค่ามาตรฐาน"):
                     supabase.table("anodize_tank_logs").insert({
-                        "tank_id": tanks[sel],
+                        "tank_id": anodize_tanks[sel],
                         "ph_value": ph,
                         "temperature": temp,
                         "density": den,
@@ -102,19 +111,28 @@ def input_page():
                     }).execute()
                     st.success("บันทึกสำเร็จ")
 
-            with st.expander("📈 อุณหภูมิความถี่สูง"):
-                with st.form("ano_hf"):
-                    target = st.selectbox("Target", [18,20,22])
-                    actual = st.number_input("Actual Temp")
+            # 🔥 HF (เลือกบ่อแยก)
+            st.markdown("---")
+            st.subheader("📈 บันทึกอุณหภูมิความถี่สูง (เลือกบ่อแยกได้)")
 
-                    if st.form_submit_button("💾 บันทึก HF"):
-                        supabase.table("temp_frequent_logs").insert({
-                            "tank_id": tanks[sel],
-                            "temp_target": target,
-                            "temp_actual": actual,
-                            "recorded_at": datetime.now(ICT).isoformat()
-                        }).execute()
-                        st.success("บันทึก HF สำเร็จ")
+            hf_tank = st.selectbox(
+                "เลือกบ่อสำหรับบันทึก HF",
+                list(anodize_tanks.keys()),
+                key="ano_hf_tank"
+            )
+
+            with st.form("ano_hf"):
+                target = st.selectbox("Target Temp", [18,20,22])
+                actual = st.number_input("Actual Temp")
+
+                if st.form_submit_button("💾 บันทึก HF"):
+                    supabase.table("temp_frequent_logs").insert({
+                        "tank_id": anodize_tanks[hf_tank],
+                        "temp_target": target,
+                        "temp_actual": actual,
+                        "recorded_at": datetime.now(ICT).isoformat()
+                    }).execute()
+                    st.success(f"บันทึก HF ที่บ่อ {hf_tank} สำเร็จ")
 
     # ---------------- JIG ----------------
     with tab3:
@@ -210,18 +228,15 @@ def dashboard_page():
             if not df.empty:
                 col1, col2, col3 = st.columns(3)
 
-                col1.metric("🔢 Total Pieces", int(df["total_pieces"].sum()))
-                col2.metric("📦 Total Jobs", len(df))
-                col3.metric("⚙️ Avg Pieces/Job", int(df["total_pieces"].mean()))
+                col1.metric("Total Pieces", int(df["total_pieces"].sum()))
+                col2.metric("Total Jobs", len(df))
+                col3.metric("Avg / Job", int(df["total_pieces"].mean()))
 
-                st.subheader("📈 Production Trend")
                 st.line_chart(df["total_pieces"])
-
-                st.subheader("📋 Raw Data")
                 st.dataframe(df)
 
             if not hf.empty:
-                st.subheader("🌡 Temperature Monitoring")
+                st.subheader("Temperature Monitoring")
                 st.line_chart(hf[["temp_actual","temp_target"]])
 
         time.sleep(refresh)
