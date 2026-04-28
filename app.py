@@ -314,7 +314,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
 
         with sub_jig:
             with st.form("add_jig_form", clear_on_submit=True):
-                jig_m_code = st.text_input("Jig Model Code")
+                jig_m_code = st.text_input("กรุณาตั้งรหัสจิ๊ก เป็น ปปปปดดวว001(จิ๊กที่เท่าไหร่ของวัน) เช่น 20260428001")
                 if st.form_submit_button("ลงทะเบียนจิ๊ก"):
                     try:
                         # เพิ่มค่า total_pcs_in_jig เป็น 0 เพื่อแก้ error not-null constraint
