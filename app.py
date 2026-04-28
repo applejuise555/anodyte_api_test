@@ -130,13 +130,28 @@ with tab1:
             with st.form("color_temp_frequent_form", clear_on_submit=True):
                 target_temp = st.number_input("อุณหภูมิเป้าหมาย (°C)", step=0.1)
                 actual_temp = st.number_input("อุณหภูมิที่วัดได้จริง (°C)", step=0.1)
-                if st.form_submit_button("บันทึกข้อมูลความถี่สูง"):
-                    try:
-                        supabase.table("temp_frequent_logs").insert({"tank_id": color_tanks[selected_tank_name], "temp_target": target_temp, "temp_actual": actual_temp, "color": detected_color, "recorded_at": datetime.now(ICT).isoformat()}).execute()
-                        st.success("บันทึกสำเร็จ!")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-
+                # แก้ไขในส่วน if st.form_submit_button("เริ่มผลิต"):
+try:
+    # 1. บันทึก log การผลิต
+    supabase.table("jig_usage_log").insert({
+        "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c_new, 
+        "tank_id": sel_tank_id, "pcs_per_row": pcs, "rows_filled": rows, 
+        "partial_pieces": partial, "total_pieces": (rows * pcs) + partial, 
+        "recorded_date": datetime.now(ICT).isoformat()
+    }).execute()
+    
+    # 2. อัปเดตสถานะจิ๊ก พร้อมบันทึก tank_id ที่กำลังใช้
+    supabase.table("jig_status").upsert({
+        "jig_id": jig_id, 
+        "status_type": "In-Process", 
+        "current_tank_id": sel_tank_id, # เพิ่มบรรทัดนี้
+        "updated_at": datetime.now(ICT).isoformat()
+    }).execute()
+    
+    st.success("เริ่มสำเร็จ!")
+    st.rerun()
+except Exception as e:
+    st.error(f"Error: {e}")
 # --- TAB 2: บ่ออโนไดซ์ ---
 with tab2:
     st.header("บันทึกข้อมูลบ่ออโนไดซ์")
