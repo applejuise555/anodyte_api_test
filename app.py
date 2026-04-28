@@ -325,3 +325,181 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         st.success("ลงทะเบียนจิ๊กสำเร็จ")
                     except Exception as e:
                         st.error(f"Error: {e}")
+
+        with sub_log:
+
+    # ======================
+    # โหลดข้อมูลพื้นฐาน
+    # ======================
+    prods = get_options("products", "product_id", "product_code")
+
+    jigs = supabase.table("jigs") \
+        .select("jig_id, jig_model_code") \
+        .execute().data
+
+    available_jigs = []
+
+    # ======================
+    # เช็คสถานะจิ๊กล่าสุด
+    # ======================
+    for j in jigs:
+        status_res = supabase.table("jig_status") \
+            .select("status_type") \
+            .eq("jig_id", j["jig_id"]) \
+            .order("updated_at", desc=True) \
+            .limit(1) \
+            .execute()
+
+        if status_res.data:
+            latest_status = status_res.data[0].get("status_type", "Available")
+        else:
+            latest_status = "Available"
+
+        if latest_status != "Finished":
+            available_jigs.append(j)
+
+    # ======================
+    # Mapping
+    # ======================
+    jig_map = {j['jig_model_code']: j['jig_id'] for j in available_jigs}
+
+    color_tanks_all = get_options(
+        "tanks", "tank_id", "tank_name", "tank_type", "Color"
+    )
+
+    # ======================
+    # ตรวจว่ามีข้อมูลครบไหม
+    # ======================
+    if not (prods and available_jigs and color_tanks_all):
+        st.warning("⚠️ ไม่พบข้อมูลที่จำเป็น")
+        st.stop()
+
+    # ======================
+    # เลือกข้อมูล
+    # ======================
+    sel_j = st.selectbox("🔧 เลือกจิ๊ก", list(jig_map.keys()))
+    jig_id = jig_map[sel_j]
+
+    sel_p = st.selectbox("📦 เลือกสินค้า", list(prods.keys()))
+
+    # ======================
+    # ดึงสถานะล่าสุด
+    # ======================
+    status_res = supabase.table("jig_status") \
+        .select("status_type") \
+        .eq("jig_id", jig_id) \
+        .order("updated_at", desc=True) \
+        .limit(1) \
+        .execute()
+
+    if status_res.data:
+        status = status_res.data[0].get("status_type", "Available")
+    else:
+        status = "Available"
+
+    # ======================
+    # 🟡 กำลังผลิต
+    # ======================
+    if status == "In-Process":
+
+        last_log = supabase.table("jig_usage_log") \
+            .select("color, tank_id") \
+            .eq("jig_id", jig_id) \
+            .order("recorded_date", desc=True) \
+            .limit(1) \
+            .execute()
+
+        current_color = last_log.data[0]['color'] if last_log.data else "ไม่ระบุ"
+
+        st.warning(f"⚠️ กำลังผลิตอยู่ | สี: **{current_color}**")
+
+        # ➕ เพิ่ม batch
+        with st.form("add_batch", clear_on_submit=True):
+            st.subheader("➕ เพิ่มงาน")
+
+            pcs = st.number_input("จำนวน/แถว", min_value=0)
+            rows = st.number_input("จำนวนแถว", min_value=0)
+            partial = st.number_input("เศษ", min_value=0)
+
+            if st.form_submit_button("💾 บันทึก"):
+                tank_id = last_log.data[0]['tank_id']
+
+                supabase.table("jig_usage_log").insert({
+                    "product_id": prods[sel_p],
+                    "jig_id": jig_id,
+                    "color": current_color,
+                    "tank_id": tank_id,
+                    "pcs_per_row": pcs,
+                    "rows_filled": rows,
+                    "partial_pieces": partial,
+                    "total_pieces": (rows * pcs) + partial,
+                    "recorded_date": datetime.now(ICT).isoformat()
+                }).execute()
+
+                st.success("✅ บันทึกเพิ่มสำเร็จ")
+                st.rerun()
+
+        # ✅ ปิดงาน
+        if st.button("🏁 จบงาน"):
+            supabase.table("jig_status").insert({
+                "jig_id": jig_id,
+                "status_type": "Finished",
+                "updated_at": datetime.now(ICT).isoformat()
+            }).execute()
+
+            st.success("✅ ปิดงานเรียบร้อย")
+            st.rerun()
+
+    # ======================
+    # 🟢 เริ่มงานใหม่
+    # ======================
+    else:
+        st.info("🟢 จิ๊กว่าง → เริ่มงานใหม่")
+
+        unique_colors = list(set(TANK_COLOR_MAP.values()))
+        sel_color = st.selectbox("🎨 เลือกสี", sorted(unique_colors))
+
+        render_color_bar(sel_color)
+
+        # filter tank ตามสี
+        filtered_tanks = {
+            name: id for name, id in color_tanks_all.items()
+            if TANK_COLOR_MAP.get(name) == sel_color
+        }
+
+        if not filtered_tanks:
+            st.warning("ไม่มีบ่อสีสำหรับสีนี้")
+            st.stop()
+
+        sel_tank_name = st.selectbox("🧪 เลือกบ่อสี", list(filtered_tanks.keys()))
+        sel_tank_id = filtered_tanks[sel_tank_name]
+
+        # ➕ เริ่ม batch แรก
+        with st.form("start_job", clear_on_submit=True):
+            st.subheader("🚀 เริ่มผลิต")
+
+            pcs = st.number_input("จำนวน/แถว", min_value=0)
+            rows = st.number_input("จำนวนแถว", min_value=0)
+            partial = st.number_input("เศษ", min_value=0)
+
+            if st.form_submit_button("▶️ เริ่ม"):
+                supabase.table("jig_usage_log").insert({
+                    "product_id": prods[sel_p],
+                    "jig_id": jig_id,
+                    "color": sel_color,
+                    "tank_id": sel_tank_id,
+                    "pcs_per_row": pcs,
+                    "rows_filled": rows,
+                    "partial_pieces": partial,
+                    "total_pieces": (rows * pcs) + partial,
+                    "recorded_date": datetime.now(ICT).isoformat()
+                }).execute()
+
+                supabase.table("jig_status").insert({
+                    "jig_id": jig_id,
+                    "status_type": "In-Process",
+                    "updated_at": datetime.now(ICT).isoformat()
+                }).execute()
+
+                st.success("✅ เริ่มผลิตสำเร็จ")
+                st.rerun()
