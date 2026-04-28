@@ -190,57 +190,6 @@ elif menu == "บันทึกข้อมูลการผลิต":
                     except Exception as e:
                         st.error(f"Error: {e}")
 
-    with tab3:
-        sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
-        
-        with sub_prod:
-            with st.form("add_prod_form", clear_on_submit=True):
-                col1, col2 = st.columns(2)
-                with col1:
-                    p_code = st.text_input("รหัสสินค้า (Product Code)")
-                    p_name = st.text_input("ชื่อ/รายละเอียดสินค้า")
-                    height = st.number_input("ความสูง (Height)", step=0.01)
-                    width = st.number_input("ความว้าง (Width)", step=0.01)
-                    thickness = st.number_input("ความหนา (Thickness)", step=0.01)
-                with col2:
-                    depth = st.number_input("ความลึก (Depth)", step=0.01)
-                    outer_d = st.number_input("Outer Diameter", step=0.01)
-                    inner_d = st.number_input("Inner Diameter", step=0.01)
-                    s_finish = st.text_input("พื้นผิว (Surface Finish)")
-                
-                if st.form_submit_button("ลงทะเบียนชิ้นงาน"):
-                    if not p_code or not p_name: 
-                        st.error("กรุณากรอกรหัสสินค้า และ ชื่อสินค้า")
-                    else:
-                        try:
-                            supabase.table("products").insert({
-                                "product_code": p_code, 
-                                "product_name": p_name, 
-                                "height": height, 
-                                "width": width, 
-                                "thickness": thickness, 
-                                "depth": depth, 
-                                "outer_diameter": outer_d, 
-                                "inner_diameter": inner_d, 
-                                "surface_finish": s_finish
-                            }).execute()
-                            st.success("บันทึกข้อมูลสินค้าสำเร็จ")
-                        except Exception as e:
-                            st.error(f"Error: {e}")
-
-        with sub_jig:
-            with st.form("add_jig_form", clear_on_submit=True):
-                jig_m_code = st.text_input("Jig Model Code")
-                if st.form_submit_button("ลงทะเบียนจิ๊ก"):
-                    try:
-                        # เพิ่มค่า total_pcs_in_jig เป็น 0 เพื่อแก้ error not-null constraint
-                        supabase.table("jigs").insert({
-                            "jig_model_code": jig_m_code,
-                            "total_pcs_in_jig": 0 
-                        }).execute()
-                        st.success("ลงทะเบียนจิ๊กสำเร็จ")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
 
         with tab3:
     sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
