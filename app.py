@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd # เพิ่มการ import pandas
+import pandas as pd
 from supabase import create_client
 from datetime import datetime, timezone, timedelta
 
@@ -170,14 +170,21 @@ with tab3:
                     st.error("กรุณากรอกรหัสจิ๊ก")
                 else:
                     try:
-                        supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
+                        # แก้ไขตรงนี้: เพิ่มค่า total_pcs_in_jig เป็น 0 เพื่อแก้ error not-null constraint
+                        supabase.table("jigs").insert({
+                            "jig_model_code": j_code, 
+                            "total_pcs_in_jig": 0
+                        }).execute()
                         st.success("ลงทะเบียนจิ๊กสำเร็จ")
                     except Exception as e:
                         st.error(f"Error: {e}")
 
     with sub_log:
+        # กำหนดค่าเริ่มต้นให้ prods เพื่อป้องกัน error
         prods = get_options("products", "product_id", "product_code")
-        jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
+        
+        jigs_data_res = supabase.table("jigs").select("jig_id, jig_model_code").execute()
+        jigs_data = jigs_data_res.data
         available_jigs = []
         for j in jigs_data:
             status_res = supabase.table("jig_status").select("status_type").eq("jig_id", j["jig_id"]).order("updated_at", desc=True).limit(1).execute()
@@ -192,6 +199,7 @@ with tab3:
             sel_j = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()))
             jig_id = jig_map[sel_j]
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
+            
             status_res = supabase.table("jig_status").select("status_type").eq("jig_id", jig_id).order("updated_at", desc=True).limit(1).execute()
             status = status_res.data[0].get("status_type", "Available") if (status_res.data and len(status_res.data) > 0) else "Available"
 
@@ -217,6 +225,7 @@ with tab3:
                         except Exception as e:
                             st.error(f"Error: {e}")
                 
+                # ปุ่มจบงานอยู่นอก form ได้เพราะไม่ได้ส่งค่าอะไร
                 if st.button("🏁 เสร็จสิ้นงาน"):
                     try:
                         supabase.table("jig_status").upsert({"jig_id": jig_id, "status_type": "Finished", "updated_at": datetime.now(ICT).isoformat()}).execute()
@@ -238,7 +247,6 @@ with tab3:
                         rows = st.number_input("แถวที่เต็ม", min_value=0)
                         partial = st.number_input("เศษ", min_value=0)
                         
-                        # --- แก้ไขตรงนี้: ดึงปุ่มเข้ามาอยู่ใน form ---
                         if st.form_submit_button("เริ่มผลิต"):
                             try:
                                 # 1. บันทึก log การผลิต
@@ -249,7 +257,7 @@ with tab3:
                                     "recorded_date": datetime.now(ICT).isoformat()
                                 }).execute()
 
-                                # 2. อัปเดตสถานะจิ๊ก และระบุว่าตอนนี้อยู่ Tank ไหน
+                                # 2. อัปเดตสถานะจิ๊ก
                                 supabase.table("jig_status").upsert({
                                     "jig_id": jig_id, 
                                     "status_type": "In-Process", 
