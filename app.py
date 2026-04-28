@@ -219,8 +219,7 @@ if menu == "Dashboard":
         st.info("ไม่มีข้อมูลบ่ออโนไดซ์")
 
     # ===== AUTO REFRESH =====
-    time.sleep(10)
-    st.rerun()
+    st.autorefresh(interval=10000, key="refresh")
 
 # --- RECORDING SECTION ---
 elif menu == "บันทึกข้อมูลการผลิต":
