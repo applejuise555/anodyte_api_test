@@ -87,44 +87,45 @@ if menu == "Dashboard":
     
     # 1. Metrics
     col1, col2, col3 = st.columns(3)
-    # Active Jigs
     active_jigs = supabase.table("jig_status").select("jig_id").eq("status_type", "In-Process").execute()
     col1.metric("จิ๊กที่กำลังผลิต", len(active_jigs.data))
     
-    # Total Today
     today = datetime.now(ICT).strftime("%Y-%m-%d")
     today_logs = supabase.table("jig_usage_log").select("total_pieces").gte("recorded_date", f"{today}T00:00:00").execute()
     total_today = sum(x['total_pieces'] for x in today_logs.data)
     col2.metric("ผลิตได้วันนี้ (ชิ้น)", total_today)
-    
-    # Active Tanks
-    col3.metric("บ่อที่ใช้งานอยู่", len(active_jigs.data)) # หรือนับจาก tank_id
+    col3.metric("บ่อที่ใช้งานอยู่", len(active_jigs.data))
     
     st.markdown("---")
     
-    # 2. Latest pH Values
-    st.subheader("💧 สถานะบ่อสีล่าสุด (Latest pH)")
-    logs_res = supabase.table("color_tank_logs").select("tank_id, ph_value, temperature, recorded_at").order("recorded_at", desc=True).execute()
-    df_logs = pd.DataFrame(logs_res.data)
+    # 2. Latest pH Values Chart
+    st.subheader("💧 แนวโน้มค่า pH (ย้อนหลัง)")
+    logs_res = supabase.table("color_tank_logs").select("tank_id, ph_value, recorded_at").order("recorded_at", desc=True).limit(50).execute()
     
-    if not df_logs.empty:
-        # Get latest per tank
-        df_latest = df_logs.drop_duplicates(subset=['tank_id'])
-        # Map tank name
+    if logs_res.data:
+        df_logs = pd.DataFrame(logs_res.data)
+        df_logs['recorded_at'] = pd.to_datetime(df_logs['recorded_at'])
+        
+        # เลือกแสดงกราฟตามบ่อ
         tanks_map = get_options("tanks", "tank_id", "tank_name")
         inv_tanks_map = {v: k for k, v in tanks_map.items()}
-        df_latest['tank_name'] = df_latest['tank_id'].map(inv_tanks_map)
+        df_logs['tank_name'] = df_logs['tank_id'].map(inv_tanks_map)
         
-        st.table(df_latest[['tank_name', 'ph_value', 'temperature', 'recorded_at']])
+        selected_tank = st.selectbox("เลือกบ่อที่ต้องการดูกราฟ", df_logs['tank_name'].unique())
+        df_filtered = df_logs[df_logs['tank_name'] == selected_tank]
+        
+        if not df_filtered.empty:
+            chart_data = df_filtered.set_index('recorded_at')[['ph_value']]
+            st.line_chart(chart_data)
+        else:
+            st.write("ไม่พบข้อมูล")
     else:
         st.write("ไม่พบข้อมูลบันทึกบ่อสี")
 
 # --- RECORDING SECTION ---
 elif menu == "บันทึกข้อมูลการผลิต":
     st.title("ระบบบันทึกข้อมูลการผลิต")
-    prods = get_options("products", "product_id", "product_code")
-    color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
-
+    
     tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
 
     with tab1:
@@ -175,6 +176,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
 
     with tab3:
         sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
+        
         with sub_prod:
             with st.form("add_prod_form", clear_on_submit=True):
                 col1, col2 = st.columns(2)
@@ -206,6 +208,20 @@ elif menu == "บันทึกข้อมูลการผลิต":
                                 "inner_diameter": inner_d, 
                                 "surface_finish": s_finish
                             }).execute()
-                            st.success("ลงทะเบียนชิ้นงานสำเร็จ")
+                            st.success("บันทึกข้อมูลสินค้าสำเร็จ")
                         except Exception as e:
                             st.error(f"Error: {e}")
+
+        with sub_jig:
+            with st.form("add_jig_form", clear_on_submit=True):
+                jig_m_code = st.text_input("Jig Model Code")
+                if st.form_submit_button("ลงทะเบียนจิ๊ก"):
+                    try:
+                        # เพิ่มค่า total_pcs_in_jig เป็น 0 เพื่อแก้ error not-null constraint
+                        supabase.table("jigs").insert({
+                            "jig_model_code": jig_m_code,
+                            "total_pcs_in_jig": 0 
+                        }).execute()
+                        st.success("ลงทะเบียนจิ๊กสำเร็จ")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
