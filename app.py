@@ -170,7 +170,6 @@ with tab3:
                     st.error("กรุณากรอกรหัสจิ๊ก")
                 else:
                     try:
-                        # แก้ไขตรงนี้: เพิ่มค่า total_pcs_in_jig เป็น 0 เพื่อแก้ error not-null constraint
                         supabase.table("jigs").insert({
                             "jig_model_code": j_code, 
                             "total_pcs_in_jig": 0
@@ -180,7 +179,7 @@ with tab3:
                         st.error(f"Error: {e}")
 
     with sub_log:
-        # กำหนดค่าเริ่มต้นให้ prods เพื่อป้องกัน error
+        # ดึงข้อมูลสินค้าไว้ต้น Block เพื่อป้องกัน error
         prods = get_options("products", "product_id", "product_code")
         
         jigs_data_res = supabase.table("jigs").select("jig_id, jig_model_code").execute()
@@ -195,7 +194,7 @@ with tab3:
         jig_map = {j['jig_model_code']: j['jig_id'] for j in available_jigs}
         color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
 
-        if prods and available_jigs and color_tanks_all:
+        if prods and jigs_data and color_tanks_all:
             sel_j = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()))
             jig_id = jig_map[sel_j]
             sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
@@ -225,10 +224,16 @@ with tab3:
                         except Exception as e:
                             st.error(f"Error: {e}")
                 
-                # ปุ่มจบงานอยู่นอก form ได้เพราะไม่ได้ส่งค่าอะไร
+                # ปุ่มจบงาน: แก้ไขให้ current_tank_id เป็น None (NULL)
                 if st.button("🏁 เสร็จสิ้นงาน"):
                     try:
-                        supabase.table("jig_status").upsert({"jig_id": jig_id, "status_type": "Finished", "updated_at": datetime.now(ICT).isoformat()}).execute()
+                        supabase.table("jig_status").upsert({
+                            "jig_id": jig_id, 
+                            "status_type": "Finished", 
+                            "current_tank_id": None, 
+                            "updated_at": datetime.now(ICT).isoformat()
+                        }).execute()
+                        st.success("ปิดงานสำเร็จ!")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Error: {e}")
@@ -249,7 +254,7 @@ with tab3:
                         
                         if st.form_submit_button("เริ่มผลิต"):
                             try:
-                                # 1. บันทึก log การผลิต
+                                # 1. บันทึก log
                                 supabase.table("jig_usage_log").insert({
                                     "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c_new, 
                                     "tank_id": sel_tank_id, "pcs_per_row": pcs, "rows_filled": rows, 
@@ -257,7 +262,7 @@ with tab3:
                                     "recorded_date": datetime.now(ICT).isoformat()
                                 }).execute()
 
-                                # 2. อัปเดตสถานะจิ๊ก
+                                # 2. อัปเดตสถานะ
                                 supabase.table("jig_status").upsert({
                                     "jig_id": jig_id, 
                                     "status_type": "In-Process", 
