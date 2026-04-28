@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from supabase import create_client
 from datetime import datetime, timezone, timedelta
+from streamlit_autorefresh import st_autorefresh
 
 # 1. ตั้งค่า Timezone (UTC +7)
 ICT = timezone(timedelta(hours=7))
@@ -219,7 +220,7 @@ if menu == "Dashboard":
         st.info("ไม่มีข้อมูลบ่ออโนไดซ์")
 
     # ===== AUTO REFRESH =====
-    st.autorefresh(interval=10000, key="refresh")
+    st_autorefresh(interval=10000, key="refresh")
 
 # --- RECORDING SECTION ---
 elif menu == "บันทึกข้อมูลการผลิต":
