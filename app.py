@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd # เพิ่มการ import pandas
 from supabase import create_client
 from datetime import datetime, timezone, timedelta
 
@@ -27,6 +28,16 @@ TANK_COLOR_MAP = {
     "HotSealH60": "Black"
 }
 
+st.set_page_config(page_title="Production Log System", layout="wide")
+
+# --- เชื่อมต่อ Supabase ---
+try:
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    supabase = create_client(url, key)
+except Exception as e:
+    st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
+
 def get_hex_from_name(name):
     sorted_colors = sorted(COLOR_HEX_MAP.keys(), key=len, reverse=True)
     name_lower = str(name).lower()
@@ -41,17 +52,6 @@ def render_color_bar(name):
         <div style="background-color:{hex_code}; width:100%; height:20px; border-radius:5px; border: 1px solid #ccc; margin-bottom: 10px;"></div>
     """, unsafe_allow_html=True)
 
-# --- เชื่อมต่อ Supabase ---
-try:
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    supabase = create_client(url, key)
-except Exception as e:
-    st.error(f"ไม่สามารถเชื่อมต่อ Supabase: {e}")
-
-st.set_page_config(page_title="Production Log System", layout="wide")
-st.title("ระบบบันทึกข้อมูลการผลิต")
-
 def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
     try:
         query = supabase.table(table).select(f"{id_col}, {name_col}")
@@ -61,6 +61,8 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
         return {item[name_col]: item[id_col] for item in response.data}
     except Exception:
         return {}
+
+st.title("ระบบบันทึกข้อมูลการผลิต")
 
 # --- Tabs ---
 tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
@@ -197,6 +199,7 @@ with tab3:
                 last_log = supabase.table("jig_usage_log").select("color, tank_id").eq("jig_id", jig_id).order("recorded_date", desc=True).limit(1).execute()
                 current_color = last_log.data[0]['color'] if last_log.data else "ไม่ระบุ"
                 st.warning(f"⚠️ กำลังผลิต | สี: **{current_color}**")
+                
                 with st.form("add_more_batch_form", clear_on_submit=True):
                     pcs = st.number_input("จำนวนต่อแถว", min_value=0)
                     rows = st.number_input("แถวที่เต็ม", min_value=0)
@@ -213,9 +216,9 @@ with tab3:
                             st.rerun()
                         except Exception as e:
                             st.error(f"Error: {e}")
+                
                 if st.button("🏁 เสร็จสิ้นงาน"):
                     try:
-                        # แก้จาก insert เป็น upsert เพื่อป้องกัน error duplicate key
                         supabase.table("jig_status").upsert({"jig_id": jig_id, "status_type": "Finished", "updated_at": datetime.now(ICT).isoformat()}).execute()
                         st.rerun()
                     except Exception as e:
@@ -225,32 +228,36 @@ with tab3:
                 sel_c_new = st.selectbox("เลือกสี", options=sorted(list(set(TANK_COLOR_MAP.values()))))
                 render_color_bar(sel_c_new)
                 filtered_tanks = {name: id for name, id in color_tanks_all.items() if TANK_COLOR_MAP.get(name) == sel_c_new}
+                
                 if filtered_tanks:
-                    sel_tank_id = filtered_tanks[st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))]
+                    sel_tank_name = st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))
+                    sel_tank_id = filtered_tanks[sel_tank_name]
+                    
                     with st.form("new_cycle_form", clear_on_submit=True):
                         pcs = st.number_input("จำนวนต่อแถว", min_value=0)
                         rows = st.number_input("แถวที่เต็ม", min_value=0)
                         partial = st.number_input("เศษ", min_value=0)
-                        # ค้นหาบล็อกนี้ใน sub_log
-if st.form_submit_button("เริ่มผลิต"):
-    try:
-        # 1. บันทึก log การผลิต
-        supabase.table("jig_usage_log").insert({
-            "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c_new, 
-            "tank_id": sel_tank_id, "pcs_per_row": pcs, "rows_filled": rows, 
-            "partial_pieces": partial, "total_pieces": (rows * pcs) + partial, 
-            "recorded_date": datetime.now(ICT).isoformat()
-        }).execute()
+                        
+                        # --- แก้ไขตรงนี้: ดึงปุ่มเข้ามาอยู่ใน form ---
+                        if st.form_submit_button("เริ่มผลิต"):
+                            try:
+                                # 1. บันทึก log การผลิต
+                                supabase.table("jig_usage_log").insert({
+                                    "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c_new, 
+                                    "tank_id": sel_tank_id, "pcs_per_row": pcs, "rows_filled": rows, 
+                                    "partial_pieces": partial, "total_pieces": (rows * pcs) + partial, 
+                                    "recorded_date": datetime.now(ICT).isoformat()
+                                }).execute()
 
-        # 2. อัปเดตสถานะจิ๊ก และระบุว่าตอนนี้อยู่ Tank ไหน (เพิ่มบรรทัด current_tank_id)
-        supabase.table("jig_status").upsert({
-            "jig_id": jig_id, 
-            "status_type": "In-Process", 
-            "current_tank_id": sel_tank_id, 
-            "updated_at": datetime.now(ICT).isoformat()
-        }).execute()
+                                # 2. อัปเดตสถานะจิ๊ก และระบุว่าตอนนี้อยู่ Tank ไหน
+                                supabase.table("jig_status").upsert({
+                                    "jig_id": jig_id, 
+                                    "status_type": "In-Process", 
+                                    "current_tank_id": sel_tank_id, 
+                                    "updated_at": datetime.now(ICT).isoformat()
+                                }).execute()
 
-        st.success("เริ่มสำเร็จ!")
-        st.rerun()
-    except Exception as e:
-        st.error(f"Error: {e}")
+                                st.success("เริ่มสำเร็จ!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {e}")
