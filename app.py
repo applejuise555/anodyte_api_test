@@ -189,8 +189,23 @@ elif menu == "บันทึกข้อมูลการผลิต":
                     outer_d = st.number_input("Outer Diameter", step=0.01)
                     inner_d = st.number_input("Inner Diameter", step=0.01)
                     s_finish = st.text_input("พื้นผิว (Surface Finish)")
+                
                 if st.form_submit_button("ลงทะเบียนชิ้นงาน"):
-                    if not p_code or not p_name: st.error("กรุณากรอกรหัสสินค้า และ ชื่อสินค้า")
+                    if not p_code or not p_name: 
+                        st.error("กรุณากรอกรหัสสินค้า และ ชื่อสินค้า")
                     else:
                         try:
-                            supabase.table("products").insert({"product_code": p_code, "product_name": p_name, "height": height, "width
+                            supabase.table("products").insert({
+                                "product_code": p_code, 
+                                "product_name": p_name, 
+                                "height": height, 
+                                "width": width, 
+                                "thickness": thickness, 
+                                "depth": depth, 
+                                "outer_diameter": outer_d, 
+                                "inner_diameter": inner_d, 
+                                "surface_finish": s_finish
+                            }).execute()
+                            st.success("ลงทะเบียนชิ้นงานสำเร็จ")
+                        except Exception as e:
+                            st.error(f"Error: {e}")
