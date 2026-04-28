@@ -69,10 +69,22 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
     except Exception:
         return {}
 
+def update_jig_total_pieces(jig_id):
+    """คำนวณรวมชิ้นงานทั้งหมดและอัปเดตลงตาราง jigs"""
+    try:
+        # 1. ดึงข้อมูล log ทั้งหมดของจิ๊กนี้
+        logs = supabase.table("jig_usage_log").select("total_pieces").eq("jig_id", jig_id).execute()
+        # 2. รวมผล
+        total_sum = sum(item['total_pieces'] for item in logs.data)
+        # 3. อัปเดตตาราง jigs
+        supabase.table("jigs").update({"total_pcs_in_jig": total_sum}).eq("jig_id", jig_id).execute()
+    except Exception as e:
+        st.error(f"เกิดข้อผิดพลาดในการอัปเดตยอดรวม: {e}")
+
 # --- Main App ---
 st.title("ระบบบันทึกข้อมูลการผลิต")
 
-# ดึงข้อมูลเริ่มต้นเสมอ
+# ดึงข้อมูลเริ่มต้น (ทำไว้ที่นี่เพื่อให้ใช้งานได้ทุกที่)
 prods = get_options("products", "product_id", "product_code")
 color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
 
@@ -168,20 +180,18 @@ with tab3:
                     st.error("กรุณากรอกรหัสจิ๊ก")
                 else:
                     try:
-                        # ข้อมูลถูกบังคับให้เป็น int
                         supabase.table("jigs").insert({
                             "jig_model_code": j_code, 
                             "total_pcs_in_jig": 0 
                         }).execute()
                         st.success("ลงทะเบียนจิ๊กสำเร็จ")
                     except Exception as e:
-                        st.error(f"หาก error ให้ตรวจสอบว่าตารางตั้ง Default value ของ 'total_pcs_in_jig' เป็น 0 หรือไม่. Error detail: {e}")
+                        st.error(f"Error: {e}")
 
     with sub_log:
         jigs_data_res = supabase.table("jigs").select("jig_id, jig_model_code").execute()
         jigs_data = jigs_data_res.data
         
-        # ป้องกัน error หากข้อมูลจิ๊กยังไม่มี
         if jigs_data:
             available_jigs = []
             for j in jigs_data:
@@ -213,12 +223,17 @@ with tab3:
                             partial = st.number_input("เศษ", min_value=0)
                             if st.form_submit_button("บันทึกเพิ่ม"):
                                 try:
+                                    # บันทึก log
                                     supabase.table("jig_usage_log").insert({
                                         "product_id": prods[sel_p], "jig_id": jig_id, "color": current_color, 
                                         "tank_id": last_log.data[0]['tank_id'], "pcs_per_row": pcs, "rows_filled": rows, 
                                         "partial_pieces": partial, "total_pieces": (rows * pcs) + partial, 
                                         "recorded_date": datetime.now(ICT).isoformat()
                                     }).execute()
+                                    
+                                    # อัปเดตยอดรวมทันที
+                                    update_jig_total_pieces(jig_id)
+                                    
                                     st.success("บันทึกสำเร็จ!")
                                     st.rerun()
                                 except Exception as e:
@@ -266,6 +281,9 @@ with tab3:
                                             "current_tank_id": sel_tank_id, 
                                             "updated_at": datetime.now(ICT).isoformat()
                                         }).execute()
+                                        
+                                        # อัปเดตยอดรวมเมื่อเริ่ม cycle ใหม่
+                                        update_jig_total_pieces(jig_id)
 
                                         st.success("เริ่มสำเร็จ!")
                                         st.rerun()
