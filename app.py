@@ -69,14 +69,6 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
     except Exception:
         return {}
 
-def update_jig_total_pieces(jig_id):
-    try:
-        logs = supabase.table("jig_usage_log").select("total_pieces").eq("jig_id", jig_id).execute()
-        total_sum = sum(item['total_pieces'] for item in logs.data)
-        supabase.table("jigs").update({"total_pcs_in_jig": total_sum}).eq("jig_id", jig_id).execute()
-    except Exception as e:
-        st.error(f"Error updating total: {e}")
-
 # --- Main App Navigation ---
 st.sidebar.title("เมนูระบบ")
 menu = st.sidebar.radio("เลือกหน้า", ["Dashboard", "บันทึกข้อมูลการผลิต"])
@@ -98,7 +90,23 @@ if menu == "Dashboard":
     
     st.markdown("---")
     
-    # 2. Latest pH Values Chart
+    # 2. Current Status Bar Chart
+    st.subheader("📊 สถานะปัจจุบันของแต่ละบ่อ (pH & Temp)")
+    latest_logs = supabase.table("color_tank_logs").select("tank_id, ph_value, temperature, recorded_at").order("recorded_at", desc=True).limit(50).execute()
+    
+    if latest_logs.data:
+        df_current = pd.DataFrame(latest_logs.data).drop_duplicates(subset=['tank_id'])
+        tanks_map = get_options("tanks", "tank_id", "tank_name")
+        inv_tanks_map = {v: k for k, v in tanks_map.items()}
+        df_current['tank_name'] = df_current['tank_id'].map(inv_tanks_map)
+        
+        # แสดงผลกราฟแท่ง
+        chart_data = df_current.set_index('tank_name')[['ph_value', 'temperature']]
+        st.bar_chart(chart_data)
+    
+    st.markdown("---")
+    
+    # 3. Latest pH Values Line Chart (Historical)
     st.subheader("💧 แนวโน้มค่า pH (ย้อนหลัง)")
     logs_res = supabase.table("color_tank_logs").select("tank_id, ph_value, recorded_at").order("recorded_at", desc=True).limit(50).execute()
     
@@ -106,12 +114,11 @@ if menu == "Dashboard":
         df_logs = pd.DataFrame(logs_res.data)
         df_logs['recorded_at'] = pd.to_datetime(df_logs['recorded_at'])
         
-        # เลือกแสดงกราฟตามบ่อ
         tanks_map = get_options("tanks", "tank_id", "tank_name")
         inv_tanks_map = {v: k for k, v in tanks_map.items()}
         df_logs['tank_name'] = df_logs['tank_id'].map(inv_tanks_map)
         
-        selected_tank = st.selectbox("เลือกบ่อที่ต้องการดูกราฟ", df_logs['tank_name'].unique())
+        selected_tank = st.selectbox("เลือกบ่อที่ต้องการดูกราฟย้อนหลัง", df_logs['tank_name'].unique())
         df_filtered = df_logs[df_logs['tank_name'] == selected_tank]
         
         if not df_filtered.empty:
@@ -217,7 +224,6 @@ elif menu == "บันทึกข้อมูลการผลิต":
                 jig_m_code = st.text_input("Jig Model Code")
                 if st.form_submit_button("ลงทะเบียนจิ๊ก"):
                     try:
-                        # เพิ่มค่า total_pcs_in_jig เป็น 0 เพื่อแก้ error not-null constraint
                         supabase.table("jigs").insert({
                             "jig_model_code": jig_m_code,
                             "total_pcs_in_jig": 0 
