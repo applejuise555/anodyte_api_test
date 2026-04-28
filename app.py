@@ -98,31 +98,43 @@ if menu == "Dashboard":
     
     st.markdown("---")
     
-    # 2. Latest Status Bar Charts
-    st.subheader("💧 สถานะบ่อสีปัจจุบัน")
-    # ดึงข้อมูลล่าสุดของแต่ละบ่อ
-    logs_res = supabase.table("color_tank_logs").select("tank_id, ph_value, temperature, recorded_at").order("recorded_at", desc=False).execute()
+    # ดึงข้อมูลมาเตรียมไว้
+    logs_res = supabase.table("color_tank_logs").select("tank_id, ph_value, temperature, recorded_at").order("recorded_at", desc=True).limit(200).execute()
     
     if logs_res.data:
         df_logs = pd.DataFrame(logs_res.data)
-        # กรองเอาเฉพาะรายการล่าสุดของแต่ละ tank_id
-        df_latest = df_logs.drop_duplicates(subset=['tank_id'], keep='last')
+        df_logs['recorded_at'] = pd.to_datetime(df_logs['recorded_at'])
         
         # Map ชื่อบ่อ
         tanks_map = get_options("tanks", "tank_id", "tank_name")
         inv_tanks_map = {v: k for k, v in tanks_map.items()}
-        df_latest['tank_name'] = df_latest['tank_id'].map(inv_tanks_map)
+        df_logs['tank_name'] = df_logs['tank_id'].map(inv_tanks_map)
         
-        # แสดงกราฟ 2 คอลัมน์
+        # กราฟแท่ง: ค่าปัจจุบันของทุกบ่อ
+        st.subheader("📊 สถานะปัจจุบันของแต่ละบ่อ")
+        latest_df = df_logs.drop_duplicates(subset=['tank_id'])
+        
         c1, c2 = st.columns(2)
-        
         with c1:
-            st.write("ค่า pH ปัจจุบัน")
-            st.bar_chart(df_latest.set_index('tank_name')[['ph_value']])
-            
+            st.caption("ค่า pH ปัจจุบัน")
+            st.bar_chart(latest_df.set_index('tank_name')['ph_value'])
         with c2:
-            st.write("อุณหภูมิปัจจุบัน (°C)")
-            st.bar_chart(df_latest.set_index('tank_name')[['temperature']])
+            st.caption("อุณหภูมิ (°C) ปัจจุบัน")
+            st.bar_chart(latest_df.set_index('tank_name')['temperature'])
+            
+        st.markdown("---")
+        
+        # กราฟเส้น: แนวโน้มตามบ่อที่เลือก
+        st.subheader("📈 แนวโน้มย้อนหลัง")
+        selected_tank = st.selectbox("เลือกบ่อที่ต้องการดูกราฟแนวโน้ม", df_logs['tank_name'].unique())
+        df_filtered = df_logs[df_logs['tank_name'] == selected_tank].sort_values('recorded_at')
+        
+        if not df_filtered.empty:
+            c3, c4 = st.columns(2)
+            with c3:
+                st.line_chart(df_filtered.set_index('recorded_at')['ph_value'])
+            with c4:
+                st.line_chart(df_filtered.set_index('recorded_at')['temperature'])
     else:
         st.write("ไม่พบข้อมูลบันทึกบ่อสี")
 
