@@ -2,12 +2,11 @@ import streamlit as st
 import pandas as pd
 from supabase import create_client
 from datetime import datetime, timezone, timedelta
-import time
 
-# ================== TIMEZONE ==================
+# 1. ตั้งค่า Timezone (UTC +7)
 ICT = timezone(timedelta(hours=7))
 
-# ================== CONFIG ==================
+# --- Configuration ---
 COLOR_HEX_MAP = {
     "Black": "#000000", "Red": "#FF0000", "Dark Red": "#8B0000", 
     "Violet": "#9400D3", "Green": "#008000", "Banana leaf Green": "#90EE90", 
@@ -29,217 +28,168 @@ TANK_COLOR_MAP = {
     "HotSealH60": "Black"
 }
 
-# ===== Threshold (ปรับได้ตามโรงงาน) =====
-PH_MIN, PH_MAX = 5.5, 6.5
-TEMP_MIN, TEMP_MAX = 20, 25
-
 st.set_page_config(page_title="Production Log System", layout="wide")
 
-# ================== DB ==================
+# --- เชื่อมต่อ Supabase ---
 @st.cache_resource
 def init_connection():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
+    try:
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"Error connecting to Supabase: {e}")
+        return None
 
 supabase = init_connection()
 
-# ================== HELPER ==================
-def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
-    query = supabase.table(table).select(f"{id_col}, {name_col}")
-    if filter_col and filter_val:
-        query = query.eq(filter_col, filter_val)
-    response = query.execute()
-    return {item[name_col]: item[id_col] for item in response.data}
-
+# --- Helper Functions ---
 def get_hex_from_name(name):
-    for k in COLOR_HEX_MAP:
-        if k.lower() in name.lower():
-            return COLOR_HEX_MAP[k]
+    sorted_colors = sorted(COLOR_HEX_MAP.keys(), key=len, reverse=True)
+    name_lower = str(name).lower()
+    for color_name in sorted_colors:
+        if color_name.lower() in name_lower:
+            return COLOR_HEX_MAP[color_name]
     return "#CCCCCC"
 
 def render_color_bar(name):
     hex_code = get_hex_from_name(name)
     st.markdown(f"""
-    <div style="background:{hex_code};height:20px;border-radius:5px"></div>
+        <div style="background-color:{hex_code}; width:100%; height:20px; border-radius:5px; border: 1px solid #ccc; margin-bottom: 10px;"></div>
     """, unsafe_allow_html=True)
 
-def check_status(ph, temp):
-    if PH_MIN <= ph <= PH_MAX and TEMP_MIN <= temp <= TEMP_MAX:
-        return "OK"
-    return "ALERT"
+def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
+    if not supabase: return {}
+    try:
+        query = supabase.table(table).select(f"{id_col}, {name_col}")
+        if filter_col and filter_val:
+            query = query.eq(filter_col, filter_val)
+        response = query.execute()
+        return {item[name_col]: item[id_col] for item in response.data}
+    except Exception:
+        return {}
 
-# ================== MENU ==================
+def update_jig_total_pieces(jig_id):
+    try:
+        logs = supabase.table("jig_usage_log").select("total_pieces").eq("jig_id", jig_id).execute()
+        total_sum = sum(item['total_pieces'] for item in logs.data)
+        supabase.table("jigs").update({"total_pcs_in_jig": total_sum}).eq("jig_id", jig_id).execute()
+    except Exception as e:
+        st.error(f"Error updating total: {e}")
+
+# --- Main App Navigation ---
 st.sidebar.title("เมนูระบบ")
 menu = st.sidebar.radio("เลือกหน้า", ["Dashboard", "บันทึกข้อมูลการผลิต"])
 
-# ================== DASHBOARD ==================
+# --- DASHBOARD SECTION ---
 if menu == "Dashboard":
-    st.title("📊 Production Dashboard (Real-Time)")
-
-    today = datetime.now(ICT).strftime("%Y-%m-%d")
-
-    # ===== KPI =====
+    st.title("📊 Production Dashboard")
+    
+    # 1. Metrics
     col1, col2, col3 = st.columns(3)
-
-    active_jigs = supabase.table("jig_status")\
-        .select("jig_id")\
-        .eq("status_type", "In-Process")\
-        .execute()
-
-    col1.metric("🟢 จิ๊กที่กำลังผลิต", len(active_jigs.data))
-
-    today_logs = supabase.table("jig_usage_log")\
-        .select("total_pieces")\
-        .gte("recorded_date", f"{today}T00:00:00")\
-        .execute()
-
+    active_jigs = supabase.table("jig_status").select("jig_id").eq("status_type", "In-Process").execute()
+    col1.metric("จิ๊กที่กำลังผลิต", len(active_jigs.data))
+    
+    today = datetime.now(ICT).strftime("%Y-%m-%d")
+    today_logs = supabase.table("jig_usage_log").select("total_pieces").gte("recorded_date", f"{today}T00:00:00").execute()
     total_today = sum(x['total_pieces'] for x in today_logs.data)
-    col2.metric("📦 ผลิตได้วันนี้", total_today)
-
-    active_tanks = supabase.table("color_tank_logs")\
-        .select("tank_id")\
-        .gte("recorded_at", f"{today}T00:00:00")\
-        .execute()
-
-    unique_tanks = len(set(x['tank_id'] for x in active_tanks.data))
-    col3.metric("🧪 บ่อที่ใช้งานวันนี้", unique_tanks)
-
+    col2.metric("ผลิตได้วันนี้ (ชิ้น)", total_today)
+    col3.metric("บ่อที่ใช้งานอยู่", len(active_jigs.data))
+    
     st.markdown("---")
-
-    # ================= COLOR DASHBOARD =================
-    st.subheader("🎨 บ่อสี (Color Bath)")
-
-    logs = supabase.table("color_tank_logs")\
-        .select("*")\
-        .order("recorded_at", desc=True)\
-        .limit(200)\
-        .execute()
-
-    if logs.data:
-        df = pd.DataFrame(logs.data)
-        df['recorded_at'] = pd.to_datetime(df['recorded_at'])
-
+    
+    # ดึงข้อมูลมาเตรียมไว้
+    logs_res = supabase.table("color_tank_logs").select("tank_id, ph_value, temperature, recorded_at").order("recorded_at", desc=True).limit(200).execute()
+    
+    if logs_res.data:
+        df_logs = pd.DataFrame(logs_res.data)
+        df_logs['recorded_at'] = pd.to_datetime(df_logs['recorded_at'])
+        
+        # Map ชื่อบ่อ
         tanks_map = get_options("tanks", "tank_id", "tank_name")
-        inv_map = {v:k for k,v in tanks_map.items()}
-        df['tank_name'] = df['tank_id'].map(inv_map)
-
-        latest = df.drop_duplicates("tank_id")
-        latest['status'] = latest.apply(lambda x: check_status(x['ph_value'], x['temperature']), axis=1)
-
-        # ALERT
-        alert = latest[latest['status']=="ALERT"]
-        if not alert.empty:
-            st.error("⚠️ พบค่าผิดปกติ")
-            st.dataframe(alert[['tank_name','ph_value','temperature']])
-
+        inv_tanks_map = {v: k for k, v in tanks_map.items()}
+        df_logs['tank_name'] = df_logs['tank_id'].map(inv_tanks_map)
+        
+        # กราฟแท่ง: ค่าปัจจุบันของทุกบ่อ
+        st.subheader("📊 สถานะปัจจุบันของแต่ละบ่อ")
+        latest_df = df_logs.drop_duplicates(subset=['tank_id'])
+        
         c1, c2 = st.columns(2)
         with c1:
-            st.bar_chart(latest.set_index('tank_name')['ph_value'])
+            st.caption("ค่า pH ปัจจุบัน")
+            st.bar_chart(latest_df.set_index('tank_name')['ph_value'])
         with c2:
-            st.bar_chart(latest.set_index('tank_name')['temperature'])
+            st.caption("อุณหภูมิ (°C) ปัจจุบัน")
+            st.bar_chart(latest_df.set_index('tank_name')['temperature'])
+            
+        st.markdown("---")
+        
+        # กราฟเส้น: แนวโน้มตามบ่อที่เลือก
+        st.subheader("📈 แนวโน้มย้อนหลัง")
+        selected_tank = st.selectbox("เลือกบ่อที่ต้องการดูกราฟแนวโน้ม", df_logs['tank_name'].unique())
+        df_filtered = df_logs[df_logs['tank_name'] == selected_tank].sort_values('recorded_at')
+        
+        if not df_filtered.empty:
+            c3, c4 = st.columns(2)
+            with c3:
+                st.line_chart(df_filtered.set_index('recorded_at')['ph_value'])
+            with c4:
+                st.line_chart(df_filtered.set_index('recorded_at')['temperature'])
+    else:
+        st.write("ไม่พบข้อมูลบันทึกบ่อสี")
 
-        # Trend
-        st.markdown("### 📈 แนวโน้ม")
-        tank = st.selectbox("เลือกบ่อสี", df['tank_name'].unique())
-        hours = st.selectbox("ช่วงเวลา", [1,6,24])
-
-        cutoff = datetime.now(ICT) - timedelta(hours=hours)
-        dff = df[(df['tank_name']==tank) & (df['recorded_at']>=cutoff)]
-
-        st.line_chart(dff.set_index('recorded_at')[['ph_value','temperature']])
-
-    # ================= ANODIZE DASHBOARD =================
-    st.markdown("---")
-    st.subheader("⚙️ บ่ออโนไดซ์ (Anodize)")
-
-    logs_a = supabase.table("anodize_tank_logs")\
-        .select("*")\
-        .order("recorded_at", desc=True)\
-        .limit(200)\
-        .execute()
-
-    if logs_a.data:
-        df_a = pd.DataFrame(logs_a.data)
-        df_a['recorded_at'] = pd.to_datetime(df_a['recorded_at'])
-
-        tanks_map = get_options("tanks", "tank_id", "tank_name")
-        inv_map = {v:k for k,v in tanks_map.items()}
-        df_a['tank_name'] = df_a['tank_id'].map(inv_map)
-
-        latest_a = df_a.drop_duplicates("tank_id")
-
-        c3, c4, c5 = st.columns(3)
-        with c3:
-            st.bar_chart(latest_a.set_index('tank_name')['ph_value'])
-        with c4:
-            st.bar_chart(latest_a.set_index('tank_name')['temperature'])
-        with c5:
-            st.bar_chart(latest_a.set_index('tank_name')['density'])
-
-        st.markdown("### 📈 แนวโน้มอโนไดซ์")
-        tank_a = st.selectbox("เลือกบ่ออโนไดซ์", df_a['tank_name'].unique())
-        dff_a = df_a[df_a['tank_name']==tank_a]
-
-        st.line_chart(dff_a.set_index('recorded_at')[['ph_value','temperature','density']])
-
-    # AUTO REFRESH
-    time.sleep(10)
-    st.rerun()
-
-# ================== RECORD ==================
+# --- RECORDING SECTION ---
 elif menu == "บันทึกข้อมูลการผลิต":
-    st.title("📥 ระบบบันทึกข้อมูล (กรอกข้อมูลง่ายขึ้น)")
+    st.title("ระบบบันทึกข้อมูลการผลิต")
+    
+    tab1, tab2, tab3 = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig)"])
 
-    tab1, tab2, tab3 = st.tabs(["บ่อสี", "บ่ออโนไดซ์", "งานจิ๊ก"])
-
-    # ===== COLOR =====
     with tab1:
-        st.header("🎨 บันทึกค่าบ่อสี")
+        st.header("บันทึกข้อมูลบ่อสี")
+        color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
+        if color_tanks:
+            selected_tank_name = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()), key="tank_select_t1")
+            detected_color = TANK_COLOR_MAP.get(selected_tank_name, "Black")
+            st.write(f"ระบบตรวจพบสี: **{detected_color}**")
+            render_color_bar(detected_color)
+            
+            with st.form("color_log_form", clear_on_submit=True):
+                ph = st.number_input("ค่า pH", step=0.1)
+                temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
+                if st.form_submit_button("บันทึกค่ามาตรฐาน"):
+                    try:
+                        supabase.table("color_tank_logs").insert({
+                            "tank_id": color_tanks[selected_tank_name], 
+                            "ph_value": ph, 
+                            "temperature": temp, 
+                            "recorded_at": datetime.now(ICT).isoformat()
+                        }).execute()
+                        st.success("บันทึกสำเร็จ")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
 
-        tanks = get_options("tanks","tank_id","tank_name","tank_type","Color")
-        name = st.selectbox("เลือกชื่อบ่อ", list(tanks.keys()))
-
-        color = TANK_COLOR_MAP.get(name,"Black")
-        st.write(f"สีที่ระบบตรวจจับ: {color}")
-        render_color_bar(color)
-
-        with st.form("f1"):
-            ph = st.number_input("ค่า pH (ควรอยู่ ~5.5 - 6.5)")
-            temp = st.number_input("อุณหภูมิ °C (ควรอยู่ ~20-25)")
-
-            if st.form_submit_button("💾 บันทึก"):
-                supabase.table("color_tank_logs").insert({
-                    "tank_id":tanks[name],
-                    "ph_value":ph,
-                    "temperature":temp,
-                    "recorded_at":datetime.now(ICT).isoformat()
-                }).execute()
-                st.success("บันทึกสำเร็จ")
-
-    # ===== ANODIZE =====
     with tab2:
-        st.header("⚙️ บันทึกค่าบ่ออโนไดซ์")
+        st.header("บันทึกข้อมูลบ่ออโนไดซ์")
+        anodize_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
+        if anodize_tanks:
+            selected_tank_name = st.selectbox("เลือกบ่ออโนไดซ์", list(anodize_tanks.keys()))
+            with st.form("anodize_log_form", clear_on_submit=True):
+                ph = st.number_input("ค่า pH", step=0.1)
+                temp = st.number_input("อุณหภูมิ (°C)", step=0.1)
+                density = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
+                if st.form_submit_button("บันทึก"):
+                    try:
+                        supabase.table("anodize_tank_logs").insert({
+                            "tank_id": anodize_tanks[selected_tank_name], 
+                            "ph_value": ph, 
+                            "temperature": temp, 
+                            "density": density, 
+                            "recorded_at": datetime.now(ICT).isoformat()
+                        }).execute()
+                        st.success("บันทึกสำเร็จ")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
 
-        tanks = get_options("tanks","tank_id","tank_name","tank_type","Anodize")
-        name = st.selectbox("เลือกชื่อบ่ออโนไดซ์", list(tanks.keys()))
-
-        with st.form("f2"):
-            ph = st.number_input("ค่า pH")
-            temp = st.number_input("อุณหภูมิ °C")
-            den = st.number_input("ความหนาแน่น (Density)")
-
-            if st.form_submit_button("💾 บันทึก"):
-                supabase.table("anodize_tank_logs").insert({
-                    "tank_id":tanks[name],
-                    "ph_value":ph,
-                    "temperature":temp,
-                    "density":den,
-                    "recorded_at":datetime.now(ICT).isoformat()
-                }).execute()
-                st.success("บันทึกสำเร็จ")
-
-    # ===== JIG (ห้ามแก้ logic) =====
     with tab3:
         sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
         
