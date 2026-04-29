@@ -71,7 +71,7 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# ================= DASHBOARD (PRODUCTION VERSION) =================
+# ================= DASHBOARD (PRODUCTION + REALTIME ACTIVE TANKS) =================
 if menu == "Dashboard":
 
     st.title("📊 Production Dashboard")
@@ -103,6 +103,12 @@ if menu == "Dashboard":
     def load_tanks():
         return get_options("tanks", "tank_id", "tank_name")
 
+    @st.cache_data(ttl=5)
+    def load_active_tanks():
+        return supabase.table("active_tanks")\
+            .select("tank_id")\
+            .execute().data
+
     # ================= KPI =================
     col1, col2, col3 = st.columns(3)
 
@@ -121,12 +127,9 @@ if menu == "Dashboard":
     total_today = sum(x['total_pieces'] for x in logs_today.data)
     col2.metric("📦 ผลิตวันนี้", total_today)
 
-    tank_logs_today = supabase.table("color_tank_logs")\
-        .select("tank_id")\
-        .gte("recorded_at", f"{today}T00:00:00")\
-        .execute()
-
-    col3.metric("🧪 บ่อใช้งาน", len(set(x['tank_id'] for x in tank_logs_today.data)))
+    # ✅ ใช้ active_tanks (เร็ว + ถูกต้อง)
+    active_tanks = load_active_tanks()
+    col3.metric("🧪 บ่อที่ใช้งาน", len(active_tanks))
 
     st.markdown("---")
 
