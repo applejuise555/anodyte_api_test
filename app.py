@@ -71,7 +71,7 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# ================= DASHBOARD (LEAN PRODUCTION) =================
+# ================= DASHBOARD (LEAN PRODUCTION FIXED) =================
 if menu == "Dashboard":
 
     import plotly.express as px
@@ -85,6 +85,14 @@ if menu == "Dashboard":
     @st.cache_data(ttl=10)
     def load_color_logs():
         return supabase.table("color_tank_logs")\
+            .select("*")\
+            .order("recorded_at", desc=True)\
+            .limit(100)\
+            .execute().data
+
+    @st.cache_data(ttl=10)
+    def load_anodize_logs():
+        return supabase.table("anodize_tank_logs")\
             .select("*")\
             .order("recorded_at", desc=True)\
             .limit(100)\
@@ -151,7 +159,6 @@ if menu == "Dashboard":
             lambda ph: "OK" if PH_MIN <= ph <= PH_MAX else "ALERT"
         )
 
-        # ===== VISUAL CARD =====
         st.markdown("### 🔴🟢 สถานะบ่อ")
 
         cols = st.columns(4)
@@ -173,7 +180,7 @@ if menu == "Dashboard":
                 </div>
                 """, unsafe_allow_html=True)
 
-        # ===== TREND (ตัวเดียวพอ) =====
+        # ===== TREND =====
         st.markdown("---")
 
         options = df['tank_name'].dropna().unique()
@@ -189,7 +196,6 @@ if menu == "Dashboard":
                 title=f"pH Trend: {sel}"
             )
 
-            # เส้นมาตรฐาน
             fig.add_hline(y=5.5, line_dash="dash", line_color="green")
             fig.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1)
 
@@ -199,73 +205,63 @@ if menu == "Dashboard":
         st.info("ไม่มีข้อมูล Color Tank")
 
     # ================= ANODIZE =================
-st.markdown("---")
-st.subheader("🧪 Anodize (Live)")
-
-@st.cache_data(ttl=10)
-def load_anodize_logs():
-    return supabase.table("anodize_tank_logs")\
-        .select("*")\
-        .order("recorded_at", desc=True)\
-        .limit(100)\
-        .execute().data
-
-logs_a = load_anodize_logs()
-
-if logs_a:
-    df_a = pd.DataFrame(logs_a)
-    df_a['recorded_at'] = pd.to_datetime(df_a['recorded_at'])
-
-    tank_map = load_tanks()
-    inv = {v: k for k, v in tank_map.items()}
-    df_a['tank_name'] = df_a['tank_id'].map(inv)
-
-    latest = df_a.drop_duplicates("tank_id")
-
-    # ===== VISUAL CARD (เอาเฉพาะ Density) =====
-    st.markdown("### ⚙️ Density Status")
-
-    cols = st.columns(4)
-    for i, row in latest.iterrows():
-
-        # simple color rule (ปรับได้)
-        color = "#16a34a" if row["density"] <= 1.2 else "#dc2626"
-
-        with cols[i % 4]:
-            st.markdown(f"""
-            <div style="
-                background:{color};
-                padding:14px;
-                border-radius:10px;
-                color:white;
-                text-align:center;
-                font-weight:600;
-            ">
-                {row['tank_name']}<br>
-                D: {row['density']:.3f}
-            </div>
-            """, unsafe_allow_html=True)
-
-    # ===== TREND =====
     st.markdown("---")
+    st.subheader("🧪 Anodize (Live)")
 
-    options = df_a['tank_name'].dropna().unique()
-    if len(options):
-        sel_a = st.selectbox("📈 ดูแนวโน้มอโนไดซ์", options)
+    logs_a = load_anodize_logs()
 
-        f_a = df_a[df_a['tank_name'] == sel_a].sort_values("recorded_at")
+    if logs_a:
+        df_a = pd.DataFrame(logs_a)
+        df_a['recorded_at'] = pd.to_datetime(df_a['recorded_at'])
 
-        fig_a = px.line(
-            f_a,
-            x="recorded_at",
-            y="density",
-            title=f"Density Trend: {sel_a}"
-        )
+        tank_map = load_tanks()
+        inv = {v: k for k, v in tank_map.items()}
+        df_a['tank_name'] = df_a['tank_id'].map(inv)
 
-        st.plotly_chart(fig_a, use_container_width=True)
+        latest = df_a.drop_duplicates("tank_id")
 
-else:
-    st.info("ไม่มีข้อมูล Anodize")
+        # ===== CARD =====
+        st.markdown("### ⚙️ Density Status")
+
+        cols = st.columns(4)
+        for i, row in latest.iterrows():
+            color = "#16a34a" if row["density"] <= 1.2 else "#dc2626"
+
+            with cols[i % 4]:
+                st.markdown(f"""
+                <div style="
+                    background:{color};
+                    padding:14px;
+                    border-radius:10px;
+                    color:white;
+                    text-align:center;
+                    font-weight:600;
+                ">
+                    {row['tank_name']}<br>
+                    D: {row['density']:.3f}
+                </div>
+                """, unsafe_allow_html=True)
+
+        # ===== TREND =====
+        st.markdown("---")
+
+        options = df_a['tank_name'].dropna().unique()
+        if len(options):
+            sel_a = st.selectbox("📈 ดูแนวโน้มอโนไดซ์", options)
+
+            f_a = df_a[df_a['tank_name'] == sel_a].sort_values("recorded_at")
+
+            fig_a = px.line(
+                f_a,
+                x="recorded_at",
+                y="density",
+                title=f"Density Trend: {sel_a}"
+            )
+
+            st.plotly_chart(fig_a, use_container_width=True)
+
+    else:
+        st.info("ไม่มีข้อมูล Anodize")
 
     # ================= AUTO REFRESH =================
     try:
@@ -273,7 +269,9 @@ else:
         st_autorefresh(interval=10000, key="refresh")
     except:
         pass
-# --- RECORDING SECTION ---
+
+
+# ================= RECORD PAGE =================
 elif menu == "บันทึกข้อมูลการผลิต":
     st.title("ระบบบันทึกข้อมูลการผลิต")
     
