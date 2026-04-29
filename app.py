@@ -71,15 +71,17 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# ================= DASHBOARD (LEAN PRODUCTION FIXED) =================
+# ================= DASHBOARD (FULL MONITORING) =================
 if menu == "Dashboard":
 
     import plotly.express as px
 
     st.title("📊 Production Dashboard")
 
-    PH_MIN = 5.0
-    PH_MAX = 6.0
+    # ===== STANDARD =====
+    PH_MIN, PH_MAX = 5.0, 6.0
+    TEMP_MIN, TEMP_MAX = 20, 25
+    DEN_MAX = 1.2
 
     # ================= CACHE =================
     @st.cache_data(ttl=10)
@@ -126,21 +128,8 @@ if menu == "Dashboard":
 
     st.markdown("---")
 
-    # ================= ACTIVE TANK =================
-    if active_tanks:
-        df_active = pd.DataFrame(active_tanks)
-
-        tank_map = load_tanks()
-        inv = {v: k for k, v in tank_map.items()}
-        df_active["tank_name"] = df_active["tank_id"].map(inv)
-
-        st.subheader("🟢 Active Tanks")
-        st.dataframe(df_active[["tank_name"]], use_container_width=True)
-
-    st.markdown("---")
-
     # ================= COLOR =================
-    st.subheader("🎨 Color Tanks (Live)")
+    st.subheader("🎨 Color Tanks")
 
     logs = load_color_logs()
 
@@ -154,12 +143,9 @@ if menu == "Dashboard":
 
         latest = df.drop_duplicates("tank_id")
 
-        # ===== STATUS =====
         latest["status"] = latest["ph_value"].apply(
             lambda ph: "OK" if PH_MIN <= ph <= PH_MAX else "ALERT"
         )
-
-        st.markdown("### 🔴🟢 สถานะบ่อ")
 
         cols = st.columns(4)
         for i, row in latest.iterrows():
@@ -167,46 +153,16 @@ if menu == "Dashboard":
 
             with cols[i % 4]:
                 st.markdown(f"""
-                <div style="
-                    background:{color};
-                    padding:14px;
-                    border-radius:10px;
-                    color:white;
-                    text-align:center;
-                    font-weight:600;
-                ">
+                <div style="background:{color};padding:12px;border-radius:10px;color:white;text-align:center">
                     {row['tank_name']}<br>
                     pH: {row['ph_value']:.2f}
                 </div>
                 """, unsafe_allow_html=True)
 
-        # ===== TREND =====
-        st.markdown("---")
-
-        options = df['tank_name'].dropna().unique()
-        if len(options):
-            sel = st.selectbox("📈 ดูแนวโน้มบ่อ", options)
-
-            f = df[df['tank_name'] == sel].sort_values("recorded_at")
-
-            fig = px.line(
-                f,
-                x="recorded_at",
-                y="ph_value",
-                title=f"pH Trend: {sel}"
-            )
-
-            fig.add_hline(y=5.5, line_dash="dash", line_color="green")
-            fig.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1)
-
-            st.plotly_chart(fig, use_container_width=True)
-
-    else:
-        st.info("ไม่มีข้อมูล Color Tank")
+    st.markdown("---")
 
     # ================= ANODIZE =================
-    st.markdown("---")
-    st.subheader("🧪 Anodize (Live)")
+    st.subheader("🧪 Anodize Tanks (Full Monitoring)")
 
     logs_a = load_anodize_logs()
 
@@ -220,45 +176,68 @@ if menu == "Dashboard":
 
         latest = df_a.drop_duplicates("tank_id")
 
-        # ===== CARD =====
-        st.markdown("### ⚙️ Density Status")
+        # ===== STATUS CHECK (3 ค่า) =====
+        def check_status(row):
+            if not (PH_MIN <= row["ph_value"] <= PH_MAX):
+                return "ALERT"
+            if not (TEMP_MIN <= row["temperature"] <= TEMP_MAX):
+                return "ALERT"
+            if row["density"] > DEN_MAX:
+                return "ALERT"
+            return "OK"
+
+        latest["status"] = latest.apply(check_status, axis=1)
+
+        # ===== CARD (โชว์ 3 ค่า) =====
+        st.markdown("### 🔴🟢 สถานะบ่ออโนไดซ์")
 
         cols = st.columns(4)
         for i, row in latest.iterrows():
-            color = "#16a34a" if row["density"] <= 1.2 else "#dc2626"
+            color = "#16a34a" if row["status"] == "OK" else "#dc2626"
 
             with cols[i % 4]:
                 st.markdown(f"""
                 <div style="
                     background:{color};
-                    padding:14px;
+                    padding:12px;
                     border-radius:10px;
                     color:white;
                     text-align:center;
-                    font-weight:600;
+                    font-size:14px;
                 ">
                     {row['tank_name']}<br>
+                    pH: {row['ph_value']:.2f}<br>
+                    T: {row['temperature']:.1f}°C<br>
                     D: {row['density']:.3f}
                 </div>
                 """, unsafe_allow_html=True)
 
-        # ===== TREND =====
+        # ===== ALERT TABLE =====
+        alert_df = latest[latest["status"] == "ALERT"]
+        if not alert_df.empty:
+            st.error("⚠️ พบค่าผิดปกติในบ่ออโนไดซ์")
+            st.dataframe(alert_df[["tank_name", "ph_value", "temperature", "density"]])
+
         st.markdown("---")
 
+        # ===== TREND =====
         options = df_a['tank_name'].dropna().unique()
         if len(options):
-            sel_a = st.selectbox("📈 ดูแนวโน้มอโนไดซ์", options)
+            sel = st.selectbox("📈 ดูแนวโน้มอโนไดซ์", options)
 
-            f_a = df_a[df_a['tank_name'] == sel_a].sort_values("recorded_at")
+            f = df_a[df_a['tank_name'] == sel].sort_values("recorded_at")
 
-            fig_a = px.line(
-                f_a,
+            fig = px.line(
+                f,
                 x="recorded_at",
-                y="density",
-                title=f"Density Trend: {sel_a}"
+                y=["ph_value", "temperature", "density"],
+                title=f"Trend: {sel}"
             )
 
-            st.plotly_chart(fig_a, use_container_width=True)
+            # เส้นมาตรฐาน pH
+            fig.add_hline(y=5.5, line_dash="dash")
+
+            st.plotly_chart(fig, use_container_width=True)
 
     else:
         st.info("ไม่มีข้อมูล Anodize")
@@ -269,6 +248,11 @@ if menu == "Dashboard":
         st_autorefresh(interval=10000, key="refresh")
     except:
         pass
+
+
+# ================= RECORD PAGE =================
+elif menu == "บันทึกข้อมูลการผลิต":
+    st.title("📥 บันทึกข้อมูล")
 
 
 # ================= RECORD PAGE =================
