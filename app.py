@@ -198,6 +198,75 @@ if menu == "Dashboard":
     else:
         st.info("ไม่มีข้อมูล Color Tank")
 
+    # ================= ANODIZE =================
+st.markdown("---")
+st.subheader("🧪 Anodize (Live)")
+
+@st.cache_data(ttl=10)
+def load_anodize_logs():
+    return supabase.table("anodize_tank_logs")\
+        .select("*")\
+        .order("recorded_at", desc=True)\
+        .limit(100)\
+        .execute().data
+
+logs_a = load_anodize_logs()
+
+if logs_a:
+    df_a = pd.DataFrame(logs_a)
+    df_a['recorded_at'] = pd.to_datetime(df_a['recorded_at'])
+
+    tank_map = load_tanks()
+    inv = {v: k for k, v in tank_map.items()}
+    df_a['tank_name'] = df_a['tank_id'].map(inv)
+
+    latest = df_a.drop_duplicates("tank_id")
+
+    # ===== VISUAL CARD (เอาเฉพาะ Density) =====
+    st.markdown("### ⚙️ Density Status")
+
+    cols = st.columns(4)
+    for i, row in latest.iterrows():
+
+        # simple color rule (ปรับได้)
+        color = "#16a34a" if row["density"] <= 1.2 else "#dc2626"
+
+        with cols[i % 4]:
+            st.markdown(f"""
+            <div style="
+                background:{color};
+                padding:14px;
+                border-radius:10px;
+                color:white;
+                text-align:center;
+                font-weight:600;
+            ">
+                {row['tank_name']}<br>
+                D: {row['density']:.3f}
+            </div>
+            """, unsafe_allow_html=True)
+
+    # ===== TREND =====
+    st.markdown("---")
+
+    options = df_a['tank_name'].dropna().unique()
+    if len(options):
+        sel_a = st.selectbox("📈 ดูแนวโน้มอโนไดซ์", options)
+
+        f_a = df_a[df_a['tank_name'] == sel_a].sort_values("recorded_at")
+
+        fig_a = px.line(
+            f_a,
+            x="recorded_at",
+            y="density",
+            title=f"Density Trend: {sel_a}"
+        )
+
+        st.plotly_chart(fig_a, use_container_width=True)
+
+else:
+    st.info("ไม่มีข้อมูล Anodize")
+
     # ================= AUTO REFRESH =================
     try:
         from streamlit_autorefresh import st_autorefresh
