@@ -73,160 +73,185 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
+# ================= DASHBOARD (FULL PRODUCTION) =================
 if menu == "Dashboard":
 
-    st.title("🖥️ SCADA Production Monitoring")
+    import plotly.express as px
+
+    st.title("📊 Production Dashboard")
 
     # ================= STANDARD =================
     PH_MIN, PH_MAX = 5.0, 6.0
     TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30, 40
     TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22
 
-    # ================= LOAD =================
+    # ================= CACHE =================
     @st.cache_data(ttl=10)
-    def load_color():
+    def load_color_logs():
         return supabase.table("color_tank_logs")\
-            .select("*").order("recorded_at", desc=True).limit(500).execute().data
+            .select("*")\
+            .order("recorded_at", desc=True)\
+            .limit(150)\
+            .execute().data
 
     @st.cache_data(ttl=10)
-    def load_ano():
+    def load_anodize_logs():
         return supabase.table("anodize_tank_logs")\
-            .select("*").order("recorded_at", desc=True).limit(500).execute().data
+            .select("*")\
+            .order("recorded_at", desc=True)\
+            .limit(150)\
+            .execute().data
 
     @st.cache_data(ttl=60)
     def load_tanks():
         return get_options("tanks", "tank_id", "tank_name")
 
-    tank_map = load_tanks()
-    inv = {v: k for k, v in tank_map.items()}
-
-    logs_c = load_color()
-    logs_a = load_ano()
-
-    df_c = pd.DataFrame(logs_c) if logs_c else pd.DataFrame()
-    df_a = pd.DataFrame(logs_a) if logs_a else pd.DataFrame()
-
-    # ================= FIX DATETIME =================
-    if not df_c.empty:
-        df_c["recorded_at"] = pd.to_datetime(df_c["recorded_at"], errors="coerce")
-        df_c = df_c.dropna(subset=["recorded_at"])
-        df_c["recorded_at"] = df_c["recorded_at"].dt.tz_localize(None)
-        df_c["tank_name"] = df_c["tank_id"].map(inv)
-
-    if not df_a.empty:
-        df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"], errors="coerce")
-        df_a = df_a.dropna(subset=["recorded_at"])
-        df_a["recorded_at"] = df_a["recorded_at"].dt.tz_localize(None)
-        df_a["tank_name"] = df_a["tank_id"].map(inv)
+    @st.cache_data(ttl=5)
+    def load_active_tanks():
+        try:
+            return supabase.table("active_tanks").select("tank_id").execute().data
+        except:
+            return []
 
     # ================= KPI =================
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2 = st.columns(2)
 
     active_jigs = supabase.table("jig_status")\
-        .select("jig_id").eq("status_type", "In-Process").execute()
-
-    today = datetime.now(ICT).date()
-    logs_today = supabase.table("jig_usage_log")\
-        .select("total_pieces")\
-        .gte("recorded_date", f"{today}T00:00:00")\
+        .select("jig_id")\
+        .eq("status_type", "In-Process")\
         .execute()
 
-    total_today = sum(x["total_pieces"] for x in logs_today.data)
+    active_tanks = load_active_tanks()
 
-    col1.metric("🟢 Active Jig", len(active_jigs.data))
-    col2.metric("📦 Output Today", total_today)
-    col3.metric("🧪 Tanks", len(tank_map))
-    col4.metric("📊 Records", len(df_c))
+    col1.metric("🟢 กำลังผลิต", len(active_jigs.data))
+    col2.metric("🧪 บ่อใช้งาน", len(active_tanks))
 
     st.markdown("---")
 
-    # =========================================================
-    # ================= TREND =================
-    # =========================================================
-    st.subheader("📈 Trend Analysis")
+    # ================= COLOR =================
+    st.subheader("🎨 Color Tanks")
 
-    if not df_c.empty:
+    logs = load_color_logs()
 
-        col1, col2 = st.columns([1,3])
+    if logs:
+        df = pd.DataFrame(logs)
+        df['recorded_at'] = pd.to_datetime(df['recorded_at'])
 
-        with col1:
-            hours = st.selectbox("ย้อนหลัง (ชั่วโมง)", [1, 6, 12, 24], index=1)
-            selected_tank = st.selectbox(
-                "เลือกบ่อ",
-                ["ทั้งหมด"] + sorted(df_c["tank_name"].dropna().unique())
-            )
+        tank_map = load_tanks()
+        inv = {v: k for k, v in tank_map.items()}
+        df['tank_name'] = df['tank_id'].map(inv)
 
-        cutoff = datetime.now() - timedelta(hours=hours)
-        trend = df_c[df_c["recorded_at"] >= cutoff]
+        latest = df.drop_duplicates("tank_id")
 
-        # 🔥 filter tank
-        if selected_tank != "ทั้งหมด":
-            trend = trend[trend["tank_name"] == selected_tank]
+        # ===== STATUS =====
+        def color_status(row):
+            if (PH_MIN <= row["ph_value"] <= PH_MAX) and \
+               (TEMP_COLOR_MIN <= row["temperature"] <= TEMP_COLOR_MAX):
+                return "OK"
+            return "ALERT"
 
-        if not trend.empty:
+        latest["status"] = latest.apply(color_status, axis=1)
 
-            fig = go.Figure()
+        st.markdown("### 🔴🟢 สถานะบ่อสี")
 
-            # ✅ กรณีเลือก "ทั้งหมด"
-            if selected_tank == "ทั้งหมด":
+        cols = st.columns(4)
+        for i, row in latest.iterrows():
+            color = "#16a34a" if row["status"] == "OK" else "#dc2626"
 
-                for tank in trend["tank_name"].dropna().unique():
-                    df_t = trend[trend["tank_name"] == tank]
+            with cols[i % 4]:
+                st.markdown(f"""
+                <div style="background:{color};padding:14px;border-radius:10px;
+                color:white;text-align:center;font-weight:600;">
+                    {row['tank_name']}<br>
+                    pH: {row['ph_value']:.2f}<br>
+                    T: {row['temperature']:.1f}
+                </div>
+                """, unsafe_allow_html=True)
 
-                    # Temp
-                    fig.add_trace(go.Scatter(
-                        x=df_t["recorded_at"],
-                        y=df_t["temperature"],
-                        mode="lines",
-                        name=f"{tank} Temp"
-                    ))
+        # ===== GRAPH =====
+        sel = st.selectbox("📈 Color Trend", df['tank_name'].dropna().unique())
 
-                    # pH
-                    fig.add_trace(go.Scatter(
-                        x=df_t["recorded_at"],
-                        y=df_t["ph_value"],
-                        mode="lines",
-                        line=dict(dash="dot"),
-                        name=f"{tank} pH"
-                    ))
+        f = df[df['tank_name'] == sel].sort_values("recorded_at")
 
-            # ✅ กรณีเลือกบ่อเดียว
-            else:
-                fig.add_trace(go.Scatter(
-                    x=trend["recorded_at"],
-                    y=trend["temperature"],
-                    mode="lines",
-                    name="Temp"
-                ))
+        fig = px.line(
+            f,
+            x="recorded_at",
+            y=["ph_value", "temperature"],
+            title=f"Color Trend: {sel}"
+        )
 
-                fig.add_trace(go.Scatter(
-                    x=trend["recorded_at"],
-                    y=trend["ph_value"],
-                    mode="lines",
-                    name="pH"
-                ))
+        fig.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1)
 
-            # 🔥 เส้นมาตรฐาน
-            fig.add_hline(y=TEMP_COLOR_MIN, line_dash="dash", line_color="red")
-            fig.add_hline(y=TEMP_COLOR_MAX, line_dash="dash", line_color="red")
-
-            fig.update_layout(
-                height=500,
-                legend_title="Tank / Type",
-                xaxis_title="Time",
-                yaxis_title="Value"
-            )
-
-            st.plotly_chart(fig, use_container_width=True)
-
-        else:
-            st.warning("ไม่มีข้อมูลในช่วงเวลาที่เลือก")
+        st.plotly_chart(fig, use_container_width=True)
 
     else:
-        st.warning("ยังไม่มีข้อมูลในระบบ")
+        st.info("ไม่มีข้อมูล Color Tank")
+
+    # ================= ANODIZE =================
+    st.markdown("---")
+    st.subheader("🧪 Anodize Tanks")
+
+    logs_a = load_anodize_logs()
+
+    if logs_a:
+        df_a = pd.DataFrame(logs_a)
+        df_a['recorded_at'] = pd.to_datetime(df_a['recorded_at'])
+
+        tank_map = load_tanks()
+        inv = {v: k for k, v in tank_map.items()}
+        df_a['tank_name'] = df_a['tank_id'].map(inv)
+
+        latest = df_a.drop_duplicates("tank_id")
+
+        # ===== STATUS =====
+        def ano_status(row):
+            if (PH_MIN <= row["ph_value"] <= PH_MAX) and \
+               (TEMP_ANO_MIN <= row["temperature"] <= TEMP_ANO_MAX):
+                return "OK"
+            return "ALERT"
+
+        latest["status"] = latest.apply(ano_status, axis=1)
+
+        st.markdown("### 🔴🟢 สถานะอโนไดซ์")
+
+        cols = st.columns(4)
+        for i, row in latest.iterrows():
+            color = "#16a34a" if row["status"] == "OK" else "#dc2626"
+
+            with cols[i % 4]:
+                st.markdown(f"""
+                <div style="background:{color};padding:14px;border-radius:10px;
+                color:white;text-align:center;font-weight:600;">
+                    {row['tank_name']}<br>
+                    pH: {row['ph_value']:.2f}<br>
+                    T: {row['temperature']:.1f}<br>
+                    D: {row['density']:.3f}
+                </div>
+                """, unsafe_allow_html=True)
+
+        # ===== GRAPH =====
+        sel_a = st.selectbox("📈 Anodize Trend", df_a['tank_name'].dropna().unique())
+
+        f_a = df_a[df_a['tank_name'] == sel_a].sort_values("recorded_at")
+
+        fig_a = px.line(
+            f_a,
+            x="recorded_at",
+            y=["ph_value", "temperature", "density"],
+            title=f"Anodize Trend: {sel_a}"
+        )
+
+        st.plotly_chart(fig_a, use_container_width=True)
+
+    else:
+        st.info("ไม่มีข้อมูล Anodize")
 
     # ================= AUTO REFRESH =================
-    st_autorefresh(interval=10000, key="refresh")
+    try:
+        from streamlit_autorefresh import st_autorefresh
+        st_autorefresh(interval=10000, key="refresh")
+    except:
+        pass
 # ================= RECORD PAGE =================
 elif menu == "บันทึกข้อมูลการผลิต":
     st.title("ระบบบันทึกข้อมูลการผลิต")
