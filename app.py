@@ -367,125 +367,124 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         except Exception as e:
                             st.error(f"Error: {e}")
 
-        with sub_log:
+                with sub_log:
             prods = get_options("products", "product_id", "product_code")
             jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
             jig_map = {j['jig_model_code']: j['jig_id'] for j in jigs_data}
             color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
+
             if prods and jigs_data and color_tanks_all:
                 sel_j = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()))
                 jig_id = jig_map[sel_j]
                 sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
 
-        # ================= GET STATUS =================
-        status_res = supabase.table("jig_status")\
-            .select("status_type, current_tank_id")\
-            .eq("jig_id", jig_id)\
-            .order("updated_at", desc=True)\
-            .limit(1)\
-            .execute()
-
-        status = status_res.data[0] if status_res.data else {"status_type": "Available"}
-
-        current_status = status.get("status_type", "Available")
-        current_tank = status.get("current_tank_id")
-
-        # ================= ACTION SELECT =================
-        action = st.radio(
-            "เลือกการทำงาน",
-            ["🔵 บันทึกงานต่อ", "🟢 เสร็จสิ้นงาน"]
-        )
-
-        # =========================================================
-        # 🔵 CONTINUE WORK
-        # =========================================================
-        if action == "🔵 บันทึกงานต่อ":
-
-            if current_status == "In-Process":
-                st.warning("⚠️ กำลังผลิต (ต่อ batch)")
-
-                last_log = supabase.table("jig_usage_log")\
-                    .select("color, tank_id")\
+                # ================= GET STATUS =================
+                status_res = supabase.table("jig_status")\
+                    .select("status_type, current_tank_id")\
                     .eq("jig_id", jig_id)\
-                    .order("recorded_date", desc=True)\
+                    .order("updated_at", desc=True)\
                     .limit(1)\
                     .execute()
 
-                current_color = last_log.data[0]['color'] if last_log.data else "ไม่ระบุ"
-                tank_id = last_log.data[0]['tank_id'] if last_log.data else None
+                status = status_res.data[0] if status_res.data else {"status_type": "Available"}
 
-            else:
-                st.success("🆕 เริ่มรอบใหม่")
+                current_status = status.get("status_type", "Available")
+                current_tank = status.get("current_tank_id")
 
-                sel_c_new = st.selectbox("เลือกสี", sorted(set(TANK_COLOR_MAP.values())))
-                render_color_bar(sel_c_new)
+                # ================= ACTION SELECT =================
+                action = st.radio(
+                    "เลือกการทำงาน",
+                    ["🔵 บันทึกงานต่อ", "🟢 เสร็จสิ้นงาน"]
+                )
 
-                filtered_tanks = {
-                    name: id for name, id in color_tanks_all.items()
-                    if TANK_COLOR_MAP.get(name) == sel_c_new
-                }
+                # =========================================================
+                # 🔵 CONTINUE WORK
+                # =========================================================
+                if action == "🔵 บันทึกงานต่อ":
 
-                if not filtered_tanks:
-                    st.error("❌ ไม่มีบ่อสำหรับสีนี้")
-                    st.stop()
+                    if current_status == "In-Process":
+                        st.warning("⚠️ กำลังผลิต (ต่อ batch)")
 
-                sel_tank_name = st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))
-                tank_id = filtered_tanks[sel_tank_name]
-                current_color = sel_c_new
+                        last_log = supabase.table("jig_usage_log")\
+                            .select("color, tank_id")\
+                            .eq("jig_id", jig_id)\
+                            .order("recorded_date", desc=True)\
+                            .limit(1)\
+                            .execute()
 
-            # ===== FORM =====
-            with st.form("continue_form", clear_on_submit=True):
-                pcs = st.number_input("จำนวนต่อแถว", min_value=0)
-                rows = st.number_input("แถวที่เต็ม", min_value=0)
-                partial = st.number_input("เศษ", min_value=0)
+                        current_color = last_log.data[0]['color'] if last_log.data else "ไม่ระบุ"
+                        tank_id = last_log.data[0]['tank_id'] if last_log.data else None
 
-                if st.form_submit_button("💾 บันทึกงานต่อ"):
-                    try:
-                        # insert production log
-                        supabase.table("jig_usage_log").insert({
-                            "product_id": prods[sel_p],
-                            "jig_id": jig_id,
-                            "color": current_color,
-                            "tank_id": tank_id,
-                            "pcs_per_row": pcs,
-                            "rows_filled": rows,
-                            "partial_pieces": partial,
-                            "total_pieces": (rows * pcs) + partial,
-                            "recorded_date": datetime.now(ICT).isoformat()
-                        }).execute()
+                    else:
+                        st.success("🆕 เริ่มรอบใหม่")
 
-                        # update status → In-Process
-                        supabase.table("jig_status").upsert({
-                            "jig_id": jig_id,
-                            "status_type": "In-Process",
-                            "current_tank_id": tank_id,
-                            "updated_at": datetime.now(ICT).isoformat()
-                        }).execute()
+                        sel_c_new = st.selectbox("เลือกสี", sorted(set(TANK_COLOR_MAP.values())))
+                        render_color_bar(sel_c_new)
 
-                        st.success("✅ บันทึกงานต่อสำเร็จ")
-                        st.rerun()
+                        filtered_tanks = {
+                            name: id for name, id in color_tanks_all.items()
+                            if TANK_COLOR_MAP.get(name) == sel_c_new
+                        }
 
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                        if not filtered_tanks:
+                            st.error("❌ ไม่มีบ่อสำหรับสีนี้")
+                            st.stop()
 
-        # =========================================================
-        # 🟢 FINISH WORK
-        # =========================================================
-        elif action == "🟢 เสร็จสิ้นงาน":
+                        sel_tank_name = st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))
+                        tank_id = filtered_tanks[sel_tank_name]
+                        current_color = sel_c_new
 
-            st.warning("⚠️ ยืนยันการจบงาน")
+                    # ===== FORM =====
+                    with st.form("continue_form", clear_on_submit=True):
+                        pcs = st.number_input("จำนวนต่อแถว", min_value=0)
+                        rows = st.number_input("แถวที่เต็ม", min_value=0)
+                        partial = st.number_input("เศษ", min_value=0)
 
-            if st.button("🏁 ยืนยันเสร็จสิ้นงาน"):
-                try:
-                    supabase.table("jig_status").upsert({
-                        "jig_id": jig_id,
-                        "status_type": "Finished",
-                        "current_tank_id": None,
-                        "updated_at": datetime.now(ICT).isoformat()
-                    }).execute()
+                        if st.form_submit_button("💾 บันทึกงานต่อ"):
+                            try:
+                                supabase.table("jig_usage_log").insert({
+                                    "product_id": prods[sel_p],
+                                    "jig_id": jig_id,
+                                    "color": current_color,
+                                    "tank_id": tank_id,
+                                    "pcs_per_row": pcs,
+                                    "rows_filled": rows,
+                                    "partial_pieces": partial,
+                                    "total_pieces": (rows * pcs) + partial,
+                                    "recorded_date": datetime.now(ICT).isoformat()
+                                }).execute()
 
-                    st.success("🎉 งานเสร็จสิ้นแล้ว")
-                    st.rerun()
+                                supabase.table("jig_status").upsert({
+                                    "jig_id": jig_id,
+                                    "status_type": "In-Process",
+                                    "current_tank_id": tank_id,
+                                    "updated_at": datetime.now(ICT).isoformat()
+                                }).execute()
 
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                                st.success("✅ บันทึกงานต่อสำเร็จ")
+                                st.rerun()
+
+                            except Exception as e:
+                                st.error(f"Error: {e}")
+
+                # =========================================================
+                # 🟢 FINISH WORK
+                # =========================================================
+                elif action == "🟢 เสร็จสิ้นงาน":
+
+                    st.warning("⚠️ ยืนยันการจบงาน")
+
+                    if st.button("🏁 ยืนยันเสร็จสิ้นงาน"):
+                        try:
+                            supabase.table("jig_status").upsert({
+                                "jig_id": jig_id,
+                                "status_type": "Finished",
+                                "current_tank_id": None,
+                                "updated_at": datetime.now(ICT).isoformat()
+                            }).execute()
+
+                            st.success("🎉 งานเสร็จสิ้นแล้ว")
+                            st.rerun()
+
+                        except Exception as e:
+                            st.error(f"Error: {e}")
