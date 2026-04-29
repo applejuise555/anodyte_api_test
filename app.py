@@ -203,7 +203,7 @@ if menu == "Dashboard":
     # ================= ANODIZE (ALL TANK VIEW) ================
     # =========================================================
     st.markdown("---")
-    st.subheader("🧪 Anodize Tanks (Compare All)")
+st.subheader("🧪 Anodize Tanks (Smart Monitoring)")
 
 logs_a = load_anodize_logs()
 
@@ -217,43 +217,64 @@ if logs_a:
 
     latest = df.drop_duplicates("tank_id")
 
-    # ===== STATUS =====
-    def check_status(row):
-        if not (5.0 <= row["ph_value"] <= 6.0):
-            return "red"
-        if not (18 <= row["temperature"] <= 22):
-            return "red"
-        return "green"
+    # ================= STANDARD =================
+    PH_MIN, PH_MAX = 5.0, 6.0
+    TEMP_MIN, TEMP_MAX = 18, 22
 
-    latest["color"] = latest.apply(check_status, axis=1)
+    alerts = []
 
-    # ===== GROUPED BAR =====
+    # ================= COLOR PER METRIC =================
+    ph_colors = []
+    temp_colors = []
+    den_colors = []
+
+    for _, row in latest.iterrows():
+
+        # ===== pH =====
+        if PH_MIN <= row["ph_value"] <= PH_MAX:
+            ph_colors.append("#22c55e")  # green
+        else:
+            ph_colors.append("#ef4444")  # red
+            alerts.append(f"{row['tank_name']} → pH ผิด ({row['ph_value']:.2f})")
+
+        # ===== TEMP =====
+        if TEMP_MIN <= row["temperature"] <= TEMP_MAX:
+            temp_colors.append("#3b82f6")  # blue
+        else:
+            temp_colors.append("#ef4444")
+            alerts.append(f"{row['tank_name']} → Temp ผิด ({row['temperature']:.1f}°C)")
+
+        # ===== DENSITY =====
+        # (ยังไม่มี standard → ใช้สีม่วงปกติ)
+        den_colors.append("#a855f7")
+
+    # ================= GRAPH =================
     fig = go.Figure()
 
     fig.add_trace(go.Bar(
         x=latest["tank_name"],
         y=latest["ph_value"],
         name="pH",
-        marker_color=latest["color"]
+        marker_color=ph_colors
     ))
 
     fig.add_trace(go.Bar(
         x=latest["tank_name"],
         y=latest["temperature"],
-        name="Temp (°C)",
-        marker_color=latest["color"]
+        name="Temperature",
+        marker_color=temp_colors
     ))
 
     fig.add_trace(go.Bar(
         x=latest["tank_name"],
         y=latest["density"],
         name="Density",
-        marker_color=latest["color"]
+        marker_color=den_colors
     ))
 
     fig.update_layout(
         barmode="group",
-        title="Anodize Tank Comparison",
+        title="Anodize Tank Monitoring",
         xaxis_title="Tank",
         yaxis_title="Value",
         legend=dict(orientation="h")
@@ -261,12 +282,16 @@ if logs_a:
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # ================= AUTO REFRESH =================
-    try:
-        from streamlit_autorefresh import st_autorefresh
-        st_autorefresh(interval=10000, key="refresh")
-    except:
-        pass
+    # ================= ALERT MESSAGE =================
+    if alerts:
+        st.error("🚨 พบค่าผิดปกติในบ่ออโนไดซ์")
+        for a in alerts:
+            st.write("•", a)
+    else:
+        st.success("✅ ทุกบ่ออยู่ในมาตรฐาน")
+
+else:
+    st.info("ไม่มีข้อมูล Anodize")
 # ================= RECORD PAGE =================
 elif menu == "บันทึกข้อมูลการผลิต":
     st.title("📥 บันทึกข้อมูล")
