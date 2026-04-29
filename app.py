@@ -228,7 +228,7 @@ if menu == "Dashboard":
 
             fig.add_trace(go.Bar(x=latest_a["tank_name"], y=latest_a["ph_value"], marker_color=ph_c, name="pH"))
             fig.add_trace(go.Bar(x=latest_a["tank_name"], y=latest_a["temperature"], marker_color=temp_c, name="Temp"))
-            fig.add_trace(go.Bar(x=latest_a["tank_name"], y=latest_a["density"], name="Density"))
+            fig.add_trace(go.Bar(x=latest_a["tank_name"], y=latest_a["density"], name="Density", marker_color="#14b8a6"))
 
             fig.update_layout(barmode="group")
 
