@@ -73,12 +73,12 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# ================= DASHBOARD (MIXED CHART PRODUCTION) =================
+# ================= DASHBOARD (FULL SYSTEM VIEW) =================
 if menu == "Dashboard":
 
     import plotly.graph_objects as go
 
-    st.title("📊 Production Dashboard")
+    st.title("📊 Production Dashboard (System Overview)")
 
     # ================= STANDARD =================
     PH_MIN, PH_MAX = 5.0, 6.0
@@ -91,7 +91,7 @@ if menu == "Dashboard":
         return supabase.table("color_tank_logs")\
             .select("*")\
             .order("recorded_at", desc=True)\
-            .limit(150)\
+            .limit(200)\
             .execute().data
 
     @st.cache_data(ttl=10)
@@ -99,19 +99,12 @@ if menu == "Dashboard":
         return supabase.table("anodize_tank_logs")\
             .select("*")\
             .order("recorded_at", desc=True)\
-            .limit(150)\
+            .limit(200)\
             .execute().data
 
     @st.cache_data(ttl=60)
     def load_tanks():
         return get_options("tanks", "tank_id", "tank_name")
-
-    @st.cache_data(ttl=5)
-    def load_active_tanks():
-        try:
-            return supabase.table("active_tanks").select("tank_id").execute().data
-        except:
-            return []
 
     # ================= KPI =================
     col1, col2 = st.columns(2)
@@ -121,168 +114,174 @@ if menu == "Dashboard":
         .eq("status_type", "In-Process")\
         .execute()
 
-    active_tanks = load_active_tanks()
-
     col1.metric("🟢 กำลังผลิต", len(active_jigs.data))
-    col2.metric("🧪 บ่อใช้งาน", len(active_tanks))
+    col2.metric("🧪 จำนวนบ่อทั้งหมด", len(load_tanks()))
 
     st.markdown("---")
 
-    # ================= COLOR =================
-    st.subheader("🎨 Color Tanks")
+    # =========================================================
+    # ================= COLOR (ALL TANK VIEW) =================
+    # =========================================================
+    st.subheader("🎨 Color Tanks (All)")
 
     logs = load_color_logs()
 
     if logs:
         df = pd.DataFrame(logs)
-        df['recorded_at'] = pd.to_datetime(df['recorded_at'])
+        df["recorded_at"] = pd.to_datetime(df["recorded_at"])
 
         tank_map = load_tanks()
         inv = {v: k for k, v in tank_map.items()}
-        df['tank_name'] = df['tank_id'].map(inv)
+        df["tank_name"] = df["tank_id"].map(inv)
 
         latest = df.drop_duplicates("tank_id")
 
         # ===== STATUS =====
-        def color_status(row):
-            if (PH_MIN <= row["ph_value"] <= PH_MAX) and \
-               (TEMP_COLOR_MIN <= row["temperature"] <= TEMP_COLOR_MAX):
-                return "OK"
-            return "ALERT"
-
-        latest["status"] = latest.apply(color_status, axis=1)
-
-        # ===== CARD =====
-        st.markdown("### 🔴🟢 สถานะบ่อสี")
-
-        cols = st.columns(4)
-        for i, row in latest.iterrows():
-            color = "#16a34a" if row["status"] == "OK" else "#dc2626"
-
-            with cols[i % 4]:
-                st.markdown(f"""
-                <div style="background:{color};padding:14px;border-radius:10px;
-                color:white;text-align:center;font-weight:600;">
-                    {row['tank_name']}<br>
-                    pH: {row['ph_value']:.2f}<br>
-                    T: {row['temperature']:.1f}
-                </div>
-                """, unsafe_allow_html=True)
-
-        # ===== MIXED GRAPH (🔥 ตรงนี้คือของใหม่) =====
-        st.markdown("---")
-        st.subheader("📊 Color Trend (pH vs Temperature)")
-
-        sel = st.selectbox("เลือกบ่อสี", df['tank_name'].dropna().unique())
-        f = df[df['tank_name'] == sel].sort_values("recorded_at")
-
-        fig = go.Figure()
-
-        # BAR = Temperature
-        fig.add_trace(go.Bar(
-            x=f["recorded_at"],
-            y=f["temperature"],
-            name="Temperature (°C)",
-            yaxis="y1",
-            opacity=0.6
-        ))
-
-        # LINE = pH
-        fig.add_trace(go.Scatter(
-            x=f["recorded_at"],
-            y=f["ph_value"],
-            name="pH",
-            mode="lines+markers",
-            yaxis="y2"
-        ))
-
-        # Layout dual axis
-        fig.update_layout(
-            xaxis=dict(title="Time"),
-            yaxis=dict(title="Temperature (°C)", side="left"),
-            yaxis2=dict(
-                title="pH",
-                overlaying="y",
-                side="right"
-            ),
-            legend=dict(x=0, y=1.1, orientation="h"),
-            margin=dict(l=40, r=40, t=40, b=40)
+        latest["ph_status"] = latest["ph_value"].apply(
+            lambda x: "OK" if PH_MIN <= x <= PH_MAX else "ALERT"
+        )
+        latest["temp_status"] = latest["temperature"].apply(
+            lambda x: "OK" if TEMP_COLOR_MIN <= x <= TEMP_COLOR_MAX else "ALERT"
         )
 
-        # Standard zone (pH)
-        fig.add_hrect(
-            y0=PH_MIN, y1=PH_MAX,
-            fillcolor="green",
-            opacity=0.1,
-            layer="below",
-            line_width=0,
-            yref="y2"
+        # ===== COLOR =====
+        def get_color(row):
+            if row["ph_status"] == "ALERT" or row["temp_status"] == "ALERT":
+                return "red"
+            return "green"
+
+        latest["color"] = latest.apply(get_color, axis=1)
+
+        # ===== CHART =====
+        fig = go.Figure()
+
+        # pH bar
+        fig.add_trace(go.Bar(
+            x=latest["tank_name"],
+            y=latest["ph_value"],
+            name="pH",
+            marker_color=latest["color"]
+        ))
+
+        # Temp line
+        fig.add_trace(go.Scatter(
+            x=latest["tank_name"],
+            y=latest["temperature"],
+            name="Temperature",
+            mode="lines+markers"
+        ))
+
+        # ===== STANDARD ZONE =====
+        fig.add_hrect(y0=PH_MIN, y1=PH_MAX,
+                      fillcolor="green", opacity=0.1,
+                      line_width=0)
+
+        fig.update_layout(
+            title="Color Tank: pH + Temperature",
+            yaxis_title="Value",
+            xaxis_title="Tank",
+            legend=dict(orientation="h")
         )
 
         st.plotly_chart(fig, use_container_width=True)
 
-    else:
-        st.info("ไม่มีข้อมูล Color Tank")
+        # ===== ALERT TABLE =====
+        alert_df = latest[
+            (latest["ph_status"] == "ALERT") |
+            (latest["temp_status"] == "ALERT")
+        ]
 
-    # ================= ANODIZE =================
+        if not alert_df.empty:
+            st.error("⚠️ Color Tank ผิดปกติ")
+            st.dataframe(
+                alert_df[["tank_name", "ph_value", "temperature"]],
+                use_container_width=True
+            )
+
+    else:
+        st.info("ไม่มีข้อมูล Color")
+
+    # =========================================================
+    # ================= ANODIZE (ALL TANK VIEW) ================
+    # =========================================================
     st.markdown("---")
-    st.subheader("🧪 Anodize Tanks")
+    st.subheader("🧪 Anodize Tanks (All)")
 
     logs_a = load_anodize_logs()
 
     if logs_a:
         df_a = pd.DataFrame(logs_a)
-        df_a['recorded_at'] = pd.to_datetime(df_a['recorded_at'])
+        df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"])
 
         tank_map = load_tanks()
         inv = {v: k for k, v in tank_map.items()}
-        df_a['tank_name'] = df_a['tank_id'].map(inv)
+        df_a["tank_name"] = df_a["tank_id"].map(inv)
 
         latest = df_a.drop_duplicates("tank_id")
 
         # ===== STATUS =====
-        def ano_status(row):
-            if (PH_MIN <= row["ph_value"] <= PH_MAX) and \
-               (TEMP_ANO_MIN <= row["temperature"] <= TEMP_ANO_MAX):
-                return "OK"
-            return "ALERT"
+        latest["ph_status"] = latest["ph_value"].apply(
+            lambda x: "OK" if PH_MIN <= x <= PH_MAX else "ALERT"
+        )
+        latest["temp_status"] = latest["temperature"].apply(
+            lambda x: "OK" if TEMP_ANO_MIN <= x <= TEMP_ANO_MAX else "ALERT"
+        )
 
-        latest["status"] = latest.apply(ano_status, axis=1)
+        def get_color(row):
+            if row["ph_status"] == "ALERT" or row["temp_status"] == "ALERT":
+                return "red"
+            return "green"
 
-        # ===== CARD =====
-        st.markdown("### 🔴🟢 สถานะอโนไดซ์")
+        latest["color"] = latest.apply(get_color, axis=1)
 
-        cols = st.columns(4)
-        for i, row in latest.iterrows():
-            color = "#16a34a" if row["status"] == "OK" else "#dc2626"
+        # ===== CHART =====
+        fig2 = go.Figure()
 
-            with cols[i % 4]:
-                st.markdown(f"""
-                <div style="background:{color};padding:14px;border-radius:10px;
-                color:white;text-align:center;font-weight:600;">
-                    {row['tank_name']}<br>
-                    pH: {row['ph_value']:.2f}<br>
-                    T: {row['temperature']:.1f}<br>
-                    D: {row['density']:.3f}
-                </div>
-                """, unsafe_allow_html=True)
-
-        # ===== GRAPH =====
-        st.markdown("---")
-        sel_a = st.selectbox("เลือกบ่ออโนไดซ์", df_a['tank_name'].dropna().unique())
-
-        f_a = df_a[df_a['tank_name'] == sel_a].sort_values("recorded_at")
-
-        fig_a = go.Figure()
-
-        fig_a.add_trace(go.Scatter(
-            x=f_a["recorded_at"],
-            y=f_a["density"],
+        # Density bar
+        fig2.add_trace(go.Bar(
+            x=latest["tank_name"],
+            y=latest["density"],
             name="Density",
+            marker_color=latest["color"]
+        ))
+
+        # Temp line
+        fig2.add_trace(go.Scatter(
+            x=latest["tank_name"],
+            y=latest["temperature"],
+            name="Temperature",
             mode="lines+markers"
         ))
 
-        st.plotly_chart(fig_a, use_container_width=True)
+        # pH line
+        fig2.add_trace(go.Scatter(
+            x=latest["tank_name"],
+            y=latest["ph_value"],
+            name="pH",
+            mode="lines+markers"
+        ))
+
+        fig2.update_layout(
+            title="Anodize Tank: Density + Temp + pH",
+            yaxis_title="Value",
+            xaxis_title="Tank",
+            legend=dict(orientation="h")
+        )
+
+        st.plotly_chart(fig2, use_container_width=True)
+
+        # ===== ALERT TABLE =====
+        alert_df = latest[
+            (latest["ph_status"] == "ALERT") |
+            (latest["temp_status"] == "ALERT")
+        ]
+
+        if not alert_df.empty:
+            st.error("⚠️ Anodize ผิดปกติ")
+            st.dataframe(
+                alert_df[["tank_name", "ph_value", "temperature", "density"]],
+                use_container_width=True
+            )
 
     else:
         st.info("ไม่มีข้อมูล Anodize")
