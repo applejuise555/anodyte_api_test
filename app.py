@@ -71,7 +71,7 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# ================= DASHBOARD (PRODUCTION + REALTIME ACTIVE TANKS) =================
+# ================= DASHBOARD (PRODUCTION + ACTIVE TANKS) =================
 if menu == "Dashboard":
 
     st.title("📊 Production Dashboard")
@@ -79,7 +79,6 @@ if menu == "Dashboard":
     # ================= CONFIG =================
     PH_MIN = 5.0
     PH_MAX = 6.0
-
     today = datetime.now(ICT).strftime("%Y-%m-%d")
 
     # ================= CACHE =================
@@ -105,19 +104,22 @@ if menu == "Dashboard":
 
     @st.cache_data(ttl=5)
     def load_active_tanks():
-        return supabase.table("active_tanks")\
-            .select("tank_id")\
-            .execute().data
+        try:
+            return supabase.table("active_tanks")\
+                .select("tank_id")\
+                .execute().data
+        except:
+            return []
 
     # ================= KPI =================
     col1, col2, col3 = st.columns(3)
 
-    active = supabase.table("jig_status")\
+    active_jigs = supabase.table("jig_status")\
         .select("jig_id")\
         .eq("status_type", "In-Process")\
         .execute()
 
-    col1.metric("🟢 กำลังผลิต", len(active.data))
+    col1.metric("🟢 กำลังผลิต", len(active_jigs.data))
 
     logs_today = supabase.table("jig_usage_log")\
         .select("total_pieces")\
@@ -127,9 +129,23 @@ if menu == "Dashboard":
     total_today = sum(x['total_pieces'] for x in logs_today.data)
     col2.metric("📦 ผลิตวันนี้", total_today)
 
-    # ✅ ใช้ active_tanks (เร็ว + ถูกต้อง)
     active_tanks = load_active_tanks()
     col3.metric("🧪 บ่อที่ใช้งาน", len(active_tanks))
+
+    st.markdown("---")
+
+    # ================= ACTIVE TANK TABLE =================
+    if active_tanks:
+        df_active = pd.DataFrame(active_tanks)
+
+        tank_map = load_tanks()
+        inv = {v: k for k, v in tank_map.items()}
+        df_active["tank_name"] = df_active["tank_id"].map(inv)
+
+        st.subheader("🟢 Active Tanks (Real-Time)")
+        st.dataframe(df_active[["tank_name"]], use_container_width=True)
+    else:
+        st.info("ไม่มีบ่อที่กำลังใช้งาน")
 
     st.markdown("---")
 
@@ -148,7 +164,7 @@ if menu == "Dashboard":
 
         latest = df.drop_duplicates("tank_id")
 
-        # ===== STATUS CHECK =====
+        # ===== STATUS =====
         latest["status"] = latest["ph_value"].apply(
             lambda ph: "OK" if PH_MIN <= ph <= PH_MAX else "ALERT"
         )
@@ -156,25 +172,19 @@ if menu == "Dashboard":
         alert_df = latest[latest["status"] == "ALERT"]
 
         if not alert_df.empty:
-            st.error("⚠️ พบ pH ผิดปกติ")
+            st.error("⚠️ pH ผิดปกติ")
             st.dataframe(alert_df[["tank_name", "ph_value"]])
 
         # ===== BAR =====
         c1, c2 = st.columns(2)
-        with c1:
-            st.caption("pH ล่าสุด")
-            st.bar_chart(latest.set_index("tank_name")["ph_value"])
-        with c2:
-            st.caption("Temperature ล่าสุด")
-            st.bar_chart(latest.set_index("tank_name")["temperature"])
+        c1.bar_chart(latest.set_index("tank_name")["ph_value"])
+        c2.bar_chart(latest.set_index("tank_name")["temperature"])
 
         st.markdown("---")
 
-        # ===== FILTER =====
+        # ===== TREND =====
         options = df['tank_name'].dropna().unique()
-        if len(options) == 0:
-            st.info("ไม่มีข้อมูลบ่อสี")
-        else:
+        if len(options):
             sel = st.selectbox("เลือกบ่อสี", options)
             hours = st.selectbox("ช่วงเวลา (ชม.)", [1, 6, 24], index=1)
 
@@ -188,7 +198,7 @@ if menu == "Dashboard":
                 c3.line_chart(f.set_index("recorded_at")["ph_value"])
                 c4.line_chart(f.set_index("recorded_at")["temperature"])
             else:
-                st.warning("ไม่มีข้อมูลในช่วงเวลานี้")
+                st.warning("ไม่มีข้อมูลช่วงนี้")
 
     else:
         st.info("ไม่มีข้อมูล Color Tank")
@@ -209,25 +219,17 @@ if menu == "Dashboard":
 
         latest = df.drop_duplicates("tank_id")
 
-        # ===== BAR =====
         c1, c2, c3 = st.columns(3)
-        with c1:
-            st.caption("pH")
-            st.bar_chart(latest.set_index("tank_name")["ph_value"])
-        with c2:
-            st.caption("Temperature")
-            st.bar_chart(latest.set_index("tank_name")["temperature"])
-        with c3:
-            st.caption("Density")
-            st.bar_chart(latest.set_index("tank_name")["density"])
+        c1.bar_chart(latest.set_index("tank_name")["ph_value"])
+        c2.bar_chart(latest.set_index("tank_name")["temperature"])
+        c3.bar_chart(latest.set_index("tank_name")["density"])
 
         st.markdown("---")
 
         options = df['tank_name'].dropna().unique()
-        if len(options) == 0:
-            st.info("ไม่มีข้อมูลอโนไดซ์")
-        else:
+        if len(options):
             sel = st.selectbox("เลือกบ่ออโนไดซ์", options)
+
             f = df[df['tank_name'] == sel].sort_values("recorded_at")
 
             c4, c5, c6 = st.columns(3)
@@ -239,7 +241,11 @@ if menu == "Dashboard":
         st.info("ไม่มีข้อมูล Anodize")
 
     # ================= AUTO REFRESH =================
-    st_autorefresh(interval=10000, key="refresh")
+    try:
+        from streamlit_autorefresh import st_autorefresh
+        st_autorefresh(interval=10000, key="refresh")
+    except:
+        pass
 
 # --- RECORDING SECTION ---
 elif menu == "บันทึกข้อมูลการผลิต":
