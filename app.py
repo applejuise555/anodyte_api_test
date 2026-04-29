@@ -3,8 +3,10 @@ import pandas as pd
 from supabase import create_client
 from datetime import datetime, timezone, timedelta
 from streamlit_autorefresh import st_autorefresh
+import plotly.graph_objects as go
 # 1. ตั้งค่า Timezone (UTC +7)
 ICT = timezone(timedelta(hours=7))
+st.set_page_config(page_title="SCADA Dashboard", layout="wide")
 
 # --- Configuration ---
 COLOR_HEX_MAP = {
