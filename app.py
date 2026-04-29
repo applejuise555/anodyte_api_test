@@ -167,11 +167,36 @@ if menu == "Dashboard":
     # =========================================================
     # ================= ALARM =================
     # =========================================================
-    if alert_count > 0:
-        st.error(f"🚨 SYSTEM ALERT: {alert_count} จุดผิดปกติ")
-    else:
-        st.success("✅ System Normal")
+    alerts_detail = []
 
+# ===== COLOR =====
+if not latest_c.empty:
+    for _, r in latest_c.iterrows():
+        if not (PH_MIN <= r["ph_value"] <= PH_MAX):
+            alerts_detail.append(f"{r['tank_name']} → pH ({r['ph_value']:.2f})")
+
+        if not (TEMP_COLOR_MIN <= r["temperature"] <= TEMP_COLOR_MAX):
+            alerts_detail.append(f"{r['tank_name']} → Temp ({r['temperature']:.1f}°C)")
+
+# ===== ANODIZE =====
+if not latest_a.empty:
+    for _, r in latest_a.iterrows():
+        if not (PH_MIN <= r["ph_value"] <= PH_MAX):
+            alerts_detail.append(f"{r['tank_name']} → pH ({r['ph_value']:.2f})")
+
+        if not (TEMP_ANO_MIN <= r["temperature"] <= TEMP_ANO_MAX):
+            alerts_detail.append(f"{r['tank_name']} → Temp ({r['temperature']:.1f}°C)")
+
+# ===== SHOW =====
+if alerts_detail:
+    st.error(f"🚨 SYSTEM ALERT: {len(alerts_detail)} จุดผิดปกติ")
+
+    # แสดง list แบบ SCADA
+    for a in alerts_detail:
+        st.write("🔴", a)
+
+else:
+    st.success("✅ System Normal")
     st.markdown("---")
 
     # =========================================================
