@@ -202,19 +202,22 @@ if menu == "Dashboard":
 
             fig = go.Figure()
 
-            fig.add_trace(go.Bar(
-                x=latest_c["tank_name"],
-                y=latest_c["ph_value"],
-                marker_color=latest_c["status"],
-                name="pH"
-            ))
+for tank in trend["tank_name"].dropna().unique():
+    df_t = trend[trend["tank_name"] == tank]
 
-            fig.add_trace(go.Scatter(
-                x=latest_c["tank_name"],
-                y=latest_c["temperature"],
-                mode="lines+markers",
-                name="Temp"
-            ))
+    fig.add_trace(go.Scatter(
+        x=df_t["recorded_at"],
+        y=df_t["temperature"],
+        mode="lines",
+        name=f"{tank} Temp"
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=df_t["recorded_at"],
+        y=df_t["ph_value"],
+        mode="lines",
+        name=f"{tank} pH"
+    ))
 
             fig.add_hrect(y0=TEMP_COLOR_MIN, y1=TEMP_COLOR_MAX,
                           fillcolor="blue", opacity=0.1)
