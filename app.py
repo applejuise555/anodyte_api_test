@@ -253,29 +253,53 @@ for tank in trend["tank_name"].dropna().unique():
 
             st.plotly_chart(fig, use_container_width=True)
 
-    # =========================================================
-    # ================= TREND =================
-    # =========================================================
-    st.markdown("---")
-    st.subheader("📈 Trend Analysis")
+# =========================================================
+# ================= TREND =================
+# =========================================================
+st.markdown("---")
+st.subheader("📈 Trend Analysis")
 
-    if not df_c.empty:
+if not df_c.empty:
 
-        col1, col2 = st.columns([1,3])
+    col1, col2 = st.columns([1,3])
 
-        with col1:
-            hours = st.selectbox("ย้อนหลัง (ชั่วโมง)", [1, 6, 12, 24], index=1)
-            selected_tank = st.selectbox("เลือกบ่อ", ["ทั้งหมด"] + list(df_c["tank_name"].dropna().unique()))
+    with col1:
+        hours = st.selectbox("ย้อนหลัง (ชั่วโมง)", [1, 6, 12, 24], index=1)
+        selected_tank = st.selectbox(
+            "เลือกบ่อ",
+            ["ทั้งหมด"] + list(df_c["tank_name"].dropna().unique())
+        )
 
-        cutoff = datetime.now() - timedelta(hours=hours)
-        trend = df_c[df_c["recorded_at"] >= cutoff]
+    cutoff = datetime.now() - timedelta(hours=hours)
+    trend = df_c[df_c["recorded_at"] >= cutoff]
 
-        if selected_tank != "ทั้งหมด":
+    if not trend.empty:
+
+        fig = go.Figure()
+
+        # ✅ กรณีเลือก "ทั้งหมด" → แยกเส้นแต่ละ tank
+        if selected_tank == "ทั้งหมด":
+
+            for tank in trend["tank_name"].dropna().unique():
+                df_t = trend[trend["tank_name"] == tank]
+
+                fig.add_trace(go.Scatter(
+                    x=df_t["recorded_at"],
+                    y=df_t["temperature"],
+                    mode="lines",
+                    name=f"{tank} Temp"
+                ))
+
+                fig.add_trace(go.Scatter(
+                    x=df_t["recorded_at"],
+                    y=df_t["ph_value"],
+                    mode="lines",
+                    name=f"{tank} pH"
+                ))
+
+        # ✅ กรณีเลือก tank เดียว
+        else:
             trend = trend[trend["tank_name"] == selected_tank]
-
-        if not trend.empty:
-
-            fig = go.Figure()
 
             fig.add_trace(go.Scatter(
                 x=trend["recorded_at"],
@@ -289,14 +313,14 @@ for tank in trend["tank_name"].dropna().unique():
                 name="pH"
             ))
 
-            fig.add_hline(y=TEMP_COLOR_MIN, line_dash="dash", line_color="red")
-            fig.add_hline(y=TEMP_COLOR_MAX, line_dash="dash", line_color="red")
+        # เส้น standard
+        fig.add_hline(y=TEMP_COLOR_MIN, line_dash="dash", line_color="red")
+        fig.add_hline(y=TEMP_COLOR_MAX, line_dash="dash", line_color="red")
 
-            st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
-        else:
-            st.warning("ไม่มีข้อมูล")
-
+    else:
+        st.warning("ไม่มีข้อมูล")
     # =========================================================
     # ================= AUTO REFRESH =================
     # =========================================================
