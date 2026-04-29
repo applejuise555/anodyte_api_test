@@ -71,7 +71,7 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# ================= DASHBOARD (VISUAL + PLOTLY) =================
+# ================= DASHBOARD (LEAN PRODUCTION) =================
 if menu == "Dashboard":
 
     import plotly.express as px
@@ -80,7 +80,6 @@ if menu == "Dashboard":
 
     PH_MIN = 5.0
     PH_MAX = 6.0
-    today = datetime.now(ICT).strftime("%Y-%m-%d")
 
     # ================= CACHE =================
     @st.cache_data(ttl=10)
@@ -88,15 +87,7 @@ if menu == "Dashboard":
         return supabase.table("color_tank_logs")\
             .select("*")\
             .order("recorded_at", desc=True)\
-            .limit(300)\
-            .execute().data
-
-    @st.cache_data(ttl=10)
-    def load_anodize_logs():
-        return supabase.table("anodize_tank_logs")\
-            .select("*")\
-            .order("recorded_at", desc=True)\
-            .limit(300)\
+            .limit(100)\
             .execute().data
 
     @st.cache_data(ttl=60)
@@ -106,33 +97,42 @@ if menu == "Dashboard":
     @st.cache_data(ttl=5)
     def load_active_tanks():
         try:
-            return supabase.table("active_tanks").select("tank_id").execute().data
+            return supabase.table("active_tanks")\
+                .select("tank_id")\
+                .execute().data
         except:
             return []
 
     # ================= KPI =================
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     active_jigs = supabase.table("jig_status")\
         .select("jig_id")\
         .eq("status_type", "In-Process")\
         .execute()
 
-    logs_today = supabase.table("jig_usage_log")\
-        .select("total_pieces")\
-        .gte("recorded_date", f"{today}T00:00:00")\
-        .execute()
-
     active_tanks = load_active_tanks()
 
     col1.metric("🟢 กำลังผลิต", len(active_jigs.data))
-    col2.metric("📦 วันนี้", sum(x['total_pieces'] for x in logs_today.data))
-    col3.metric("🧪 บ่อใช้งาน", len(active_tanks))
+    col2.metric("🧪 บ่อใช้งาน", len(active_tanks))
+
+    st.markdown("---")
+
+    # ================= ACTIVE TANK =================
+    if active_tanks:
+        df_active = pd.DataFrame(active_tanks)
+
+        tank_map = load_tanks()
+        inv = {v: k for k, v in tank_map.items()}
+        df_active["tank_name"] = df_active["tank_id"].map(inv)
+
+        st.subheader("🟢 Active Tanks")
+        st.dataframe(df_active[["tank_name"]], use_container_width=True)
 
     st.markdown("---")
 
     # ================= COLOR =================
-    st.subheader("🎨 Color Tanks")
+    st.subheader("🎨 Color Tanks (Live)")
 
     logs = load_color_logs()
 
@@ -146,113 +146,57 @@ if menu == "Dashboard":
 
         latest = df.drop_duplicates("tank_id")
 
-        # 🔴🟢 STATUS
+        # ===== STATUS =====
         latest["status"] = latest["ph_value"].apply(
             lambda ph: "OK" if PH_MIN <= ph <= PH_MAX else "ALERT"
         )
 
         # ===== VISUAL CARD =====
-        st.markdown("### 🔴🟢 สถานะบ่อ (Live)")
+        st.markdown("### 🔴🟢 สถานะบ่อ")
 
         cols = st.columns(4)
         for i, row in latest.iterrows():
-            color = "green" if row["status"] == "OK" else "red"
+            color = "#16a34a" if row["status"] == "OK" else "#dc2626"
 
             with cols[i % 4]:
                 st.markdown(f"""
                 <div style="
-                    background-color:{color};
-                    padding:15px;
+                    background:{color};
+                    padding:14px;
                     border-radius:10px;
                     color:white;
                     text-align:center;
-                    font-weight:bold;
+                    font-weight:600;
                 ">
                     {row['tank_name']}<br>
                     pH: {row['ph_value']:.2f}
                 </div>
                 """, unsafe_allow_html=True)
 
-        # ===== ALERT TABLE =====
-        alert_df = latest[latest["status"] == "ALERT"]
-        if not alert_df.empty:
-            st.error("⚠️ มีบ่อ pH ผิดปกติ")
-            st.dataframe(alert_df[["tank_name", "ph_value"]])
-
+        # ===== TREND (ตัวเดียวพอ) =====
         st.markdown("---")
 
-        # ===== PLOTLY BAR =====
-        fig_bar = px.bar(
-            latest,
-            x="tank_name",
-            y="ph_value",
-            color="status",
-            color_discrete_map={"OK": "green", "ALERT": "red"},
-            title="pH ล่าสุดแต่ละบ่อ"
-        )
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-        # ===== TREND =====
         options = df['tank_name'].dropna().unique()
         if len(options):
-            sel = st.selectbox("เลือกบ่อสี", options)
-            hours = st.selectbox("ช่วงเวลา (ชม.)", [1, 6, 24], index=1)
+            sel = st.selectbox("📈 ดูแนวโน้มบ่อ", options)
 
-            cutoff = datetime.now(ICT) - timedelta(hours=hours)
-            f = df[(df['tank_name'] == sel) & (df['recorded_at'] >= cutoff)]
+            f = df[df['tank_name'] == sel].sort_values("recorded_at")
 
-            if not f.empty:
-                f = f.sort_values("recorded_at")
+            fig = px.line(
+                f,
+                x="recorded_at",
+                y="ph_value",
+                title=f"pH Trend: {sel}"
+            )
 
-                fig_line = px.line(
-                    f,
-                    x="recorded_at",
-                    y=["ph_value", "temperature"],
-                    title=f"Trend: {sel}"
-                )
-                st.plotly_chart(fig_line, use_container_width=True)
+            # เส้นมาตรฐาน
+            fig.add_hline(y=5.5, line_dash="dash", line_color="green")
+            fig.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1)
+
+            st.plotly_chart(fig, use_container_width=True)
 
     else:
         st.info("ไม่มีข้อมูล Color Tank")
-
-    # ================= ANODIZE =================
-    st.markdown("---")
-    st.subheader("🧪 Anodize Tanks")
-
-    logs_a = load_anodize_logs()
-
-    if logs_a:
-        df = pd.DataFrame(logs_a)
-        df['recorded_at'] = pd.to_datetime(df['recorded_at'])
-
-        tank_map = load_tanks()
-        inv = {v: k for k, v in tank_map.items()}
-        df['tank_name'] = df['tank_id'].map(inv)
-
-        latest = df.drop_duplicates("tank_id")
-
-        fig_bar2 = px.bar(
-            latest,
-            x="tank_name",
-            y="density",
-            title="Density ล่าสุด"
-        )
-        st.plotly_chart(fig_bar2, use_container_width=True)
-
-        sel = st.selectbox("เลือกบ่ออโนไดซ์", df['tank_name'].dropna().unique())
-
-        f = df[df['tank_name'] == sel].sort_values("recorded_at")
-
-        fig_line2 = px.line(
-            f,
-            x="recorded_at",
-            y=["ph_value", "temperature", "density"],
-            title=f"Trend: {sel}"
-        )
-        st.plotly_chart(fig_line2, use_container_width=True)
-
-    else:
-        st.info("ไม่มีข้อมูล Anodize")
 
     # ================= AUTO REFRESH =================
     try:
