@@ -142,61 +142,46 @@ if menu == "Dashboard":
     total_today = sum(x["total_pieces"] for x in logs_today.data)
 
     alert_count = 0
+    alerts_detail = []
 
+    # ===== COLOR =====
     if not latest_c.empty:
-        alert_count += len(latest_c[
-            (latest_c["ph_value"] < PH_MIN) |
-            (latest_c["ph_value"] > PH_MAX) |
-            (latest_c["temperature"] < TEMP_COLOR_MIN) |
-            (latest_c["temperature"] > TEMP_COLOR_MAX)
-        ])
+        for _, r in latest_c.iterrows():
+            if not (PH_MIN <= r["ph_value"] <= PH_MAX):
+                alert_count += 1
+                alerts_detail.append(f"{r['tank_name']} → pH ({r['ph_value']:.2f})")
 
+            if not (TEMP_COLOR_MIN <= r["temperature"] <= TEMP_COLOR_MAX):
+                alert_count += 1
+                alerts_detail.append(f"{r['tank_name']} → Temp ({r['temperature']:.1f}°C)")
+
+    # ===== ANODIZE =====
     if not latest_a.empty:
-        alert_count += len(latest_a[
-            (latest_a["ph_value"] < PH_MIN) |
-            (latest_a["ph_value"] > PH_MAX) |
-            (latest_a["temperature"] < TEMP_ANO_MIN) |
-            (latest_a["temperature"] > TEMP_ANO_MAX)
-        ])
+        for _, r in latest_a.iterrows():
+            if not (PH_MIN <= r["ph_value"] <= PH_MAX):
+                alert_count += 1
+                alerts_detail.append(f"{r['tank_name']} → pH ({r['ph_value']:.2f})")
+
+            if not (TEMP_ANO_MIN <= r["temperature"] <= TEMP_ANO_MAX):
+                alert_count += 1
+                alerts_detail.append(f"{r['tank_name']} → Temp ({r['temperature']:.1f}°C)")
 
     col1.metric("🟢 Active Jig", len(active_jigs.data))
     col2.metric("📦 Output Today", total_today)
     col3.metric("🧪 Tanks", len(tank_map))
     col4.metric("🚨 Alerts", alert_count)
 
-# =========================================================
-# ================= ALARM =================
-# =========================================================
-alerts_detail = []
+    # =========================================================
+    # ================= ALERT =================
+    # =========================================================
+    if alerts_detail:
+        st.error(f"🚨 SYSTEM ALERT: {len(alerts_detail)} จุดผิดปกติ")
+        for a in alerts_detail:
+            st.write("🔴", a)
+    else:
+        st.success("✅ System Normal")
 
-# ===== COLOR =====
-if not latest_c.empty:
-    for _, r in latest_c.iterrows():
-        if not (PH_MIN <= r["ph_value"] <= PH_MAX):
-            alerts_detail.append(f"{r['tank_name']} → pH ({r['ph_value']:.2f})")
-
-        if not (TEMP_COLOR_MIN <= r["temperature"] <= TEMP_COLOR_MAX):
-            alerts_detail.append(f"{r['tank_name']} → Temp ({r['temperature']:.1f}°C)")
-
-# ===== ANODIZE =====
-if not latest_a.empty:
-    for _, r in latest_a.iterrows():
-        if not (PH_MIN <= r["ph_value"] <= PH_MAX):
-            alerts_detail.append(f"{r['tank_name']} → pH ({r['ph_value']:.2f})")
-
-        if not (TEMP_ANO_MIN <= r["temperature"] <= TEMP_ANO_MAX):
-            alerts_detail.append(f"{r['tank_name']} → Temp ({r['temperature']:.1f}°C)")
-
-# ===== SHOW ALERT =====
-if alerts_detail:
-    st.error(f"🚨 SYSTEM ALERT: {len(alerts_detail)} จุดผิดปกติ")
-    for a in alerts_detail:
-        st.write("🔴", a)
-else:
-    st.success("✅ System Normal")
-
-# 🔥 สำคัญ: ต้องมีเส้นนี้แยกออกมา
-st.markdown("---")
+    st.markdown("---")
 
     # =========================================================
     # ================= MAIN PANELS =================
@@ -252,7 +237,14 @@ st.markdown("---")
 
             fig.add_trace(go.Bar(x=latest_a["tank_name"], y=latest_a["ph_value"], marker_color=ph_c, name="pH"))
             fig.add_trace(go.Bar(x=latest_a["tank_name"], y=latest_a["temperature"], marker_color=temp_c, name="Temp"))
-            fig.add_trace(go.Bar(x=latest_a["tank_name"], y=latest_a["density"], name="Density", marker_color="#14b8a6"))
+
+            # ✅ FIX สี density (ไม่ใช้แดง)
+            fig.add_trace(go.Bar(
+                x=latest_a["tank_name"],
+                y=latest_a["density"],
+                name="Density",
+                marker_color="#14b8a6"  # teal (ปลอดภัย ไม่ดูเหมือน alarm)
+            ))
 
             fig.update_layout(barmode="group")
 
@@ -306,7 +298,6 @@ st.markdown("---")
     # ================= AUTO REFRESH =================
     # =========================================================
     st_autorefresh(interval=10000, key="refresh")
-
 # ================= RECORD PAGE =================
 elif menu == "บันทึกข้อมูลการผลิต":
     st.title("ระบบบันทึกข้อมูลการผลิต")
