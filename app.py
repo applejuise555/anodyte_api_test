@@ -366,7 +366,6 @@ elif menu == "บันทึกข้อมูลการผลิต":
                             st.success("ลงทะเบียนจิ๊กสำเร็จ")
                         except Exception as e:
                             st.error(f"Error: {e}")
-
         with sub_log:
             prods = get_options("products", "product_id", "product_code")
             jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
