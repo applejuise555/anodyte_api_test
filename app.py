@@ -203,86 +203,63 @@ if menu == "Dashboard":
     # ================= ANODIZE (ALL TANK VIEW) ================
     # =========================================================
     st.markdown("---")
-    st.subheader("🧪 Anodize Tanks (All)")
+    st.subheader("🧪 Anodize Tanks (Compare All)")
 
-    logs_a = load_anodize_logs()
+logs_a = load_anodize_logs()
 
-    if logs_a:
-        df_a = pd.DataFrame(logs_a)
-        df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"])
+if logs_a:
+    df = pd.DataFrame(logs_a)
+    df["recorded_at"] = pd.to_datetime(df["recorded_at"])
 
-        tank_map = load_tanks()
-        inv = {v: k for k, v in tank_map.items()}
-        df_a["tank_name"] = df_a["tank_id"].map(inv)
+    tank_map = load_tanks()
+    inv = {v: k for k, v in tank_map.items()}
+    df["tank_name"] = df["tank_id"].map(inv)
 
-        latest = df_a.drop_duplicates("tank_id")
+    latest = df.drop_duplicates("tank_id")
 
-        # ===== STATUS =====
-        latest["ph_status"] = latest["ph_value"].apply(
-            lambda x: "OK" if PH_MIN <= x <= PH_MAX else "ALERT"
-        )
-        latest["temp_status"] = latest["temperature"].apply(
-            lambda x: "OK" if TEMP_ANO_MIN <= x <= TEMP_ANO_MAX else "ALERT"
-        )
+    # ===== STATUS =====
+    def check_status(row):
+        if not (5.0 <= row["ph_value"] <= 6.0):
+            return "red"
+        if not (18 <= row["temperature"] <= 22):
+            return "red"
+        return "green"
 
-        def get_color(row):
-            if row["ph_status"] == "ALERT" or row["temp_status"] == "ALERT":
-                return "red"
-            return "green"
+    latest["color"] = latest.apply(check_status, axis=1)
 
-        latest["color"] = latest.apply(get_color, axis=1)
+    # ===== GROUPED BAR =====
+    fig = go.Figure()
 
-        # ===== CHART =====
-        fig2 = go.Figure()
+    fig.add_trace(go.Bar(
+        x=latest["tank_name"],
+        y=latest["ph_value"],
+        name="pH",
+        marker_color=latest["color"]
+    ))
 
-        # Density bar
-        fig2.add_trace(go.Bar(
-            x=latest["tank_name"],
-            y=latest["density"],
-            name="Density",
-            marker_color=latest["color"]
-        ))
+    fig.add_trace(go.Bar(
+        x=latest["tank_name"],
+        y=latest["temperature"],
+        name="Temp (°C)",
+        marker_color=latest["color"]
+    ))
 
-        # Temp line
-        fig2.add_trace(go.Scatter(
-            x=latest["tank_name"],
-            y=latest["temperature"],
-            name="Temperature",
-            mode="lines+markers"
-        ))
+    fig.add_trace(go.Bar(
+        x=latest["tank_name"],
+        y=latest["density"],
+        name="Density",
+        marker_color=latest["color"]
+    ))
 
-        # pH line
-        fig2.add_trace(go.Scatter(
-            x=latest["tank_name"],
-            y=latest["ph_value"],
-            name="pH",
-            mode="lines+markers"
-        ))
+    fig.update_layout(
+        barmode="group",
+        title="Anodize Tank Comparison",
+        xaxis_title="Tank",
+        yaxis_title="Value",
+        legend=dict(orientation="h")
+    )
 
-        fig2.update_layout(
-            title="Anodize Tank: Density + Temp + pH",
-            yaxis_title="Value",
-            xaxis_title="Tank",
-            legend=dict(orientation="h")
-        )
-
-        st.plotly_chart(fig2, use_container_width=True)
-
-        # ===== ALERT TABLE =====
-        alert_df = latest[
-            (latest["ph_status"] == "ALERT") |
-            (latest["temp_status"] == "ALERT")
-        ]
-
-        if not alert_df.empty:
-            st.error("⚠️ Anodize ผิดปกติ")
-            st.dataframe(
-                alert_df[["tank_name", "ph_value", "temperature", "density"]],
-                use_container_width=True
-            )
-
-    else:
-        st.info("ไม่มีข้อมูล Anodize")
+    st.plotly_chart(fig, use_container_width=True)
 
     # ================= AUTO REFRESH =================
     try:
