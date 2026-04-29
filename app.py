@@ -189,6 +189,86 @@ if not df_c.empty:
     else:
         st.warning("ไม่มีข้อมูลในช่วงเวลานี้")
 
+        # =========================================================
+    # ================= ANODIZE =================
+    # =========================================================
+    st.markdown("---")
+    st.subheader("🧪 Anodize Tanks (Smart Monitoring)")
+
+    logs_a = load_anodize_logs()
+
+    if logs_a:
+        df_a = pd.DataFrame(logs_a)
+        df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"])
+
+        tank_map = load_tanks()
+        inv = {v: k for k, v in tank_map.items()}
+        df_a["tank_name"] = df_a["tank_id"].map(inv)
+
+        latest = df_a.drop_duplicates("tank_id")
+
+        alerts = []
+
+        ph_colors, temp_colors, den_colors = [], [], []
+
+        for _, row in latest.iterrows():
+
+            # pH
+            if PH_MIN <= row["ph_value"] <= PH_MAX:
+                ph_colors.append("#22c55e")
+            else:
+                ph_colors.append("#ef4444")
+                alerts.append(f"{row['tank_name']} → pH ผิด ({row['ph_value']:.2f})")
+
+            # Temp
+            if TEMP_ANO_MIN <= row["temperature"] <= TEMP_ANO_MAX:
+                temp_colors.append("#3b82f6")
+            else:
+                temp_colors.append("#ef4444")
+                alerts.append(f"{row['tank_name']} → Temp ผิด ({row['temperature']:.1f})")
+
+            # Density
+            den_colors.append("#a855f7")
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Bar(
+            x=latest["tank_name"],
+            y=latest["ph_value"],
+            name="pH",
+            marker_color=ph_colors
+        ))
+
+        fig.add_trace(go.Bar(
+            x=latest["tank_name"],
+            y=latest["temperature"],
+            name="Temperature",
+            marker_color=temp_colors
+        ))
+
+        fig.add_trace(go.Bar(
+            x=latest["tank_name"],
+            y=latest["density"],
+            name="Density",
+            marker_color=den_colors
+        ))
+
+        fig.update_layout(barmode="group")
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        if alerts:
+            st.error("🚨 พบค่าผิดปกติในบ่ออโนไดซ์")
+            for a in alerts:
+                st.write("•", a)
+        else:
+            st.success("✅ ทุกบ่ออยู่ในมาตรฐาน")
+
+    else:
+        st.info("ไม่มีข้อมูล Anodize")
+
+
+
     # =========================================================
     # ================= AUTO REFRESH ===========================
     # =========================================================
