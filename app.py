@@ -71,27 +71,27 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# ================= DASHBOARD (FULL SYSTEM VIEW) =================
 if menu == "Dashboard":
 
     import plotly.graph_objects as go
 
-    st.title("📊 Production Dashboard")
+    st.title("🖥️ SCADA Production Monitoring")
 
+    # ================= STANDARD =================
     PH_MIN, PH_MAX = 5.0, 6.0
     TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30, 40
     TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22
 
-    # -------- LOAD --------
+    # ================= LOAD =================
     @st.cache_data(ttl=10)
     def load_color():
-        return supabase.table("color_tank_logs").select("*")\
-            .order("recorded_at", desc=True).limit(200).execute().data
+        return supabase.table("color_tank_logs")\
+            .select("*").order("recorded_at", desc=True).limit(200).execute().data
 
     @st.cache_data(ttl=10)
     def load_ano():
-        return supabase.table("anodize_tank_logs").select("*")\
-            .order("recorded_at", desc=True).limit(200).execute().data
+        return supabase.table("anodize_tank_logs")\
+            .select("*").order("recorded_at", desc=True).limit(200).execute().data
 
     @st.cache_data(ttl=60)
     def load_tanks():
@@ -100,140 +100,189 @@ if menu == "Dashboard":
     tank_map = load_tanks()
     inv = {v: k for k, v in tank_map.items()}
 
-    # =====================================================
-    # ================= COLOR GRAPH ========================
-    # =====================================================
-    st.subheader("🎨 Color Tanks")
-
-    logs = load_color()
-
-    if logs:
-        df = pd.DataFrame(logs)
-        df["tank_name"] = df["tank_id"].map(inv)
-
-        latest = df.drop_duplicates("tank_id")
-
-        # สี bar
-        latest["bar_color"] = latest.apply(
-            lambda r: "red" if not(PH_MIN <= r["ph_value"] <= PH_MAX) 
-                             or not(TEMP_COLOR_MIN <= r["temperature"] <= TEMP_COLOR_MAX)
-            else "green", axis=1
-        )
-
-        # จุดแดง temp
-        temp_colors = [
-            "red" if not (TEMP_COLOR_MIN <= t <= TEMP_COLOR_MAX) else "#3b82f6"
-            for t in latest["temperature"]
-        ]
-
-        fig = go.Figure()
-
-        # pH bar
-        fig.add_trace(go.Bar(
-            x=latest["tank_name"],
-            y=latest["ph_value"],
-            name="pH",
-            marker_color=latest["bar_color"]
-        ))
-
-        # Temp line + จุดแดง
-        fig.add_trace(go.Scatter(
-            x=latest["tank_name"],
-            y=latest["temperature"],
-            name="Temperature",
-            mode="lines+markers",
-            line=dict(color="#3b82f6", width=3),
-            marker=dict(size=10, color=temp_colors)
-        ))
-
-        # highlight temp range
-        fig.add_hrect(
-            y0=TEMP_COLOR_MIN,
-            y1=TEMP_COLOR_MAX,
-            fillcolor="blue",
-            opacity=0.1,
-            line_width=0
-        )
-
-        fig.update_layout(title="Color Tank Monitoring")
-
-        st.plotly_chart(fig, use_container_width=True)
-
-    else:
-        st.info("ไม่มีข้อมูล Color")
-
-    # =====================================================
-    # ================= ANODIZE ============================
-    # =====================================================
-    st.markdown("---")
-    st.subheader("🧪 Anodize Tanks")
-
+    logs_c = load_color()
     logs_a = load_ano()
 
-    if logs_a:
-        df = pd.DataFrame(logs_a)
-        df["tank_name"] = df["tank_id"].map(inv)
+    df_c = pd.DataFrame(logs_c) if logs_c else pd.DataFrame()
+    df_a = pd.DataFrame(logs_a) if logs_a else pd.DataFrame()
 
-        latest = df.drop_duplicates("tank_id")
+    if not df_c.empty:
+        df_c["tank_name"] = df_c["tank_id"].map(inv)
+        latest_c = df_c.drop_duplicates("tank_id")
+    else:
+        latest_c = pd.DataFrame()
 
-        alerts = []
-        ph_c, temp_c, den_c = [], [], []
+    if not df_a.empty:
+        df_a["tank_name"] = df_a["tank_id"].map(inv)
+        latest_a = df_a.drop_duplicates("tank_id")
+    else:
+        latest_a = pd.DataFrame()
 
-        for _, r in latest.iterrows():
+    # =========================================================
+    # ================= KPI HEADER =============================
+    # =========================================================
+    col1, col2, col3, col4 = st.columns(4)
 
-            # pH
-            if PH_MIN <= r["ph_value"] <= PH_MAX:
-                ph_c.append("green")
-            else:
-                ph_c.append("red")
-                alerts.append(f"{r['tank_name']} pH ผิด")
+    active_jigs = supabase.table("jig_status")\
+        .select("jig_id")\
+        .eq("status_type", "In-Process")\
+        .execute()
 
-            # temp
-            if TEMP_ANO_MIN <= r["temperature"] <= TEMP_ANO_MAX:
-                temp_c.append("blue")
-            else:
-                temp_c.append("red")
-                alerts.append(f"{r['tank_name']} Temp ผิด")
+    today = datetime.now(ICT).date()
+    logs_today = supabase.table("jig_usage_log")\
+        .select("total_pieces")\
+        .gte("recorded_date", f"{today}T00:00:00")\
+        .execute()
 
-            # density
-            den_c.append("purple")
+    total_today = sum(x["total_pieces"] for x in logs_today.data)
+
+    # count alerts
+    alert_count = 0
+
+    if not latest_c.empty:
+        alert_count += len(latest_c[
+            (latest_c["ph_value"] < PH_MIN) |
+            (latest_c["ph_value"] > PH_MAX) |
+            (latest_c["temperature"] < TEMP_COLOR_MIN) |
+            (latest_c["temperature"] > TEMP_COLOR_MAX)
+        ])
+
+    if not latest_a.empty:
+        alert_count += len(latest_a[
+            (latest_a["ph_value"] < PH_MIN) |
+            (latest_a["ph_value"] > PH_MAX) |
+            (latest_a["temperature"] < TEMP_ANO_MIN) |
+            (latest_a["temperature"] > TEMP_ANO_MAX)
+        ])
+
+    col1.metric("🟢 Active Jig", len(active_jigs.data))
+    col2.metric("📦 Today Output", total_today)
+    col3.metric("🧪 Tanks", len(tank_map))
+    col4.metric("🚨 Alerts", alert_count)
+
+    # =========================================================
+    # ================= ALARM BAR ==============================
+    # =========================================================
+    if alert_count > 0:
+        st.error(f"🚨 SYSTEM ALERT: {alert_count} จุดผิดปกติ")
+    else:
+        st.success("✅ System Normal")
+
+    st.markdown("---")
+
+    # =========================================================
+    # ================= MAIN PANELS ============================
+    # =========================================================
+    left, right = st.columns(2)
+
+    # ================= COLOR =================
+    with left:
+        st.subheader("🎨 Color Tanks")
+
+        if not latest_c.empty:
+
+            latest_c["color"] = latest_c.apply(
+                lambda r: "red" if not(PH_MIN <= r["ph_value"] <= PH_MAX)
+                                 or not(TEMP_COLOR_MIN <= r["temperature"] <= TEMP_COLOR_MAX)
+                else "green", axis=1
+            )
+
+            temp_point_colors = [
+                "red" if not (TEMP_COLOR_MIN <= t <= TEMP_COLOR_MAX) else "#3b82f6"
+                for t in latest_c["temperature"]
+            ]
+
+            fig = go.Figure()
+
+            fig.add_trace(go.Bar(
+                x=latest_c["tank_name"],
+                y=latest_c["ph_value"],
+                name="pH",
+                marker_color=latest_c["color"]
+            ))
+
+            fig.add_trace(go.Scatter(
+                x=latest_c["tank_name"],
+                y=latest_c["temperature"],
+                mode="lines+markers",
+                name="Temp",
+                marker=dict(color=temp_point_colors, size=10)
+            ))
+
+            fig.add_hrect(y0=TEMP_COLOR_MIN, y1=TEMP_COLOR_MAX,
+                          fillcolor="blue", opacity=0.1, line_width=0)
+
+            st.plotly_chart(fig, use_container_width=True)
+
+    # ================= ANODIZE =================
+    with right:
+        st.subheader("🧪 Anodize Tanks")
+
+        if not latest_a.empty:
+
+            ph_c, temp_c, den_c = [], [], []
+            alerts = []
+
+            for _, r in latest_a.iterrows():
+
+                if PH_MIN <= r["ph_value"] <= PH_MAX:
+                    ph_c.append("green")
+                else:
+                    ph_c.append("red")
+                    alerts.append(r["tank_name"])
+
+                if TEMP_ANO_MIN <= r["temperature"] <= TEMP_ANO_MAX:
+                    temp_c.append("blue")
+                else:
+                    temp_c.append("red")
+                    alerts.append(r["tank_name"])
+
+                den_c.append("purple")
+
+            fig = go.Figure()
+
+            fig.add_trace(go.Bar(x=latest_a["tank_name"], y=latest_a["ph_value"], name="pH", marker_color=ph_c))
+            fig.add_trace(go.Bar(x=latest_a["tank_name"], y=latest_a["temperature"], name="Temp", marker_color=temp_c))
+            fig.add_trace(go.Bar(x=latest_a["tank_name"], y=latest_a["density"], name="Density", marker_color=den_c))
+
+            fig.update_layout(barmode="group")
+
+            st.plotly_chart(fig, use_container_width=True)
+
+    # =========================================================
+    # ================= TREND PANEL ============================
+    # =========================================================
+    st.markdown("---")
+    st.subheader("📈 Trend Analysis")
+
+    if not df_c.empty:
+        hours = st.selectbox("ย้อนหลัง (ชั่วโมง)", [1, 6, 12, 24], index=1)
+
+        cutoff = datetime.now(ICT) - timedelta(hours=hours)
+        trend = df_c[df_c["recorded_at"] >= cutoff]
 
         fig = go.Figure()
 
-        fig.add_trace(go.Bar(x=latest["tank_name"], y=latest["ph_value"], name="pH", marker_color=ph_c))
-        fig.add_trace(go.Bar(x=latest["tank_name"], y=latest["temperature"], name="Temp", marker_color=temp_c))
-        fig.add_trace(go.Bar(x=latest["tank_name"], y=latest["density"], name="Density", marker_color=den_c))
+        fig.add_trace(go.Scatter(
+            x=trend["recorded_at"],
+            y=trend["temperature"],
+            name="Temp",
+            mode="lines"
+        ))
 
-        fig.update_layout(barmode="group")
+        fig.add_trace(go.Scatter(
+            x=trend["recorded_at"],
+            y=trend["ph_value"],
+            name="pH",
+            mode="lines"
+        ))
 
         st.plotly_chart(fig, use_container_width=True)
 
-        if alerts:
-            st.error("🚨 มีค่าผิดปกติ")
-            for a in alerts:
-                st.write("•", a)
-        else:
-            st.success("✅ ปกติ")
-
-    else:
-        st.info("ไม่มีข้อมูล Anodize")
-
-    # auto refresh
+    # =========================================================
+    # ================= AUTO REFRESH ===========================
+    # =========================================================
     st_autorefresh(interval=10000, key="refresh")
-    # ================= AUTO REFRESH =================
-    try:
-        st_autorefresh(interval=10000, key="refresh")
-    except:
-        pass
-
-
-
-    # ================= AUTO REFRESH =================
-    try:
-        from streamlit_autorefresh import st_autorefresh
-        st_autorefresh(interval=10000, key="refresh")
-    except:
-        pass
 
 # ================= RECORD PAGE =================
 elif menu == "บันทึกข้อมูลการผลิต":
