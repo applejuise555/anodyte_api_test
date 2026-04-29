@@ -146,25 +146,54 @@ if menu == "Dashboard":
             axis=1
         )
 
-        fig = go.Figure()
+        # ===== COLOR GRAPH (IMPROVED) =====
+fig = go.Figure()
 
-        # pH
-        fig.add_trace(go.Bar(
-            x=latest["tank_name"],
-            y=latest["ph_value"],
-            name="pH",
-            marker_color=latest["color"]
-        ))
+# 🎯 สร้าง list สีสำหรับ temperature
+temp_point_colors = [
+    "red" if not (TEMP_COLOR_MIN <= t <= TEMP_COLOR_MAX) else "#3b82f6"
+    for t in latest["temperature"]
+]
 
-        # Temp
-        fig.add_trace(go.Scatter(
-            x=latest["tank_name"],
-            y=latest["temperature"],
-            name="Temperature",
-            mode="lines+markers"
-        ))
+# pH (bar)
+fig.add_trace(go.Bar(
+    x=latest["tank_name"],
+    y=latest["ph_value"],
+    name="pH",
+    marker_color=latest["color"]
+))
 
-        st.plotly_chart(fig, use_container_width=True)
+# Temperature (line + จุดแดงเมื่อผิดปกติ)
+fig.add_trace(go.Scatter(
+    x=latest["tank_name"],
+    y=latest["temperature"],
+    name="Temperature",
+    mode="lines+markers",
+    line=dict(color="#3b82f6", width=3),
+    marker=dict(
+        size=10,
+        color=temp_point_colors,  # 🔥 จุดแดงตรงนี้
+        line=dict(width=1, color="black")
+    )
+))
+
+# 🎯 highlight ช่วงมาตรฐานอุณหภูมิ
+fig.add_hrect(
+    y0=TEMP_COLOR_MIN,
+    y1=TEMP_COLOR_MAX,
+    fillcolor="blue",
+    opacity=0.08,
+    line_width=0
+)
+
+fig.update_layout(
+    title="Color Tank: pH + Temperature (Alert Highlight)",
+    xaxis_title="Tank",
+    yaxis_title="Value",
+    legend=dict(orientation="h")
+)
+
+st.plotly_chart(fig, use_container_width=True)
 
         alert_df = latest[
             (latest["ph_status"] == "ALERT") |
