@@ -71,12 +71,13 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# ================= DASHBOARD (PRODUCTION + ACTIVE TANKS) =================
+# ================= DASHBOARD (VISUAL + PLOTLY) =================
 if menu == "Dashboard":
+
+    import plotly.express as px
 
     st.title("📊 Production Dashboard")
 
-    # ================= CONFIG =================
     PH_MIN = 5.0
     PH_MAX = 6.0
     today = datetime.now(ICT).strftime("%Y-%m-%d")
@@ -105,9 +106,7 @@ if menu == "Dashboard":
     @st.cache_data(ttl=5)
     def load_active_tanks():
         try:
-            return supabase.table("active_tanks")\
-                .select("tank_id")\
-                .execute().data
+            return supabase.table("active_tanks").select("tank_id").execute().data
         except:
             return []
 
@@ -119,33 +118,16 @@ if menu == "Dashboard":
         .eq("status_type", "In-Process")\
         .execute()
 
-    col1.metric("🟢 กำลังผลิต", len(active_jigs.data))
-
     logs_today = supabase.table("jig_usage_log")\
         .select("total_pieces")\
         .gte("recorded_date", f"{today}T00:00:00")\
         .execute()
 
-    total_today = sum(x['total_pieces'] for x in logs_today.data)
-    col2.metric("📦 ผลิตวันนี้", total_today)
-
     active_tanks = load_active_tanks()
-    col3.metric("🧪 บ่อที่ใช้งาน", len(active_tanks))
 
-    st.markdown("---")
-
-    # ================= ACTIVE TANK TABLE =================
-    if active_tanks:
-        df_active = pd.DataFrame(active_tanks)
-
-        tank_map = load_tanks()
-        inv = {v: k for k, v in tank_map.items()}
-        df_active["tank_name"] = df_active["tank_id"].map(inv)
-
-        st.subheader("🟢 Active Tanks (Real-Time)")
-        st.dataframe(df_active[["tank_name"]], use_container_width=True)
-    else:
-        st.info("ไม่มีบ่อที่กำลังใช้งาน")
+    col1.metric("🟢 กำลังผลิต", len(active_jigs.data))
+    col2.metric("📦 วันนี้", sum(x['total_pieces'] for x in logs_today.data))
+    col3.metric("🧪 บ่อใช้งาน", len(active_tanks))
 
     st.markdown("---")
 
@@ -164,23 +146,51 @@ if menu == "Dashboard":
 
         latest = df.drop_duplicates("tank_id")
 
-        # ===== STATUS =====
+        # 🔴🟢 STATUS
         latest["status"] = latest["ph_value"].apply(
             lambda ph: "OK" if PH_MIN <= ph <= PH_MAX else "ALERT"
         )
 
-        alert_df = latest[latest["status"] == "ALERT"]
+        # ===== VISUAL CARD =====
+        st.markdown("### 🔴🟢 สถานะบ่อ (Live)")
 
+        cols = st.columns(4)
+        for i, row in latest.iterrows():
+            color = "green" if row["status"] == "OK" else "red"
+
+            with cols[i % 4]:
+                st.markdown(f"""
+                <div style="
+                    background-color:{color};
+                    padding:15px;
+                    border-radius:10px;
+                    color:white;
+                    text-align:center;
+                    font-weight:bold;
+                ">
+                    {row['tank_name']}<br>
+                    pH: {row['ph_value']:.2f}
+                </div>
+                """, unsafe_allow_html=True)
+
+        # ===== ALERT TABLE =====
+        alert_df = latest[latest["status"] == "ALERT"]
         if not alert_df.empty:
-            st.error("⚠️ pH ผิดปกติ")
+            st.error("⚠️ มีบ่อ pH ผิดปกติ")
             st.dataframe(alert_df[["tank_name", "ph_value"]])
 
-        # ===== BAR =====
-        c1, c2 = st.columns(2)
-        c1.bar_chart(latest.set_index("tank_name")["ph_value"])
-        c2.bar_chart(latest.set_index("tank_name")["temperature"])
-
         st.markdown("---")
+
+        # ===== PLOTLY BAR =====
+        fig_bar = px.bar(
+            latest,
+            x="tank_name",
+            y="ph_value",
+            color="status",
+            color_discrete_map={"OK": "green", "ALERT": "red"},
+            title="pH ล่าสุดแต่ละบ่อ"
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
 
         # ===== TREND =====
         options = df['tank_name'].dropna().unique()
@@ -194,11 +204,13 @@ if menu == "Dashboard":
             if not f.empty:
                 f = f.sort_values("recorded_at")
 
-                c3, c4 = st.columns(2)
-                c3.line_chart(f.set_index("recorded_at")["ph_value"])
-                c4.line_chart(f.set_index("recorded_at")["temperature"])
-            else:
-                st.warning("ไม่มีข้อมูลช่วงนี้")
+                fig_line = px.line(
+                    f,
+                    x="recorded_at",
+                    y=["ph_value", "temperature"],
+                    title=f"Trend: {sel}"
+                )
+                st.plotly_chart(fig_line, use_container_width=True)
 
     else:
         st.info("ไม่มีข้อมูล Color Tank")
@@ -219,23 +231,25 @@ if menu == "Dashboard":
 
         latest = df.drop_duplicates("tank_id")
 
-        c1, c2, c3 = st.columns(3)
-        c1.bar_chart(latest.set_index("tank_name")["ph_value"])
-        c2.bar_chart(latest.set_index("tank_name")["temperature"])
-        c3.bar_chart(latest.set_index("tank_name")["density"])
+        fig_bar2 = px.bar(
+            latest,
+            x="tank_name",
+            y="density",
+            title="Density ล่าสุด"
+        )
+        st.plotly_chart(fig_bar2, use_container_width=True)
 
-        st.markdown("---")
+        sel = st.selectbox("เลือกบ่ออโนไดซ์", df['tank_name'].dropna().unique())
 
-        options = df['tank_name'].dropna().unique()
-        if len(options):
-            sel = st.selectbox("เลือกบ่ออโนไดซ์", options)
+        f = df[df['tank_name'] == sel].sort_values("recorded_at")
 
-            f = df[df['tank_name'] == sel].sort_values("recorded_at")
-
-            c4, c5, c6 = st.columns(3)
-            c4.line_chart(f.set_index("recorded_at")["ph_value"])
-            c5.line_chart(f.set_index("recorded_at")["temperature"])
-            c6.line_chart(f.set_index("recorded_at")["density"])
+        fig_line2 = px.line(
+            f,
+            x="recorded_at",
+            y=["ph_value", "temperature", "density"],
+            title=f"Trend: {sel}"
+        )
+        st.plotly_chart(fig_line2, use_container_width=True)
 
     else:
         st.info("ไม่มีข้อมูล Anodize")
@@ -246,7 +260,6 @@ if menu == "Dashboard":
         st_autorefresh(interval=10000, key="refresh")
     except:
         pass
-
 # --- RECORDING SECTION ---
 elif menu == "บันทึกข้อมูลการผลิต":
     st.title("ระบบบันทึกข้อมูลการผลิต")
