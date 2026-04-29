@@ -71,17 +71,17 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# ================= DASHBOARD (FULL MONITORING) =================
+# ================= DASHBOARD (FULL PRODUCTION) =================
 if menu == "Dashboard":
 
     import plotly.express as px
 
     st.title("📊 Production Dashboard")
 
-    # ===== STANDARD =====
+    # ================= STANDARD =================
     PH_MIN, PH_MAX = 5.0, 6.0
-    TEMP_MIN, TEMP_MAX = 20, 25
-    DEN_MAX = 1.2
+    TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30, 40
+    TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22
 
     # ================= CACHE =================
     @st.cache_data(ttl=10)
@@ -89,7 +89,7 @@ if menu == "Dashboard":
         return supabase.table("color_tank_logs")\
             .select("*")\
             .order("recorded_at", desc=True)\
-            .limit(100)\
+            .limit(150)\
             .execute().data
 
     @st.cache_data(ttl=10)
@@ -97,7 +97,7 @@ if menu == "Dashboard":
         return supabase.table("anodize_tank_logs")\
             .select("*")\
             .order("recorded_at", desc=True)\
-            .limit(100)\
+            .limit(150)\
             .execute().data
 
     @st.cache_data(ttl=60)
@@ -107,9 +107,7 @@ if menu == "Dashboard":
     @st.cache_data(ttl=5)
     def load_active_tanks():
         try:
-            return supabase.table("active_tanks")\
-                .select("tank_id")\
-                .execute().data
+            return supabase.table("active_tanks").select("tank_id").execute().data
         except:
             return []
 
@@ -143,9 +141,16 @@ if menu == "Dashboard":
 
         latest = df.drop_duplicates("tank_id")
 
-        latest["status"] = latest["ph_value"].apply(
-            lambda ph: "OK" if PH_MIN <= ph <= PH_MAX else "ALERT"
-        )
+        # ===== STATUS =====
+        def color_status(row):
+            if (PH_MIN <= row["ph_value"] <= PH_MAX) and \
+               (TEMP_COLOR_MIN <= row["temperature"] <= TEMP_COLOR_MAX):
+                return "OK"
+            return "ALERT"
+
+        latest["status"] = latest.apply(color_status, axis=1)
+
+        st.markdown("### 🔴🟢 สถานะบ่อสี")
 
         cols = st.columns(4)
         for i, row in latest.iterrows():
@@ -153,16 +158,36 @@ if menu == "Dashboard":
 
             with cols[i % 4]:
                 st.markdown(f"""
-                <div style="background:{color};padding:12px;border-radius:10px;color:white;text-align:center">
+                <div style="background:{color};padding:14px;border-radius:10px;
+                color:white;text-align:center;font-weight:600;">
                     {row['tank_name']}<br>
-                    pH: {row['ph_value']:.2f}
+                    pH: {row['ph_value']:.2f}<br>
+                    T: {row['temperature']:.1f}
                 </div>
                 """, unsafe_allow_html=True)
 
-    st.markdown("---")
+        # ===== GRAPH =====
+        sel = st.selectbox("📈 Color Trend", df['tank_name'].dropna().unique())
+
+        f = df[df['tank_name'] == sel].sort_values("recorded_at")
+
+        fig = px.line(
+            f,
+            x="recorded_at",
+            y=["ph_value", "temperature"],
+            title=f"Color Trend: {sel}"
+        )
+
+        fig.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1)
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    else:
+        st.info("ไม่มีข้อมูล Color Tank")
 
     # ================= ANODIZE =================
-    st.subheader("🧪 Anodize Tanks (Full Monitoring)")
+    st.markdown("---")
+    st.subheader("🧪 Anodize Tanks")
 
     logs_a = load_anodize_logs()
 
@@ -176,20 +201,16 @@ if menu == "Dashboard":
 
         latest = df_a.drop_duplicates("tank_id")
 
-        # ===== STATUS CHECK (3 ค่า) =====
-        def check_status(row):
-            if not (PH_MIN <= row["ph_value"] <= PH_MAX):
-                return "ALERT"
-            if not (TEMP_MIN <= row["temperature"] <= TEMP_MAX):
-                return "ALERT"
-            if row["density"] > DEN_MAX:
-                return "ALERT"
-            return "OK"
+        # ===== STATUS =====
+        def ano_status(row):
+            if (PH_MIN <= row["ph_value"] <= PH_MAX) and \
+               (TEMP_ANO_MIN <= row["temperature"] <= TEMP_ANO_MAX):
+                return "OK"
+            return "ALERT"
 
-        latest["status"] = latest.apply(check_status, axis=1)
+        latest["status"] = latest.apply(ano_status, axis=1)
 
-        # ===== CARD (โชว์ 3 ค่า) =====
-        st.markdown("### 🔴🟢 สถานะบ่ออโนไดซ์")
+        st.markdown("### 🔴🟢 สถานะอโนไดซ์")
 
         cols = st.columns(4)
         for i, row in latest.iterrows():
@@ -197,47 +218,28 @@ if menu == "Dashboard":
 
             with cols[i % 4]:
                 st.markdown(f"""
-                <div style="
-                    background:{color};
-                    padding:12px;
-                    border-radius:10px;
-                    color:white;
-                    text-align:center;
-                    font-size:14px;
-                ">
+                <div style="background:{color};padding:14px;border-radius:10px;
+                color:white;text-align:center;font-weight:600;">
                     {row['tank_name']}<br>
                     pH: {row['ph_value']:.2f}<br>
-                    T: {row['temperature']:.1f}°C<br>
+                    T: {row['temperature']:.1f}<br>
                     D: {row['density']:.3f}
                 </div>
                 """, unsafe_allow_html=True)
 
-        # ===== ALERT TABLE =====
-        alert_df = latest[latest["status"] == "ALERT"]
-        if not alert_df.empty:
-            st.error("⚠️ พบค่าผิดปกติในบ่ออโนไดซ์")
-            st.dataframe(alert_df[["tank_name", "ph_value", "temperature", "density"]])
+        # ===== GRAPH =====
+        sel_a = st.selectbox("📈 Anodize Trend", df_a['tank_name'].dropna().unique())
 
-        st.markdown("---")
+        f_a = df_a[df_a['tank_name'] == sel_a].sort_values("recorded_at")
 
-        # ===== TREND =====
-        options = df_a['tank_name'].dropna().unique()
-        if len(options):
-            sel = st.selectbox("📈 ดูแนวโน้มอโนไดซ์", options)
+        fig_a = px.line(
+            f_a,
+            x="recorded_at",
+            y=["ph_value", "temperature", "density"],
+            title=f"Anodize Trend: {sel_a}"
+        )
 
-            f = df_a[df_a['tank_name'] == sel].sort_values("recorded_at")
-
-            fig = px.line(
-                f,
-                x="recorded_at",
-                y=["ph_value", "temperature", "density"],
-                title=f"Trend: {sel}"
-            )
-
-            # เส้นมาตรฐาน pH
-            fig.add_hline(y=5.5, line_dash="dash")
-
-            st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig_a, use_container_width=True)
 
     else:
         st.info("ไม่มีข้อมูล Anodize")
