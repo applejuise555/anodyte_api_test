@@ -164,10 +164,10 @@ if menu == "Dashboard":
     col3.metric("🧪 Tanks", len(tank_map))
     col4.metric("🚨 Alerts", alert_count)
 
-    # =========================================================
-    # ================= ALARM =================
-    # =========================================================
-    alerts_detail = []
+# =========================================================
+# ================= ALARM =================
+# =========================================================
+alerts_detail = []
 
 # ===== COLOR =====
 if not latest_c.empty:
@@ -187,17 +187,16 @@ if not latest_a.empty:
         if not (TEMP_ANO_MIN <= r["temperature"] <= TEMP_ANO_MAX):
             alerts_detail.append(f"{r['tank_name']} → Temp ({r['temperature']:.1f}°C)")
 
-# ===== SHOW =====
+# ===== SHOW ALERT =====
 if alerts_detail:
     st.error(f"🚨 SYSTEM ALERT: {len(alerts_detail)} จุดผิดปกติ")
-
-    # แสดง list แบบ SCADA
     for a in alerts_detail:
         st.write("🔴", a)
-
 else:
     st.success("✅ System Normal")
-    st.markdown("---")
+
+# 🔥 สำคัญ: ต้องมีเส้นนี้แยกออกมา
+st.markdown("---")
 
     # =========================================================
     # ================= MAIN PANELS =================
