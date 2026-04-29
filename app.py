@@ -367,7 +367,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         except Exception as e:
                             st.error(f"Error: {e}")
 
-                with sub_log:
+        with sub_log:
             prods = get_options("products", "product_id", "product_code")
             jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
             jig_map = {j['jig_model_code']: j['jig_id'] for j in jigs_data}
