@@ -368,19 +368,14 @@ elif menu == "บันทึกข้อมูลการผลิต":
                             st.error(f"Error: {e}")
 
         with sub_log:
-    prods = get_options("products", "product_id", "product_code")
-
-    jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
-    jig_map = {j['jig_model_code']: j['jig_id'] for j in jigs_data}
-
-    color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
-
-    if prods and jigs_data and color_tanks_all:
-
-        sel_j = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()))
-        jig_id = jig_map[sel_j]
-
-        sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
+            prods = get_options("products", "product_id", "product_code")
+            jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
+            jig_map = {j['jig_model_code']: j['jig_id'] for j in jigs_data}
+            color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
+            if prods and jigs_data and color_tanks_all:
+                sel_j = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()))
+                jig_id = jig_map[sel_j]
+                sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
 
         # ================= GET STATUS =================
         status_res = supabase.table("jig_status")\
