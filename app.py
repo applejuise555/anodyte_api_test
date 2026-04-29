@@ -292,10 +292,13 @@ if logs_a:
 
 else:
     st.info("ไม่มีข้อมูล Anodize")
-# ================= RECORD PAGE =================
-elif menu == "บันทึกข้อมูลการผลิต":
-    st.title("📥 บันทึกข้อมูล")
 
+    # ================= AUTO REFRESH =================
+    try:
+        from streamlit_autorefresh import st_autorefresh
+        st_autorefresh(interval=10000, key="refresh")
+    except:
+        pass
 
 # ================= RECORD PAGE =================
 elif menu == "บันทึกข้อมูลการผลิต":
