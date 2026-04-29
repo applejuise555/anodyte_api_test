@@ -124,6 +124,61 @@ if menu == "Dashboard":
                 st.line_chart(df_filtered.set_index('recorded_at')['temperature'])
     else:
         st.write("ไม่พบข้อมูลบันทึกบ่อสี")
+    st.markdown("---")
+st.subheader("🧪 สถานะบ่ออโนไดซ์ (Anodize Tanks)")
+
+anodize_logs_res = supabase.table("anodize_tank_logs") \
+    .select("tank_id, ph_value, temperature, density, recorded_at") \
+    .order("recorded_at", desc=True) \
+    .limit(200) \
+    .execute()
+
+if anodize_logs_res.data:
+    df_anodize = pd.DataFrame(anodize_logs_res.data)
+    df_anodize['recorded_at'] = pd.to_datetime(df_anodize['recorded_at'])
+
+    tanks_map = get_options("tanks", "tank_id", "tank_name")
+    inv_tanks_map = {v: k for k, v in tanks_map.items()}
+    df_anodize['tank_name'] = df_anodize['tank_id'].map(inv_tanks_map)
+
+    # 👉 เอาค่าล่าสุดแต่ละบ่อ
+    latest_anodize = df_anodize.drop_duplicates(subset=['tank_id'])
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.caption("ค่า pH")
+        st.bar_chart(latest_anodize.set_index('tank_name')['ph_value'])
+    with c2:
+        st.caption("อุณหภูมิ (°C)")
+        st.bar_chart(latest_anodize.set_index('tank_name')['temperature'])
+    with c3:
+        st.caption("Density")
+        st.bar_chart(latest_anodize.set_index('tank_name')['density'])
+
+    st.markdown("---")
+
+    # 📈 Trend
+    st.subheader("📈 แนวโน้มบ่ออโนไดซ์")
+    selected_tank_a = st.selectbox(
+        "เลือกบ่ออโนไดซ์",
+        df_anodize['tank_name'].dropna().unique(),
+        key="anodize_trend"
+    )
+
+    df_filtered_a = df_anodize[df_anodize['tank_name'] == selected_tank_a] \
+        .sort_values('recorded_at')
+
+    if not df_filtered_a.empty:
+        c4, c5, c6 = st.columns(3)
+        with c4:
+            st.line_chart(df_filtered_a.set_index('recorded_at')['ph_value'])
+        with c5:
+            st.line_chart(df_filtered_a.set_index('recorded_at')['temperature'])
+        with c6:
+            st.line_chart(df_filtered_a.set_index('recorded_at')['density'])
+
+else:
+    st.info("ยังไม่มีข้อมูลบ่ออโนไดซ์")
 
 # --- RECORDING SECTION ---
 elif menu == "บันทึกข้อมูลการผลิต":
