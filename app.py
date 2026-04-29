@@ -73,10 +73,10 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# ================= DASHBOARD (FULL PRODUCTION) =================
+# ================= DASHBOARD (MIXED CHART PRODUCTION) =================
 if menu == "Dashboard":
 
-    import plotly.express as px
+    import plotly.graph_objects as go
 
     st.title("📊 Production Dashboard")
 
@@ -152,6 +152,7 @@ if menu == "Dashboard":
 
         latest["status"] = latest.apply(color_status, axis=1)
 
+        # ===== CARD =====
         st.markdown("### 🔴🟢 สถานะบ่อสี")
 
         cols = st.columns(4)
@@ -168,19 +169,55 @@ if menu == "Dashboard":
                 </div>
                 """, unsafe_allow_html=True)
 
-        # ===== GRAPH =====
-        sel = st.selectbox("📈 Color Trend", df['tank_name'].dropna().unique())
+        # ===== MIXED GRAPH (🔥 ตรงนี้คือของใหม่) =====
+        st.markdown("---")
+        st.subheader("📊 Color Trend (pH vs Temperature)")
 
+        sel = st.selectbox("เลือกบ่อสี", df['tank_name'].dropna().unique())
         f = df[df['tank_name'] == sel].sort_values("recorded_at")
 
-        fig = px.line(
-            f,
-            x="recorded_at",
-            y=["ph_value", "temperature"],
-            title=f"Color Trend: {sel}"
+        fig = go.Figure()
+
+        # BAR = Temperature
+        fig.add_trace(go.Bar(
+            x=f["recorded_at"],
+            y=f["temperature"],
+            name="Temperature (°C)",
+            yaxis="y1",
+            opacity=0.6
+        ))
+
+        # LINE = pH
+        fig.add_trace(go.Scatter(
+            x=f["recorded_at"],
+            y=f["ph_value"],
+            name="pH",
+            mode="lines+markers",
+            yaxis="y2"
+        ))
+
+        # Layout dual axis
+        fig.update_layout(
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Temperature (°C)", side="left"),
+            yaxis2=dict(
+                title="pH",
+                overlaying="y",
+                side="right"
+            ),
+            legend=dict(x=0, y=1.1, orientation="h"),
+            margin=dict(l=40, r=40, t=40, b=40)
         )
 
-        fig.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1)
+        # Standard zone (pH)
+        fig.add_hrect(
+            y0=PH_MIN, y1=PH_MAX,
+            fillcolor="green",
+            opacity=0.1,
+            layer="below",
+            line_width=0,
+            yref="y2"
+        )
 
         st.plotly_chart(fig, use_container_width=True)
 
@@ -212,6 +249,7 @@ if menu == "Dashboard":
 
         latest["status"] = latest.apply(ano_status, axis=1)
 
+        # ===== CARD =====
         st.markdown("### 🔴🟢 สถานะอโนไดซ์")
 
         cols = st.columns(4)
@@ -230,16 +268,19 @@ if menu == "Dashboard":
                 """, unsafe_allow_html=True)
 
         # ===== GRAPH =====
-        sel_a = st.selectbox("📈 Anodize Trend", df_a['tank_name'].dropna().unique())
+        st.markdown("---")
+        sel_a = st.selectbox("เลือกบ่ออโนไดซ์", df_a['tank_name'].dropna().unique())
 
         f_a = df_a[df_a['tank_name'] == sel_a].sort_values("recorded_at")
 
-        fig_a = px.line(
-            f_a,
-            x="recorded_at",
-            y=["ph_value", "temperature", "density"],
-            title=f"Anodize Trend: {sel_a}"
-        )
+        fig_a = go.Figure()
+
+        fig_a.add_trace(go.Scatter(
+            x=f_a["recorded_at"],
+            y=f_a["density"],
+            name="Density",
+            mode="lines+markers"
+        ))
 
         st.plotly_chart(fig_a, use_container_width=True)
 
