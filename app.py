@@ -69,116 +69,85 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
     except Exception:
         return {}
 
-# --- Main App Navigation ---
-st.sidebar.title("เมนูระบบ")
-menu = st.sidebar.radio("เลือกหน้า", ["Dashboard", "บันทึกข้อมูลการผลิต"])
+menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# --- DASHBOARD SECTION ---
+# ================= DASHBOARD =================
 if menu == "Dashboard":
-    st.title("📊 Production Dashboard")
-    
-    col1, col2, col3 = st.columns(3)
-    active_jigs = supabase.table("jig_status").select("jig_id").eq("status_type", "In-Process").execute()
-    col1.metric("จิ๊กที่กำลังผลิต", len(active_jigs.data))
-    
+
+    st.title("📊 Dashboard")
+
+    col1,col2,col3 = st.columns(3)
+
+    active = supabase.table("jig_status").select("jig_id").eq("status_type","In-Process").execute()
+    col1.metric("กำลังผลิต", len(active.data))
+
     today = datetime.now(ICT).strftime("%Y-%m-%d")
-    today_logs = supabase.table("jig_usage_log").select("total_pieces").gte("recorded_date", f"{today}T00:00:00").execute()
-    total_today = sum(x['total_pieces'] for x in today_logs.data)
-    col2.metric("ผลิตได้วันนี้ (ชิ้น)", total_today)
-    col3.metric("บ่อที่ใช้งานอยู่", len(active_jigs.data))
-    
+    logs = supabase.table("jig_usage_log").select("total_pieces").gte("recorded_date", f"{today}T00:00:00").execute()
+    col2.metric("วันนี้", sum(x['total_pieces'] for x in logs.data))
+
+    col3.metric("บ่อใช้งาน", len(active.data))
+
     st.markdown("---")
-    
-    logs_res = supabase.table("color_tank_logs").select("tank_id, ph_value, temperature, recorded_at").order("recorded_at", desc=True).limit(200).execute()
-    
+
+    # ========= COLOR =========
+    st.subheader("🎨 Color Tanks")
+
+    logs_res = supabase.table("color_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute()
+
     if logs_res.data:
-        df_logs = pd.DataFrame(logs_res.data)
-        df_logs['recorded_at'] = pd.to_datetime(df_logs['recorded_at'])
-        
-        tanks_map = get_options("tanks", "tank_id", "tank_name")
-        inv_tanks_map = {v: k for k, v in tanks_map.items()}
-        df_logs['tank_name'] = df_logs['tank_id'].map(inv_tanks_map)
-        
-        st.subheader("📊 สถานะปัจจุบันของแต่ละบ่อ")
-        latest_df = df_logs.drop_duplicates(subset=['tank_id'])
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            st.caption("ค่า pH ปัจจุบัน")
-            st.bar_chart(latest_df.set_index('tank_name')['ph_value'])
-        with c2:
-            st.caption("อุณหภูมิ (°C) ปัจจุบัน")
-            st.bar_chart(latest_df.set_index('tank_name')['temperature'])
-            
+        df = pd.DataFrame(logs_res.data)
+        df['recorded_at'] = pd.to_datetime(df['recorded_at'])
+
+        tanks = get_options("tanks","tank_id","tank_name","tank_type","Color")
+        inv = {v:k for k,v in tanks.items()}
+        df['tank_name'] = df['tank_id'].map(inv)
+
+        latest = df.drop_duplicates("tank_id")
+
+        c1,c2 = st.columns(2)
+        c1.bar_chart(latest.set_index("tank_name")["ph_value"])
+        c2.bar_chart(latest.set_index("tank_name")["temperature"])
+
         st.markdown("---")
-        
-        st.subheader("📈 แนวโน้มย้อนหลัง")
-        selected_tank = st.selectbox("เลือกบ่อที่ต้องการดูกราฟแนวโน้ม", df_logs['tank_name'].unique())
-        df_filtered = df_logs[df_logs['tank_name'] == selected_tank].sort_values('recorded_at')
-        
-        if not df_filtered.empty:
-            c3, c4 = st.columns(2)
-            with c3:
-                st.line_chart(df_filtered.set_index('recorded_at')['ph_value'])
-            with c4:
-                st.line_chart(df_filtered.set_index('recorded_at')['temperature'])
-    else:
-        st.write("ไม่พบข้อมูลบันทึกบ่อสี")
+
+        sel = st.selectbox("เลือกบ่อสี", df['tank_name'].dropna().unique())
+        f = df[df['tank_name']==sel].sort_values("recorded_at")
+
+        c3,c4 = st.columns(2)
+        c3.line_chart(f.set_index("recorded_at")["ph_value"])
+        c4.line_chart(f.set_index("recorded_at")["temperature"])
+
+    # ========= ANODIZE =========
     st.markdown("---")
-st.subheader("🧪 สถานะบ่ออโนไดซ์ (Anodize Tanks)")
+    st.subheader("🧪 Anodize Tanks")
 
-anodize_logs_res = supabase.table("anodize_tank_logs") \
-    .select("tank_id, ph_value, temperature, density, recorded_at") \
-    .order("recorded_at", desc=True) \
-    .limit(200) \
-    .execute()
+    logs_res = supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute()
 
-if anodize_logs_res.data:
-    df_anodize = pd.DataFrame(anodize_logs_res.data)
-    df_anodize['recorded_at'] = pd.to_datetime(df_anodize['recorded_at'])
+    if logs_res.data:
+        df = pd.DataFrame(logs_res.data)
+        df['recorded_at'] = pd.to_datetime(df['recorded_at'])
 
-    tanks_map = get_options("tanks", "tank_id", "tank_name")
-    inv_tanks_map = {v: k for k, v in tanks_map.items()}
-    df_anodize['tank_name'] = df_anodize['tank_id'].map(inv_tanks_map)
+        tanks = get_options("tanks","tank_id","tank_name","tank_type","Anodize")
+        inv = {v:k for k,v in tanks.items()}
+        df = df[df['tank_id'].isin(tanks.values())]
+        df['tank_name'] = df['tank_id'].map(inv)
 
-    # 👉 เอาค่าล่าสุดแต่ละบ่อ
-    latest_anodize = df_anodize.drop_duplicates(subset=['tank_id'])
+        latest = df.drop_duplicates("tank_id")
 
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.caption("ค่า pH")
-        st.bar_chart(latest_anodize.set_index('tank_name')['ph_value'])
-    with c2:
-        st.caption("อุณหภูมิ (°C)")
-        st.bar_chart(latest_anodize.set_index('tank_name')['temperature'])
-    with c3:
-        st.caption("Density")
-        st.bar_chart(latest_anodize.set_index('tank_name')['density'])
+        c1,c2,c3 = st.columns(3)
+        c1.bar_chart(latest.set_index("tank_name")["ph_value"])
+        c2.bar_chart(latest.set_index("tank_name")["temperature"])
+        c3.bar_chart(latest.set_index("tank_name")["density"])
 
-    st.markdown("---")
+        st.markdown("---")
 
-    # 📈 Trend
-    st.subheader("📈 แนวโน้มบ่ออโนไดซ์")
-    selected_tank_a = st.selectbox(
-        "เลือกบ่ออโนไดซ์",
-        df_anodize['tank_name'].dropna().unique(),
-        key="anodize_trend"
-    )
+        sel = st.selectbox("เลือกบ่ออโนไดซ์", df['tank_name'].dropna().unique())
+        f = df[df['tank_name']==sel].sort_values("recorded_at")
 
-    df_filtered_a = df_anodize[df_anodize['tank_name'] == selected_tank_a] \
-        .sort_values('recorded_at')
-
-    if not df_filtered_a.empty:
-        c4, c5, c6 = st.columns(3)
-        with c4:
-            st.line_chart(df_filtered_a.set_index('recorded_at')['ph_value'])
-        with c5:
-            st.line_chart(df_filtered_a.set_index('recorded_at')['temperature'])
-        with c6:
-            st.line_chart(df_filtered_a.set_index('recorded_at')['density'])
-
-else:
-    st.info("ยังไม่มีข้อมูลบ่ออโนไดซ์")
+        c4,c5,c6 = st.columns(3)
+        c4.line_chart(f.set_index("recorded_at")["ph_value"])
+        c5.line_chart(f.set_index("recorded_at")["temperature"])
+        c6.line_chart(f.set_index("recorded_at")["density"])
 
 # --- RECORDING SECTION ---
 elif menu == "บันทึกข้อมูลการผลิต":
