@@ -406,51 +406,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
         sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
         
         # ================= 1. ลงทะเบียนชิ้นงาน (ปรับปรุงใหม่) =================
-        with sub_prod:
-            with st.form("add_prod_form", clear_on_submit=True):
-                col1, col2 = st.columns(2)
-                with col1:
-                    p_code = st.text_input("รหัสสินค้า (Product Code)")
-                    p_name = st.text_input("ชื่อ/รายละเอียดสินค้า")
-                    shape = st.selectbox("รูปทรงชิ้นงาน", ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง"])
-                    height = st.number_input("ความสูง (Height)", min_value=0.0, step=0.1)
-                    width = st.number_input("ความกว้าง / OD (Width)", min_value=0.0, step=0.1)
-                    thickness = st.number_input("ความหนา (Thickness)", min_value=0.0, step=0.1)
-                
-                # Logic คำนวณ Diameter อัตโนมัติ
-                auto_od = 0.0
-                auto_id = 0.0
-                if shape == "ทรงกระบอกทึบ":
-                    auto_od = width
-                    auto_id = 0.0
-                elif shape == "ทรงกระบอกกลวง":
-                    auto_od = width
-                    # สูตร: ID = OD - (2 * ความหนา)
-                    auto_id = max(0.0, auto_od - (2 * thickness))
-                else: # สี่เหลี่ยม
-                    auto_od = 0.0
-                    auto_id = 0.0
-
-                with col2:
-                    depth = st.number_input("ความลึก (Depth)", min_value=0.0, step=0.1)
-                    st.write("---")
-                    st.info(f"**ระบบคำนวณให้อัตโนมัติ ({shape})**")
-                    od_display = st.number_input("Outer Diameter", value=float(auto_od), disabled=True)
-                    id_display = st.number_input("Inner Diameter (ID = OD - 2T)", value=float(auto_id), disabled=True)
-                    s_finish = st.text_input("พื้นผิว (Surface Finish)")
-                
-                if st.form_submit_button("ลงทะเบียนชิ้นงาน"):
-                    if not p_code: st.error("กรุณากรอกรหัสสินค้า")
-                    else:
-                        try:
-                            supabase.table("products").insert({
-                                "product_code": p_code, "product_name": p_name,
-                                "height": height, "width": width, "thickness": thickness,
-                                "depth": depth, "outer_diameter": auto_od, 
-                                "inner_diameter": auto_id, "surface_finish": s_finish
-                            }).execute()
-                            st.success("ลงทะเบียนชิ้นงานสำเร็จ")
-                        except Exception as e: st.error(f"Error: {e}")
+        
         with sub_jig:
             with st.form("add_jig_form", clear_on_submit=True):
                 j_code = st.text_input("รหัสจิ๊ก")
@@ -465,6 +421,58 @@ elif menu == "บันทึกข้อมูลการผลิต":
                             }).execute()
                             st.success("ลงทะเบียนจิ๊กสำเร็จ")
                         except Exception as e:
+                            st.error(f"Error: {e}")
+    # ================= 1. ลงทะเบียนชิ้นงาน (ฉบับแก้ไข UI อัปเดตทันที) =================
+        with sub_prod:
+            with st.form("add_prod_form", clear_on_submit=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    p_code = st.text_input("รหัสสินค้า (Product Code)")
+                    p_name = st.text_input("ชื่อ/รายละเอียดสินค้า")
+                    
+                    # ใช้ Selectbox เพื่อเลือกรูปทรง
+                    shape = st.selectbox("รูปทรงชิ้นงาน", ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง"])
+                    
+                    height = st.number_input("ความสูง (Height)", min_value=0.0, step=0.1)
+                    width = st.number_input("ความกว้าง / OD (Width)", min_value=0.0, step=0.1)
+                    thickness = st.number_input("ความหนา (Thickness)", min_value=0.0, step=0.1)
+                
+                # --- Logic คำนวณค่า Diameter ---
+                calc_od = 0.0
+                calc_id = 0.0
+                if shape == "ทรงกระบอกทึบ":
+                    calc_od = width
+                    calc_id = 0.0
+                elif shape == "ทรงกระบอกกลวง":
+                    calc_od = width
+                    calc_id = max(0.0, calc_od - (2 * thickness))
+                
+                with col2:
+                    depth = st.number_input("ความลึก (Depth)", min_value=0.0, step=0.1)
+                    st.write("---")
+                    # ใช้ st.info เพื่อแสดงสถานะปัจจุบัน
+                    st.info(f"**ระบบกำลังคำนวณแบบ: {shape}**")
+                    
+                    # แสดงผลลัพธ์จากการคำนวณ (ใช้ value=calc_... เพื่อให้เปลี่ยนตามฝั่งซ้ายทันที)
+                    final_od = st.number_input("Outer Diameter", value=float(calc_od), format="%.2f", disabled=True)
+                    final_id = st.number_input("Inner Diameter (ID = OD - 2T)", value=float(calc_id), format="%.2f", disabled=True)
+                    
+                    s_finish = st.text_input("พื้นผิว (Surface Finish)")
+                
+                if st.form_submit_button("ลงทะเบียนชิ้นงาน"):
+                    if not p_code: 
+                        st.error("กรุณากรอกรหัสสินค้า")
+                    else:
+                        try:
+                            supabase.table("products").insert({
+                                "product_code": p_code, 
+                                "product_name": f"[{shape}] {p_name}",
+                                "height": height, "width": width, "thickness": thickness,
+                                "depth": depth, "outer_diameter": calc_od, 
+                                "inner_diameter": calc_id, "surface_finish": s_finish
+                            }).execute()
+                            st.success(f"ลงทะเบียน {shape} สำเร็จ")
+                        except Exception as e: 
                             st.error(f"Error: {e}")
 
         with sub_log:
