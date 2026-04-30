@@ -186,12 +186,9 @@ if menu == "Dashboard":
                 x=latest["tank_name"],
                 y=latest["temperature"],
                 name="อุณหภูมิ (°C)",
-                mode="lines+markers+text",
-                line=dict(color="#9999FF", width=3),
-                marker=dict(size=10),
+                 marker_color="#9999FF",
                 text=latest["temperature"],
-                textposition="top center",
-                yaxis="y" # ใช้แกน Y เดียวกัน
+                textposition="auto",
             ))
 
             # --- เพิ่มเส้นเกณฑ์มาตรฐาน (Standard Lines) ---
