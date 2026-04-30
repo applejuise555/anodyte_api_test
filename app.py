@@ -111,92 +111,100 @@ if menu == "Dashboard":
     col2.metric("🧪 บ่อที่กำลังใช้งาน", active_tanks_count)
     st.markdown("---")
 
-    # ================= COLOR TANKS (DUAL AXIS) =================
-    st.subheader("🎨 วิเคราะห์ข้อมูลบ่อสี (Color Tanks Analysis)")
-    logs = load_color_logs()
+# ================= COLOR TANKS (DUAL AXIS & CUSTOM COLORS) =================
+st.subheader("🎨 วิเคราะห์ข้อมูลบ่อสี (Color Tanks Analysis)")
+logs = load_color_logs()
 
-    if logs:
-        df = pd.DataFrame(logs)
-        df["recorded_at"] = pd.to_datetime(df["recorded_at"])
-        tank_map = load_tanks()
-        inv = {v: k for k, v in tank_map.items()}
-        df["tank_name"] = df["tank_id"].map(inv)
+if logs:
+    df = pd.DataFrame(logs)
+    df["recorded_at"] = pd.to_datetime(df["recorded_at"])
+    tank_map = load_tanks()
+    inv = {v: k for k, v in tank_map.items()}
+    df["tank_name"] = df["tank_id"].map(inv)
 
-        all_tank_names = sorted(df["tank_name"].dropna().unique())
-        col_select1, col_select2 = st.columns([4, 1])
-        with col_select1:
-            selected_tanks = st.multiselect("เลือกบ่อที่ต้องการแสดงผล", options=all_tank_names, default=[])
-        with col_select2:
-            show_all = st.checkbox("เลือกทั้งหมด", value=not selected_tanks)
+    all_tank_names = sorted(df["tank_name"].dropna().unique())
+    col_select1, col_select2 = st.columns([4, 1])
+    with col_select1:
+        selected_tanks = st.multiselect("เลือกบ่อที่ต้องการแสดงผล", options=all_tank_names, default=[])
+    with col_select2:
+        show_all = st.checkbox("เลือกทั้งหมด", value=not selected_tanks)
 
-        if show_all or not selected_tanks:
-            filtered_df = df.copy()
-        else:
-            filtered_df = df[df["tank_name"].isin(selected_tanks)]
-
-        latest = filtered_df.drop_duplicates("tank_id").copy()
-
-        if not latest.empty:
-            # สร้าง Subplots แบบ 2 แกน Y
-            fig = make_subplots(specs=[[{"secondary_y": True}]])
-
-            # 1. กราฟแท่ง pH (แกนซ้าย)
-            fig.add_trace(
-                go.Bar(
-                    x=latest["tank_name"],
-                    y=latest["ph_value"],
-                    name="ค่า pH",
-                    marker_color="#22c55e",
-                    text=latest["ph_value"],
-                    textposition='auto',
-                ),
-                secondary_y=False,
-            )
-
-            # 2. กราฟเส้น/แท่ง อุณหภูมิ (แกนขวา) - แนะนำใช้ Scatter จะดูแยกง่ายกว่า
-            fig.add_trace(
-                go.Scatter(
-                    x=latest["tank_name"],
-                    y=latest["temperature"],
-                    name="อุณหภูมิ (°C)",
-                    mode="lines+markers+text",
-                    marker_color="#3b82f6",
-                    text=latest["temperature"],
-                    textposition="top center",
-                ),
-                secondary_y=True,
-            )
-
-            # ตั้งชื่อและช่วงของแกน
-            fig.update_yaxes(title_text="<b>ค่า pH</b>", secondary_y=False, range=[0, 14])
-            fig.update_yaxes(title_text="<b>อุณหภูมิ (°C)</b>", secondary_y=True, range=[0, 100])
-
-            # เส้นเกณฑ์มาตรฐาน
-            fig.add_hline(y=PH_MIN, line_dash="dash", line_color="green", annotation_text="pH Min", secondary_y=False)
-            fig.add_hline(y=PH_MAX, line_dash="dash", line_color="green", annotation_text="pH Max", secondary_y=False)
-
-            fig.update_layout(
-                title=f"สถานะล่าสุดของบ่อสี (แยกแกนวัดค่า)",
-                xaxis_title="ชื่อบ่อ",
-                legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="right", x=1),
-                hovermode="x unified",
-                height=600
-            )
-
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Alerts
-            alerts = latest[
-                (latest["ph_value"] < PH_MIN) | (latest["ph_value"] > PH_MAX) |
-                (latest["temperature"] < TEMP_COLOR_MIN) | (latest["temperature"] > TEMP_COLOR_MAX)
-            ]
-            if not alerts.empty:
-                st.warning("⚠️ พบรายการที่หลุดเกณฑ์มาตรฐาน")
-                st.dataframe(alerts[["tank_name", "ph_value", "temperature"]], use_container_width=True)
-        else:
-            st.info("ไม่พบบ่อที่เลือกในฐานข้อมูล")
+    if show_all or not selected_tanks:
+        filtered_df = df.copy()
     else:
-        st.info("ไม่มีข้อมูล Color")
+        filtered_df = df[df["tank_name"].isin(selected_tanks)]
+
+    latest = filtered_df.drop_duplicates("tank_id").copy()
+
+    if not latest.empty:
+        # สร้าง Subplots แบบ 2 แกน Y
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+        # เตรียมสีสำหรับแต่ละบ่อ
+        # ใช้สีตาม TANK_COLOR_MAP ถ้าไม่มีให้เป็นสีเทา
+        bar_colors = [COLOR_HEX_MAP.get(TANK_COLOR_MAP.get(name, "Black"), "#CCCCCC") for name in latest["tank_name"]]
+
+        # 1. กราฟแท่ง pH (แกนซ้าย)
+        fig.add_trace(
+            go.Bar(
+                x=latest["tank_name"],
+                y=latest["ph_value"],
+                name="ค่า pH (รายบ่อ)",
+                marker_color=bar_colors, # แยกสีตามบ่อ
+                opacity=0.8,
+                text=latest["ph_value"],
+                textposition='inside',
+            ),
+            secondary_y=False,
+        )
+
+        # 2. กราฟแท่ง อุณหภูมิ (แกนขวา) - เปลี่ยนเป็นแท่งตามคำขอ
+        fig.add_trace(
+            go.Bar(
+                x=latest["tank_name"],
+                y=latest["temperature"],
+                name="อุณหภูมิ (°C)",
+                marker_color="#fbbf24", # สีส้มทองเพื่อให้เด่นออกมา
+                opacity=0.5,
+                text=latest["temperature"],
+                textposition='outside',
+            ),
+            secondary_y=True,
+        )
+
+        # ตั้งชื่อและช่วงของแกน
+        fig.update_yaxes(title_text="<b>ค่า pH</b>", secondary_y=False, range=[0, 14], dtick=1)
+        fig.update_yaxes(title_text="<b>อุณหภูมิ (°C)</b>", secondary_y=True, range=[0, 100])
+
+        # เส้นเกณฑ์มาตรฐาน (เปลี่ยนเป็นสีแดง)
+        # เส้น pH
+        fig.add_hline(y=PH_MIN, line_dash="dash", line_color="red", annotation_text="pH Min", secondary_y=False)
+        fig.add_hline(y=PH_MAX, line_dash="dash", line_color="red", annotation_text="pH Max", secondary_y=False)
+        
+        # เส้น Temp
+        fig.add_hline(y=TEMP_COLOR_MIN, line_dash="dot", line_color="red", annotation_text="Temp Min", secondary_y=True)
+        fig.add_hline(y=TEMP_COLOR_MAX, line_dash="dot", line_color="red", annotation_text="Temp Max", secondary_y=True)
+
+        fig.update_layout(
+            title=f"สถานะล่าสุดของบ่อสี (เปรียบเทียบ pH และ อุณหภูมิ)",
+            xaxis_title="ชื่อบ่อ",
+            barmode="group", # ให้แท่ง pH และ Temp วางคู่กัน
+            legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="right", x=1),
+            height=600
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Alerts ส่วนการแจ้งเตือนยังคงเดิม
+        alerts = latest[
+            (latest["ph_value"] < PH_MIN) | (latest["ph_value"] > PH_MAX) |
+            (latest["temperature"] < TEMP_COLOR_MIN) | (latest["temperature"] > TEMP_COLOR_MAX)
+        ]
+        if not alerts.empty:
+            st.warning("⚠️ พบรายการที่หลุดเกณฑ์มาตรฐาน")
+            st.dataframe(alerts[["tank_name", "ph_value", "temperature"]], use_container_width=True)
+    else:
+        st.info("ไม่พบบ่อที่เลือกในฐานข้อมูล")
 
     # (ส่วน Individual Tank Analysis และ Anodize สามารถใช้ logic เดิมได้เลยครับ)
 
