@@ -77,11 +77,7 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
 # ================= DASHBOARD (FULL SYSTEM VIEW) =================
-# ================= DASHBOARD (FULL SYSTEM VIEW) =================
 if menu == "Dashboard":
-
-    import plotly.graph_objects as go
-
     st.title("📊 Production Dashboard (System Overview)")
 
     # ================= STANDARD =================
@@ -89,138 +85,111 @@ if menu == "Dashboard":
     TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30, 40
     TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22
 
-    # ================= CACHE =================
+    # ================= CACHE & DATA LOADING =================
     @st.cache_data(ttl=10)
     def load_color_logs():
-        return supabase.table("color_tank_logs")\
-            .select("*")\
-            .order("recorded_at", desc=True)\
-            .limit(200)\
-            .execute().data
+        return supabase.table("color_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
 
     @st.cache_data(ttl=10)
     def load_anodize_logs():
-        return supabase.table("anodize_tank_logs")\
-            .select("*")\
-            .order("recorded_at", desc=True)\
-            .limit(200)\
-            .execute().data
+        return supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
 
     @st.cache_data(ttl=60)
     def load_tanks():
         return get_options("tanks", "tank_id", "tank_name")
 
-    # ================= KPI =================
+    # ================= KPI SECTION =================
     col1, col2 = st.columns(2)
-
-    # ดึงข้อมูลจิ๊กที่กำลังผลิต (In-Process)
-    active_jigs_res = supabase.table("jig_status")\
-        .select("jig_id, current_tank_id")\
-        .eq("status_type", "In-Process")\
-        .execute()
-    
+    active_jigs_res = supabase.table("jig_status").select("jig_id, current_tank_id").eq("status_type", "In-Process").execute()
     active_jigs_data = active_jigs_res.data if active_jigs_res.data else []
-
-    # 1. จำนวนกำลังผลิต (จำนวนจิ๊กที่ In-Process)
+    
     production_count = len(active_jigs_data)
-
-    # 2. จำนวนบ่อที่กำลังทำงานอยู่ (นับ Unique tank_id จากจิ๊กที่ In-Process)
-    # เราใช้ set() เพื่อไม่ให้นับบ่อซ้ำ ในกรณีที่มีจิ๊กหลายตัวอยู่ในบ่อเดียวกัน
     active_tanks_set = {item["current_tank_id"] for item in active_jigs_data if item["current_tank_id"] is not None}
     active_tanks_count = len(active_tanks_set)
 
     col1.metric("🟢 กำลังผลิต (จิ๊ก)", production_count)
     col2.metric("🧪 บ่อที่กำลังใช้งาน", active_tanks_count)
-
     st.markdown("---")
 
-# =========================================================
-    # ================= COLOR (ALL TANK VIEW) =================
-    # =========================================================
+    # ================= COLOR TANKS (DUAL AXIS) =================
     st.subheader("🎨 วิเคราะห์ข้อมูลบ่อสี (Color Tanks Analysis)")
-
     logs = load_color_logs()
 
     if logs:
         df = pd.DataFrame(logs)
         df["recorded_at"] = pd.to_datetime(df["recorded_at"])
-
         tank_map = load_tanks()
         inv = {v: k for k, v in tank_map.items()}
         df["tank_name"] = df["tank_id"].map(inv)
 
-        # --- ส่วนการเลือกบ่อ (Multi-select) ---
         all_tank_names = sorted(df["tank_name"].dropna().unique())
-        
         col_select1, col_select2 = st.columns([4, 1])
         with col_select1:
-            selected_tanks = st.multiselect(
-                "เลือกบ่อที่ต้องการแสดงผล (เว้นว่างไว้เพื่อดูทั้งหมด)", 
-                options=all_tank_names,
-                default=[]
-            )
+            selected_tanks = st.multiselect("เลือกบ่อที่ต้องการแสดงผล", options=all_tank_names, default=[])
         with col_select2:
             show_all = st.checkbox("เลือกทั้งหมด", value=not selected_tanks)
 
-        # กรองข้อมูลตามที่เลือก
         if show_all or not selected_tanks:
             filtered_df = df.copy()
         else:
             filtered_df = df[df["tank_name"].isin(selected_tanks)]
 
-        # ดึงข้อมูลล่าสุดของแต่ละบ่อที่ถูกเลือก
         latest = filtered_df.drop_duplicates("tank_id").copy()
 
         if not latest.empty:
-            fig = go.Figure()
+            # สร้าง Subplots แบบ 2 แกน Y
             fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-            # 1. กราฟแท่ง pH (Bar)
-            fig.add_trace(go.Bar(
-                x=latest["tank_name"],
-                y=latest["ph_value"],
-                name="ค่า pH",
-                marker_color="#22c55e",
-                text=latest["ph_value"],
-                textposition='auto',
-            ),secondary_y=False,)
+            # 1. กราฟแท่ง pH (แกนซ้าย)
+            fig.add_trace(
+                go.Bar(
+                    x=latest["tank_name"],
+                    y=latest["ph_value"],
+                    name="ค่า pH",
+                    marker_color="#22c55e",
+                    text=latest["ph_value"],
+                    textposition='auto',
+                ),
+                secondary_y=False,
+            )
 
-            # 2. กราฟเเท่ง อุณหภูมิ (Bar)
-            fig.add_trace(go.Bar(
-                x=latest["tank_name"],
-                y=latest["temperature"],
-                name="อุณหภูมิ (°C)",
-                 marker_color="#9999FF",
-                text=latest["temperature"],
-                textposition="auto",
-            ),secondary_y=True,)
+            # 2. กราฟเส้น/แท่ง อุณหภูมิ (แกนขวา) - แนะนำใช้ Scatter จะดูแยกง่ายกว่า
+            fig.add_trace(
+                go.Scatter(
+                    x=latest["tank_name"],
+                    y=latest["temperature"],
+                    name="อุณหภูมิ (°C)",
+                    mode="lines+markers+text",
+                    marker_color="#3b82f6",
+                    text=latest["temperature"],
+                    textposition="top center",
+                ),
+                secondary_y=True,
+            )
 
-            # --- เพิ่มเส้นเกณฑ์มาตรฐาน (Standard Lines) ---
-            # เส้น pH (5.0 - 6.0)
-            fig.add_hline(y=5.0, line_dash="dash", line_color="red", annotation_text="pH Min (5.0)")
-            fig.add_hline(y=6.0, line_dash="dash", line_color="red", annotation_text="pH Max (6.0)")
-            
-            # เส้น Temp (30 - 40)
-            fig.add_hline(y=30.0, line_dash="dot", line_color="red", annotation_text="Temp Min (30°C)")
-            fig.add_hline(y=40.0, line_dash="dot", line_color="red", annotation_text="Temp Max (40°C)")
+            # ตั้งชื่อและช่วงของแกน
+            fig.update_yaxes(title_text="<b>ค่า pH</b>", secondary_y=False, range=[0, 14])
+            fig.update_yaxes(title_text="<b>อุณหภูมิ (°C)</b>", secondary_y=True, range=[0, 100])
+
+            # เส้นเกณฑ์มาตรฐาน
+            fig.add_hline(y=PH_MIN, line_dash="dash", line_color="green", annotation_text="pH Min", secondary_y=False)
+            fig.add_hline(y=PH_MAX, line_dash="dash", line_color="green", annotation_text="pH Max", secondary_y=False)
 
             fig.update_layout(
-                title=f"สถานะล่าสุดของบ่อสี (จำนวน {len(latest)} บ่อ)",
+                title=f"สถานะล่าสุดของบ่อสี (แยกแกนวัดค่า)",
                 xaxis_title="ชื่อบ่อ",
-                yaxis_title="ค่า pH / อุณหภูมิ (°C)",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="right", x=1),
                 hovermode="x unified",
                 height=600
             )
 
             st.plotly_chart(fig, use_container_width=True)
             
-            # แสดงตาราง Alert ด้านล่างกรณีมีค่าหลุดมาตรฐาน
+            # Alerts
             alerts = latest[
                 (latest["ph_value"] < PH_MIN) | (latest["ph_value"] > PH_MAX) |
                 (latest["temperature"] < TEMP_COLOR_MIN) | (latest["temperature"] > TEMP_COLOR_MAX)
             ]
-            
             if not alerts.empty:
                 st.warning("⚠️ พบรายการที่หลุดเกณฑ์มาตรฐาน")
                 st.dataframe(alerts[["tank_name", "ph_value", "temperature"]], use_container_width=True)
@@ -228,6 +197,8 @@ if menu == "Dashboard":
             st.info("ไม่พบบ่อที่เลือกในฐานข้อมูล")
     else:
         st.info("ไม่มีข้อมูล Color")
+
+    # (ส่วน Individual Tank Analysis และ Anodize สามารถใช้ logic เดิมได้เลยครับ)
 
     # =========================================================
     # ================= INDIVIDUAL TANK VIEW =================
