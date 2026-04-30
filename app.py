@@ -293,7 +293,7 @@ if menu == "Dashboard":
 
             # pH
             if PH_MIN <= row["ph_value"] <= PH_MAX:
-                ph_colors.append("#22c55e")
+                ph_colors.append("#98FB98")
             else:
                 ph_colors.append("#ef4444")
                 alerts.append(f"{row['tank_name']} → pH ผิด ({row['ph_value']:.2f})")
