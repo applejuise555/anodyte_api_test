@@ -4,6 +4,7 @@ from supabase import create_client
 from datetime import datetime, timezone, timedelta
 from streamlit_autorefresh import st_autorefresh
 import plotly.graph_objects as go
+import math
 # 1. ตั้งค่า Timezone (UTC +7)
 ICT = timezone(timedelta(hours=7))
 st.set_page_config(page_title="SCADA Dashboard", layout="wide")
@@ -277,7 +278,7 @@ if menu == "Dashboard":
                 fig_temp = go.Figure()
                 fig_temp.add_trace(go.Scatter(
                     x=tank_df["recorded_at"],
-                    y=tank_df["Temperature"],
+                    y=tank_df["temperature"],
                     mode='lines+markers',
                     name='Temperature',
                     line=dict(color='#22c55e', width=3),
