@@ -146,7 +146,7 @@ if menu == "Dashboard":
                     x=latest["tank_name"],
                     y=latest["temperature"],
                     name="อุณหภูมิ (Std: 30-40 °C)",
-                    marker_color="#3b82f6",
+                    marker_color="#AFEEEE",
                     text=latest["temperature"],
                     textposition='auto',
                     offsetgroup=2, # จัดกลุ่มที่ 2 (ทำให้แท่งวางข้างกัน)
