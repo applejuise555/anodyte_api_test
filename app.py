@@ -404,40 +404,22 @@ elif menu == "บันทึกข้อมูลการผลิต":
 
     with tab3:
         sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
-        
-        # ================= 1. ลงทะเบียนชิ้นงาน (ปรับปรุงใหม่) =================
-        
-        with sub_jig:
-            with st.form("add_jig_form", clear_on_submit=True):
-                j_code = st.text_input("รหัสจิ๊ก")
-                if st.form_submit_button("ลงทะเบียนจิ๊ก"):
-                    if not j_code:
-                        st.error("กรุณากรอกรหัสจิ๊ก")
-                    else:
-                        try:
-                            supabase.table("jigs").insert({
-                                "jig_model_code": j_code, 
-                                "total_pcs_in_jig": 0
-                            }).execute()
-                            st.success("ลงทะเบียนจิ๊กสำเร็จ")
-                        except Exception as e:
-                            st.error(f"Error: {e}")
-    # ================= 1. ลงทะเบียนชิ้นงาน (ฉบับแก้ไข UI อัปเดตทันที) =================
+
+        # ================= 1. ลงทะเบียนชิ้นงาน (แก้ไขให้ Update ทันที) =================
         with sub_prod:
-            with st.form("add_prod_form", clear_on_submit=True):
+            # ย้าย Selectbox ออกมานอก Form เพื่อให้เกิดการ Rerun ทันทีที่เปลี่ยนค่า
+            shape = st.selectbox("รูปทรงชิ้นงาน", ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง"], key="shape_selector")
+            
+            with st.form("add_prod_form_fixed", clear_on_submit=True):
                 col1, col2 = st.columns(2)
                 with col1:
                     p_code = st.text_input("รหัสสินค้า (Product Code)")
                     p_name = st.text_input("ชื่อ/รายละเอียดสินค้า")
-                    
-                    # ใช้ Selectbox เพื่อเลือกรูปทรง
-                    shape = st.selectbox("รูปทรงชิ้นงาน", ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง"])
-                    
                     height = st.number_input("ความสูง (Height)", min_value=0.0, step=0.1)
                     width = st.number_input("ความกว้าง / OD (Width)", min_value=0.0, step=0.1)
                     thickness = st.number_input("ความหนา (Thickness)", min_value=0.0, step=0.1)
                 
-                # --- Logic คำนวณค่า Diameter ---
+                # --- Logic การคำนวณ (ทำงานทันทีเพราะ shape อยู่นอก Form) ---
                 calc_od = 0.0
                 calc_id = 0.0
                 if shape == "ทรงกระบอกทึบ":
@@ -450,10 +432,9 @@ elif menu == "บันทึกข้อมูลการผลิต":
                 with col2:
                     depth = st.number_input("ความลึก (Depth)", min_value=0.0, step=0.1)
                     st.write("---")
-                    # ใช้ st.info เพื่อแสดงสถานะปัจจุบัน
-                    st.info(f"**ระบบกำลังคำนวณแบบ: {shape}**")
+                    # แสดงสถานะการคำนวณที่เปลี่ยนตามรูปทรงจริง
+                    st.success(f"⚙️ ระบบกำลังใช้สูตรคำนวณ: **{shape}**")
                     
-                    # แสดงผลลัพธ์จากการคำนวณ (ใช้ value=calc_... เพื่อให้เปลี่ยนตามฝั่งซ้ายทันที)
                     final_od = st.number_input("Outer Diameter", value=float(calc_od), format="%.2f", disabled=True)
                     final_id = st.number_input("Inner Diameter (ID = OD - 2T)", value=float(calc_id), format="%.2f", disabled=True)
                     
@@ -471,9 +452,27 @@ elif menu == "บันทึกข้อมูลการผลิต":
                                 "depth": depth, "outer_diameter": calc_od, 
                                 "inner_diameter": calc_id, "surface_finish": s_finish
                             }).execute()
-                            st.success(f"ลงทะเบียน {shape} สำเร็จ")
+                            st.success(f"บันทึกข้อมูล {shape} เข้าสู่ระบบเรียบร้อย!")
                         except Exception as e: 
                             st.error(f"Error: {e}")
+        
+        
+        with sub_jig:
+            with st.form("add_jig_form", clear_on_submit=True):
+                j_code = st.text_input("รหัสจิ๊ก")
+                if st.form_submit_button("ลงทะเบียนจิ๊ก"):
+                    if not j_code:
+                        st.error("กรุณากรอกรหัสจิ๊ก")
+                    else:
+                        try:
+                            supabase.table("jigs").insert({
+                                "jig_model_code": j_code, 
+                                "total_pcs_in_jig": 0
+                            }).execute()
+                            st.success("ลงทะเบียนจิ๊กสำเร็จ")
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+    
 
         with sub_log:
             prods = get_options("products", "product_id", "product_code")
