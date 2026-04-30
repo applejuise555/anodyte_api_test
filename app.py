@@ -5,6 +5,8 @@ from datetime import datetime, timezone, timedelta
 from streamlit_autorefresh import st_autorefresh
 import plotly.graph_objects as go
 import math
+from plotly.subplots import make_subplots
+
 # 1. ตั้งค่า Timezone (UTC +7)
 ICT = timezone(timedelta(hours=7))
 st.set_page_config(page_title="SCADA Dashboard", layout="wide")
@@ -171,6 +173,7 @@ if menu == "Dashboard":
 
         if not latest.empty:
             fig = go.Figure()
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
 
             # 1. กราฟแท่ง pH (Bar)
             fig.add_trace(go.Bar(
@@ -180,7 +183,7 @@ if menu == "Dashboard":
                 marker_color="#22c55e",
                 text=latest["ph_value"],
                 textposition='auto',
-            ))
+            ),secondary_y=False,)
 
             # 2. กราฟเเท่ง อุณหภูมิ (Bar)
             fig.add_trace(go.Bar(
@@ -190,7 +193,7 @@ if menu == "Dashboard":
                  marker_color="#9999FF",
                 text=latest["temperature"],
                 textposition="auto",
-            ))
+            )secondary_y=True,)
 
             # --- เพิ่มเส้นเกณฑ์มาตรฐาน (Standard Lines) ---
             # เส้น pH (5.0 - 6.0)
