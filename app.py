@@ -183,7 +183,7 @@ if menu == "Dashboard":
             ))
 
             # 2. กราฟเเท่ง อุณหภูมิ (Bar)
-            fig.add_trace(go.Scatter(
+            fig.add_trace(go.Bar(
                 x=latest["tank_name"],
                 y=latest["temperature"],
                 name="อุณหภูมิ (°C)",
