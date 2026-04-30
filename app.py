@@ -193,7 +193,7 @@ if menu == "Dashboard":
                  marker_color="#9999FF",
                 text=latest["temperature"],
                 textposition="auto",
-            )secondary_y=True,)
+            ),secondary_y=True,)
 
             # --- เพิ่มเส้นเกณฑ์มาตรฐาน (Standard Lines) ---
             # เส้น pH (5.0 - 6.0)
