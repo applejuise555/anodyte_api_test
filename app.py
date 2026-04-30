@@ -110,13 +110,24 @@ if menu == "Dashboard":
     # ================= KPI =================
     col1, col2 = st.columns(2)
 
-    active_jigs = supabase.table("jig_status")\
-        .select("jig_id")\
+    # ดึงข้อมูลจิ๊กที่กำลังผลิต (In-Process)
+    active_jigs_res = supabase.table("jig_status")\
+        .select("jig_id, current_tank_id")\
         .eq("status_type", "In-Process")\
         .execute()
+    
+    active_jigs_data = active_jigs_res.data if active_jigs_res.data else []
 
-    col1.metric("🟢 กำลังผลิต", len(active_jigs.data))
-    col2.metric("🧪 จำนวนบ่อทั้งหมด", len(load_tanks()))
+    # 1. จำนวนกำลังผลิต (จำนวนจิ๊กที่ In-Process)
+    production_count = len(active_jigs_data)
+
+    # 2. จำนวนบ่อที่กำลังทำงานอยู่ (นับ Unique tank_id จากจิ๊กที่ In-Process)
+    # เราใช้ set() เพื่อไม่ให้นับบ่อซ้ำ ในกรณีที่มีจิ๊กหลายตัวอยู่ในบ่อเดียวกัน
+    active_tanks_set = {item["current_tank_id"] for item in active_jigs_data if item["current_tank_id"] is not None}
+    active_tanks_count = len(active_tanks_set)
+
+    col1.metric("🟢 กำลังผลิต (จิ๊ก)", production_count)
+    col2.metric("🧪 บ่อที่กำลังใช้งาน", active_tanks_count)
 
     st.markdown("---")
 
