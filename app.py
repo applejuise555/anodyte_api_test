@@ -182,6 +182,79 @@ if menu == "Dashboard":
         st.info("ไม่มีข้อมูล Color")
 
     # =========================================================
+    # ================= INDIVIDUAL TANK VIEW =================
+    # =========================================================
+    st.markdown("---")
+    st.subheader("🔍 วิเคราะห์ข้อมูลรายบ่อ (Individual Tank Analysis)")
+
+    # ดึงรายชื่อบ่อสีที่มีใน logs มาให้เลือก
+    if logs:
+        df_all = pd.DataFrame(logs)
+        df_all["recorded_at"] = pd.to_datetime(df_all["recorded_at"])
+        
+        # สร้าง Mapping ชื่อบ่อ
+        tank_map = load_tanks()
+        inv_map = {v: k for k, v in tank_map.items()}
+        df_all["tank_name"] = df_all["tank_id"].map(inv_map)
+        
+        # ตัวเลือกบ่อ
+        available_tanks = sorted(df_all["tank_name"].unique())
+        selected_tank = st.selectbox("เลือกบ่อที่ต้องการดูรายละเอียด", available_tanks)
+
+        # กรองข้อมูลเฉพาะบ่อที่เลือก
+        tank_df = df_all[df_all["tank_name"] == selected_tank].sort_values("recorded_at")
+
+        if not tank_df.empty:
+            # สร้าง Column สำหรับกราฟ 2 ฝั่ง (pH และ Temp)
+            g1, g2 = st.columns(2)
+
+            with g1:
+                fig_ph = go.Figure()
+                fig_ph.add_trace(go.Scatter(
+                    x=tank_df["recorded_at"],
+                    y=tank_df["ph_value"],
+                    mode='lines+markers',
+                    name='pH Value',
+                    line=dict(color='#22c55e', width=3),
+                    marker=dict(size=8)
+                ))
+                # เพิ่มเส้นขอบเขตมาตรฐาน
+                fig_ph.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1, line_width=0, annotation_text="Standard Range")
+                
+                fig_ph.update_layout(
+                    title=f"แนวโน้มค่า pH: {selected_tank}",
+                    xaxis_title="เวลาที่บันทึก",
+                    yaxis_title="pH",
+                    hovermode="x unified"
+                )
+                st.plotly_chart(fig_ph, use_container_width=True)
+
+            with g2:
+                fig_temp = go.Figure()
+                fig_temp.add_trace(go.Scatter(
+                    x=tank_df["recorded_at"],
+                    y=tank_df["temperature"],
+                    mode='lines+markers',
+                    name='Temperature',
+                    line=dict(color='#f59e0b', width=3),
+                    marker=dict(size=8)
+                ))
+                # เพิ่มเส้นขอบเขตมาตรฐาน
+                fig_temp.add_hrect(y0=TEMP_COLOR_MIN, y1=TEMP_COLOR_MAX, fillcolor="orange", opacity=0.1, line_width=0, annotation_text="Standard Range")
+                
+                fig_temp.update_layout(
+                    title=f"แนวโน้มอุณหภูมิ: {selected_tank}",
+                    xaxis_title="เวลาที่บันทึก",
+                    yaxis_title="อุณหภูมิ (°C)",
+                    hovermode="x unified"
+                )
+                st.plotly_chart(fig_temp, use_container_width=True)
+            
+            # แสดงตารางข้อมูลล่าสุดของบ่อนี้
+            with st.expander(f"ดูประวัติข้อมูลดิบของ {selected_tank}"):
+                st.dataframe(tank_df[["recorded_at", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
+
+    # =========================================================
     # ================= ANODIZE =================
     # =========================================================
     st.markdown("---")
