@@ -131,10 +131,10 @@ if menu == "Dashboard":
 
     st.markdown("---")
 
-    # =========================================================
+# =========================================================
     # ================= COLOR (ALL TANK VIEW) =================
     # =========================================================
-    st.subheader("🎨 Color Tanks (All)")
+    st.subheader("🎨 วิเคราะห์ข้อมูลบ่อสี (Color Tanks Analysis)")
 
     logs = load_color_logs()
 
@@ -146,49 +146,85 @@ if menu == "Dashboard":
         inv = {v: k for k, v in tank_map.items()}
         df["tank_name"] = df["tank_id"].map(inv)
 
-        latest = df.drop_duplicates("tank_id")
+        # --- ส่วนการเลือกบ่อ (Multi-select) ---
+        all_tank_names = sorted(df["tank_name"].dropna().unique())
+        
+        col_select1, col_select2 = st.columns([4, 1])
+        with col_select1:
+            selected_tanks = st.multiselect(
+                "เลือกบ่อที่ต้องการแสดงผล (เว้นว่างไว้เพื่อดูทั้งหมด)", 
+                options=all_tank_names,
+                default=[]
+            )
+        with col_select2:
+            show_all = st.checkbox("เลือกทั้งหมด", value=not selected_tanks)
 
-        latest["ph_status"] = latest["ph_value"].apply(
-            lambda x: "OK" if PH_MIN <= x <= PH_MAX else "ALERT"
-        )
-        latest["temp_status"] = latest["temperature"].apply(
-            lambda x: "OK" if TEMP_COLOR_MIN <= x <= TEMP_COLOR_MAX else "ALERT"
-        )
+        # กรองข้อมูลตามที่เลือก
+        if show_all or not selected_tanks:
+            filtered_df = df.copy()
+        else:
+            filtered_df = df[df["tank_name"].isin(selected_tanks)]
 
-        latest["color"] = latest.apply(
-            lambda r: "red" if r["ph_status"] == "ALERT" or r["temp_status"] == "ALERT" else "green",
-            axis=1
-        )
+        # ดึงข้อมูลล่าสุดของแต่ละบ่อที่ถูกเลือก
+        latest = filtered_df.drop_duplicates("tank_id").copy()
 
-        fig = go.Figure()
+        if not latest.empty:
+            fig = go.Figure()
 
-        # pH
-        fig.add_trace(go.Bar(
-            x=latest["tank_name"],
-            y=latest["ph_value"],
-            name="pH",
-            marker_color=latest["color"]
-        ))
+            # 1. กราฟแท่ง pH (Bar)
+            fig.add_trace(go.Bar(
+                x=latest["tank_name"],
+                y=latest["ph_value"],
+                name="ค่า pH",
+                marker_color="#22c55e",
+                text=latest["ph_value"],
+                textposition='auto',
+            ))
 
-        # Temp
-        fig.add_trace(go.Scatter(
-            x=latest["tank_name"],
-            y=latest["temperature"],
-            name="Temperature",
-            mode="lines+markers"
-        ))
+            # 2. กราฟเส้น อุณหภูมิ (Line)
+            fig.add_trace(go.Scatter(
+                x=latest["tank_name"],
+                y=latest["temperature"],
+                name="อุณหภูมิ (°C)",
+                mode="lines+markers+text",
+                line=dict(color="#f59e0b", width=3),
+                marker=dict(size=10),
+                text=latest["temperature"],
+                textposition="top center",
+                yaxis="y" # ใช้แกน Y เดียวกัน
+            ))
 
-        st.plotly_chart(fig, use_container_width=True)
+            # --- เพิ่มเส้นเกณฑ์มาตรฐาน (Standard Lines) ---
+            # เส้น pH (5.0 - 6.0)
+            fig.add_hline(y=5.0, line_dash="dash", line_color="red", annotation_text="pH Min (5.0)")
+            fig.add_hline(y=6.0, line_dash="dash", line_color="red", annotation_text="pH Max (6.0)")
+            
+            # เส้น Temp (30 - 40)
+            fig.add_hline(y=30.0, line_dash="dot", line_color="orange", annotation_text="Temp Min (30°C)")
+            fig.add_hline(y=40.0, line_dash="dot", line_color="orange", annotation_text="Temp Max (40°C)")
 
-        alert_df = latest[
-            (latest["ph_status"] == "ALERT") |
-            (latest["temp_status"] == "ALERT")
-        ]
+            fig.update_layout(
+                title=f"สถานะล่าสุดของบ่อสี (จำนวน {len(latest)} บ่อ)",
+                xaxis_title="ชื่อบ่อ",
+                yaxis_title="ค่า pH / อุณหภูมิ (°C)",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                hovermode="x unified",
+                height=600
+            )
 
-        if not alert_df.empty:
-            st.error("⚠️ Color Tank ผิดปกติ")
-            st.dataframe(alert_df[["tank_name", "ph_value", "temperature"]])
-
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # แสดงตาราง Alert ด้านล่างกรณีมีค่าหลุดมาตรฐาน
+            alerts = latest[
+                (latest["ph_value"] < PH_MIN) | (latest["ph_value"] > PH_MAX) |
+                (latest["temperature"] < TEMP_COLOR_MIN) | (latest["temperature"] > TEMP_COLOR_MAX)
+            ]
+            
+            if not alerts.empty:
+                st.warning("⚠️ พบรายการที่หลุดเกณฑ์มาตรฐาน")
+                st.dataframe(alerts[["tank_name", "ph_value", "temperature"]], use_container_width=True)
+        else:
+            st.info("ไม่พบบ่อที่เลือกในฐานข้อมูล")
     else:
         st.info("ไม่มีข้อมูล Color")
 
