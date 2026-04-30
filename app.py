@@ -283,6 +283,7 @@ if menu == "Dashboard":
                     name='Temperature',
                     line=dict(color='#22c55e', width=3),
                     marker=dict(size=8)
+                ))
                 # เพิ่มเส้นขอบเขตมาตรฐาน
                 fig_temp.add_hrect(y0=TEMP_COLOR_MIN, y1=TEMP_COLOR_MAX, fillcolor="orange", opacity=0.1, line_width=0, annotation_text="Standard Range")
                 
