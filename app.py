@@ -200,8 +200,8 @@ if menu == "Dashboard":
             fig.add_hline(y=6.0, line_dash="dash", line_color="red", annotation_text="pH Max (6.0)")
             
             # เส้น Temp (30 - 40)
-            fig.add_hline(y=30.0, line_dash="dot", line_color="orange", annotation_text="Temp Min (30°C)")
-            fig.add_hline(y=40.0, line_dash="dot", line_color="orange", annotation_text="Temp Max (40°C)")
+            fig.add_hline(y=30.0, line_dash="dot", line_color="red", annotation_text="Temp Min (30°C)")
+            fig.add_hline(y=40.0, line_dash="dot", line_color="red", annotation_text="Temp Max (40°C)")
 
             fig.update_layout(
                 title=f"สถานะล่าสุดของบ่อสี (จำนวน {len(latest)} บ่อ)",
