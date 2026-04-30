@@ -137,61 +137,80 @@ if logs:
     latest = filtered_df.drop_duplicates("tank_id").copy()
 
     if not latest.empty:
-        # สร้าง Subplots แบบ 2 แกน Y
-        fig = make_subplots(specs=[[{"secondary_y": True}]])
+            # สร้าง Subplots แบบ 2 แกน Y
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-        # เตรียมสีสำหรับแต่ละบ่อ
-        # ใช้สีตาม TANK_COLOR_MAP ถ้าไม่มีให้เป็นสีเทา
-        bar_colors = [COLOR_HEX_MAP.get(TANK_COLOR_MAP.get(name, "Black"), "#CCCCCC") for name in latest["tank_name"]]
+            # 1. กราฟแท่ง pH (แกนซ้าย - สีเขียว)
+            fig.add_trace(
+                go.Bar(
+                    x=latest["tank_name"],
+                    y=latest["ph_value"],
+                    name="ค่า pH (Standard: 5-6)",
+                    marker_color="#22c55e",
+                    text=latest["ph_value"],
+                    textposition='inside',
+                ),
+                secondary_y=False,
+            )
 
-        # 1. กราฟแท่ง pH (แกนซ้าย)
-        fig.add_trace(
-            go.Bar(
-                x=latest["tank_name"],
-                y=latest["ph_value"],
-                name="ค่า pH (รายบ่อ)",
-                marker_color=bar_colors, # แยกสีตามบ่อ
-                opacity=0.8,
-                text=latest["ph_value"],
-                textposition='inside',
-            ),
-            secondary_y=False,
-        )
+            # 2. กราฟแท่ง อุณหภูมิ (แกนขวา - สีฟ้า)
+            fig.add_trace(
+                go.Bar(
+                    x=latest["tank_name"],
+                    y=latest["temperature"],
+                    name="อุณหภูมิ (Standard: 30-40 °C)",
+                    marker_color="#3b82f6",
+                    text=latest["temperature"],
+                    textposition='inside',
+                ),
+                secondary_y=True,
+            )
 
-        # 2. กราฟแท่ง อุณหภูมิ (แกนขวา) - เปลี่ยนเป็นแท่งตามคำขอ
-        fig.add_trace(
-            go.Bar(
-                x=latest["tank_name"],
-                y=latest["temperature"],
-                name="อุณหภูมิ (°C)",
-                marker_color="#fbbf24", # สีส้มทองเพื่อให้เด่นออกมา
-                opacity=0.5,
-                text=latest["temperature"],
-                textposition='outside',
-            ),
-            secondary_y=True,
-        )
+            # --- ตั้งค่าแกน Y ---
+            # แกนซ้าย: pH
+            fig.update_yaxes(
+                title_text="<b>ค่า pH</b>", 
+                secondary_y=False, 
+                range=[0, 14], 
+                tickmode="linear", 
+                tick0=0, 
+                dtick=1,
+                title_font=dict(color="#22c55e"),
+                tickfont=dict(color="#22c55e")
+            )
+            # แกนขวา: Temperature
+            fig.update_yaxes(
+                title_text="<b>อุณหภูมิ (°C)</b>", 
+                secondary_y=True, 
+                range=[0, 100],
+                title_font=dict(color="#3b82f6"),
+                tickfont=dict(color="#3b82f6")
+            )
 
-        # ตั้งชื่อและช่วงของแกน
-        fig.update_yaxes(title_text="<b>ค่า pH</b>", secondary_y=False, range=[0, 14], dtick=1)
-        fig.update_yaxes(title_text="<b>อุณหภูมิ (°C)</b>", secondary_y=True, range=[0, 100])
+            # --- เพิ่มเส้นเกณฑ์มาตรฐาน (แยกสีและแกน) ---
+            # เส้นมาตรฐาน pH (แกนซ้าย - สีเขียวเข้ม)
+            fig.add_hline(y=PH_MIN, line_dash="dash", line_color="#166534", 
+                          annotation_text=f"Min pH {PH_MIN}", secondary_y=False)
+            fig.add_hline(y=PH_MAX, line_dash="dash", line_color="#166534", 
+                          annotation_text=f"Max pH {PH_MAX}", secondary_y=False)
 
-        # เส้นเกณฑ์มาตรฐาน (เปลี่ยนเป็นสีแดง)
-        # เส้น pH
-        fig.add_hline(y=PH_MIN, line_dash="dash", line_color="red", annotation_text="pH Min", secondary_y=False)
-        fig.add_hline(y=PH_MAX, line_dash="dash", line_color="red", annotation_text="pH Max", secondary_y=False)
-        
-        # เส้น Temp
-        fig.add_hline(y=TEMP_COLOR_MIN, line_dash="dot", line_color="red", annotation_text="Temp Min", secondary_y=True)
-        fig.add_hline(y=TEMP_COLOR_MAX, line_dash="dot", line_color="red", annotation_text="Temp Max", secondary_y=True)
+            # เส้นมาตรฐาน Temperature (แกนขวา - สีส้มแดง)
+            fig.add_hline(y=TEMP_COLOR_MIN, line_dash="dot", line_color="#f97316", 
+                          annotation_text=f"Min Temp {TEMP_COLOR_MIN}", secondary_y=True)
+            fig.add_hline(y=TEMP_COLOR_MAX, line_dash="dot", line_color="#f97316", 
+                          annotation_text=f"Max Temp {TEMP_COLOR_MAX}", secondary_y=True)
 
-        fig.update_layout(
-            title=f"สถานะล่าสุดของบ่อสี (เปรียบเทียบ pH และ อุณหภูมิ)",
-            xaxis_title="ชื่อบ่อ",
-            barmode="group", # ให้แท่ง pH และ Temp วางคู่กัน
-            legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="right", x=1),
-            height=600
-        )
+            # การตั้งค่า Layout
+            fig.update_layout(
+                title=f"สถานะล่าสุดของบ่อสี: เปรียบเทียบ pH และ อุณหภูมิ",
+                xaxis_title="ชื่อบ่อ",
+                barmode="group", # ให้กราฟแท่งวางข้างกัน
+                legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="right", x=1),
+                hovermode="x unified",
+                height=600
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
 
         st.plotly_chart(fig, use_container_width=True)
         
