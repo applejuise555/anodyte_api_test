@@ -132,7 +132,7 @@ if menu == "Dashboard":
                     x=latest["tank_name"],
                     y=latest["ph_value"],
                     name="ค่า pH (Std: 5.0-6.0)",
-                    marker_color="#22c55e",
+                    marker_color="#98FB98",
                     text=latest["ph_value"],
                     textposition='auto',
                     offsetgroup=1, # จัดกลุ่มที่ 1
