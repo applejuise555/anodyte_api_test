@@ -181,13 +181,13 @@ if menu == "Dashboard":
                 textposition='auto',
             ))
 
-            # 2. กราฟเส้น อุณหภูมิ (Line)
+            # 2. กราฟเเท่ง อุณหภูมิ (Bar)
             fig.add_trace(go.Scatter(
                 x=latest["tank_name"],
                 y=latest["temperature"],
                 name="อุณหภูมิ (°C)",
                 mode="lines+markers+text",
-                line=dict(color="#f59e0b", width=3),
+                line=dict(color="#9999FF", width=3),
                 marker=dict(size=10),
                 text=latest["temperature"],
                 textposition="top center",
@@ -280,12 +280,11 @@ if menu == "Dashboard":
                 fig_temp = go.Figure()
                 fig_temp.add_trace(go.Scatter(
                     x=tank_df["recorded_at"],
-                    y=tank_df["temperature"],
+                    y=tank_df["Temperature"],
                     mode='lines+markers',
                     name='Temperature',
-                    line=dict(color='#f59e0b', width=3),
+                    line=dict(color='#22c55e', width=3),
                     marker=dict(size=8)
-                ))
                 # เพิ่มเส้นขอบเขตมาตรฐาน
                 fig_temp.add_hrect(y0=TEMP_COLOR_MIN, y1=TEMP_COLOR_MAX, fillcolor="orange", opacity=0.1, line_width=0, annotation_text="Standard Range")
                 
