@@ -432,7 +432,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
                 st.info(f"💡 ปริมาตร: {u_vol:,.2f} mm³")
                 if st.form_submit_button("➕ ลงทะเบียนสินค้า"):
                     if p_code:
-                        payload = {"product_code": p_code, "product_name": p_name, "surface_finish": s_finish, "unit_volume": u_vol, "height": height, "width": width, "thickness": thickness, "depth": thickness, "outer_diameter": od, "inner_diameter": id_inner if 'id_inner' in locals() else 0.0}
+                        payload = {"product_code": p_code, "product_name": p_name, "surface_finish": s_finish, "unit_volume": u_vol, "height": height, "width": width, "thickness": thickness, "depth": thickness, "shape": shape, "outer_diameter": od, "inner_diameter": id_inner if 'id_inner' in locals() else 0.0}
                         supabase.table("products").insert(payload).execute()
                         st.success("ลงทะเบียนสำเร็จ!")
                     else: st.error("กรุณาระบุรหัสสินค้า")
