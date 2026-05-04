@@ -459,13 +459,22 @@ elif menu == "บันทึกข้อมูลการผลิต":
         # 3.2 ลงทะเบียนจิ๊ก
         with sub_jig:
             st.subheader("เพิ่มรหัสจิ๊กใหม่")
-            with st.form("add_jig"):
+            with st.form("add_jig", clear_on_submit=True):
                 j_code = st.text_input("รหัสจิ๊ก")
                 if st.form_submit_button("ลงทะเบียนจิ๊ก"):
-                    try:
-                        supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
-                        st.success("บันทึกจิ๊กใหม่สำเร็จ")
-                    except Exception as e: st.error(f"Error: {e}")
+                    if not j_code:
+                        st.error("กรุณากรอกรหัสจิ๊ก")
+                    else:
+                        try:
+                            # แก้ไข payload ให้ส่งค่า 0 ไปที่ total_pcs_in_jig
+                            payload_jig = {
+                                "jig_model_code": j_code,
+                                "total_pcs_in_jig": 0  # เพิ่มบรรทัดนี้เพื่อแก้ Error
+                            }
+                            supabase.table("jigs").insert(payload_jig).execute()
+                            st.success(f"ลงทะเบียนจิ๊ก {j_code} สำเร็จ")
+                        except Exception as e:
+                            st.error(f"Database Error: {e}")
 
         # 3.3 บันทึกผลผลิต (บันทึกการใช้งานจิ๊ก)
         with sub_log:
