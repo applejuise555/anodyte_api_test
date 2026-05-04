@@ -155,29 +155,6 @@ if menu == "Dashboard":
             fig_c.update_layout(title="Current pH Level by Tank", height=400, margin=dict(t=50, b=20), yaxis_range=[4, 8])
             st.plotly_chart(fig_c, use_container_width=True)
 
-    with tab_ano:
-        if not df_a.empty:
-            # แสดงข้อมูลแบบ Grid แทนตารางยาวๆ
-            cols = st.columns(len(df_a) if len(df_a) <= 4 else 4)
-            for i, (_, row) in enumerate(df_a.iterrows()):
-                with cols[i % 4]:
-                    st.markdown(f"""
-                    <div style="padding:15px; border-radius:10px; background-color:#f0f2f6; margin-bottom:10px; border-left: 5px solid {'#ff4b4b' if (row['ph_value'] < PH_ANO_MIN or row['ph_value'] > PH_ANO_MAX) else '#00cc96'};">
-                        <small>{inv_tank_map.get(row['tank_id'], 'N/A')}</small><br>
-                        <strong>pH: {row['ph_value']:.2f}</strong><br>
-                        <small>Temp: {row['temperature']}°C</small>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-    # 6. Detail View (เฉพาะเมื่ออยากดู)
-    st.markdown("---")
-    with st.expander("🔍 ดูแนวโน้มย้อนหลังรายบ่อ (Historical Trends)"):
-        # ย้าย Logic เลือกบ่อมาไว้ในนี้
-        all_logs = pd.concat([pd.DataFrame(color_logs), pd.DataFrame(ano_logs)])
-        if not all_logs.empty:
-            all_logs["tank_name"] = all_logs["tank_id"].map(inv_tank_map)
-            target_tank = st.selectbox("เลือกบ่อที่ต้องการตรวจสอบ", sorted(all_logs["tank_name"].unique()))
-    
 
 # --- Color Tank Analysis ---
     st.subheader("🎨 วิเคราะห์ข้อมูลบ่อสี (Color Tanks)")
