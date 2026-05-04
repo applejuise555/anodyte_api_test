@@ -85,6 +85,7 @@ if menu == "Dashboard":
     TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30, 40
     PH_ANO_MIN, PH_ANO_MAX = 1, 1.5       # <--- เพิ่มบรรทัดนี้ (ปรับค่าตามมาตรฐานจริงของคุณ)
     TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22     # มาตรฐานอุณหภูมิ บ่ออโนไดซ์
+    DEN_ANO_MIN, DEN_ANO_MAX = 1.080, 1.150  #เพิ่มค่ามาตรฐาน Density (ปรับตัวเลขตาม Spec ของสารเคมีที่โรงงานใช้)
 
     # ================= CACHE & DATA LOADING =================
     @st.cache_data(ttl=10)
@@ -328,6 +329,10 @@ if menu == "Dashboard":
                     line=dict(color='#a855f7', width=2), marker=dict(size=6)
                 ))
                 # ถ้ามีค่ามาตรฐาน Density (เช่น 1.05 - 1.10) สามารถเพิ่ม hrect ได้เหมือน pH
+                # ส่วนในกราฟ Density (g3)
+                fig_den.add_hrect(y0=DEN_ANO_MIN, y1=DEN_ANO_MAX, fillcolor="purple", opacity=0.1, line_width=0)
+                fig_den.add_hline(y=DEN_ANO_MIN, line_dash="dash", line_color="purple")
+                fig_den.add_hline(y=DEN_ANO_MAX, line_dash="dash", line_color="red") # เส้นแดงเตือนว่าความหนาแน่นสูงเกินไป
                 fig_den.update_layout(title="แนวโน้มความหนาแน่น", height=350, margin=dict(t=50, b=20, l=10, r=10))
                 st.plotly_chart(fig_den, use_container_width=True)
 
