@@ -11,10 +11,11 @@ from plotly.subplots import make_subplots
 ICT = timezone(timedelta(hours=7))
 st.set_page_config(page_title="SCADA Dashboard", layout="wide")
 
+# --- [ADD] Constants & Thresholds ---
 PH_MIN, PH_MAX = 5.0, 6.0
 PH_ANO_MIN, PH_ANO_MAX = 0.5, 1.5
 TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30.0, 40.0
-TEMP_ANO_MIN, TEMP_ANO_MAX = 18.0, 22.0
+TEMP_ANO_MIN, TEMP_ANO_MAX = 15.0, 25.0
 DEN_ANO_MIN, DEN_ANO_MAX = 1.050, 1.150
 
 # --- Configuration ---
@@ -39,7 +40,6 @@ TANK_COLOR_MAP = {
     "HotSealH60": "Black"
 }
 
-
 # --- เชื่อมต่อ Supabase ---
 @st.cache_resource
 def init_connection():
@@ -53,7 +53,27 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- Helper Functions / Functions Declaration (ย้ายมาไว้ตรงนี้ทั้งหมด) ---
+# --- [ADD] Helper Functions ---
+
+def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
+    """ฟังก์ชันสำหรับดึงข้อมูลจาก Database มาทำ Dropdown"""
+    query = supabase.table(table).select(f"{id_col}, {name_col}")
+    if filter_col and filter_val:
+        query = query.eq(filter_col, filter_val)
+    res = query.execute()
+    if res.data:
+        return {item[name_col]: item[id_col] for item in res.data}
+    return {}
+
+def render_color_bar(color_name):
+    """แสดงแถบสีตัวอย่างในหน้าบันทึกข้อมูล"""
+    hex_code = COLOR_HEX_MAP.get(color_name, "#FFFFFF")
+    st.markdown(f"""
+        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+            <div style="width: 50px; height: 20px; background-color: {hex_code}; border: 1px solid #ddd; margin-right: 10px;"></div>
+            <span>สีที่ตรวจพบ: <b>{color_name}</b></span>
+        </div>
+    """, unsafe_allow_html=True)
 
 @st.cache_data(ttl=60)
 def load_tanks():
@@ -67,6 +87,9 @@ def load_color_logs():
 def load_anodize_logs():
     return supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
 
+# ---------------------------------------------------------
+# ส่วนเมนูและ Dashboard ด้านล่างสามารถใช้ของเดิมได้เลย
+# ---------------------------------------------------------
 # ---------------------------------------------------------
 # เมื่อประกาศเสร็จแล้ว ถึงจะเริ่มเรียกใช้งานในส่วน Dashboard
 # ---------------------------------------------------------
