@@ -413,7 +413,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
     with tab3:
         sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
         tab3 = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
-sub_prod, sub_jig, sub_log = tab3
+        sub_prod, sub_jig, sub_log = tab3
 
 # ---------------------------------------------------------
 # 1. ลงทะเบียนชิ้นงาน (sub_prod)
@@ -465,20 +465,20 @@ with sub_prod:
                 payload = {
                     "product_code": p_code, 
                     "product_name": f"[{shape.split(' ')[0]}] {p_name}",
+                    "surface_finish": s_finish,  # <--- เพิ่มบรรทัดนี้เข้าไป
                     "height": height, 
                     "thickness": thickness,
                     "outer_diameter": calc_od, 
                     "inner_diameter": calc_id, 
                     "width": width,
                     "depth": 0.0, 
-                    "unit_volume": unit_vol # บันทึกลงคอลัมน์ unit_volume ใน DB
+                    "unit_volume": unit_vol 
                 }
                 try:
                     supabase.table("products").insert(payload).execute()
                     st.success("ลงทะเบียนสินค้าสำเร็จ!")
                 except Exception as e:
                     st.error(f"เกิดข้อผิดพลาด: {e}")
-
 # ---------------------------------------------------------
 # 2. ลงทะเบียนจิ๊ก (sub_jig)
 # ---------------------------------------------------------
