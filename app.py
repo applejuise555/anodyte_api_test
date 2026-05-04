@@ -402,85 +402,96 @@ elif menu == "บันทึกข้อมูลการผลิต":
                     }).execute()
                     st.success("บันทึกข้อมูลอโนไดซ์สำเร็จ")
 
-    # --- Tab 3: ระบบงานจิ๊ก (Jig System) ---
+# --- Tab หลัก 3: ระบบงานจิ๊ก (Jig System) ---
     with tab_main[2]:
-        sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนสินค้า", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
+        sub_prod, sub_jig, sub_log = st.tabs(["📦 1. ลงทะเบียนสินค้า", "🛠️ 2. ลงทะเบียนจิ๊ก", "⚡ 3. บันทึกผลผลิต"])
 
-        # 1. ลงทะเบียนชิ้นงาน
+        # 3.1 ลงทะเบียนชิ้นงาน
         with sub_prod:
-            st.subheader("📦 เพิ่มสินค้าใหม่ลงระบบ")
-            shape = st.selectbox("📐 รูปทรง", ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง"])
-            with st.form("add_prod_form"):
+            st.subheader("เพิ่มสินค้าใหม่ลงระบบ")
+            shape = st.selectbox("📐 เลือกรูปทรงเพื่อคำนวณปริมาตร", ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง"])
+            with st.form("add_prod_form", clear_on_submit=True):
                 c1, c2 = st.columns(2)
-                p_code = c1.text_input("รหัสสินค้า *")
+                p_code = c1.text_input("รหัสสินค้า (Product Code) *")
                 p_name = c1.text_input("ชื่อสินค้า")
-                s_finish = c1.text_input("พื้นผิว (Surface Finish) *", value="-") # แก้ Error NOT NULL
+                s_finish = c1.text_input("พื้นผิว (Surface Finish) *", value="-")
                 
                 height = c2.number_input("ความยาว (H) [mm]", min_value=0.0)
-                width, thickness, od = 0.0, 0.0, 0.0
+                width, thickness, od, u_vol = 0.0, 0.0, 0.0, 0.0
+
                 if shape == "สี่เหลี่ยม":
                     width = c2.number_input("กว้าง [mm]", min_value=0.0)
                     thickness = c2.number_input("หนา [mm]", min_value=0.0)
                     u_vol = height * width * thickness
                 elif shape == "ทรงกระบอกทึบ":
-                    od = c2.number_input("OD [mm]", min_value=0.0)
+                    od = c2.number_input("เส้นผ่านศูนย์กลาง (OD) [mm]", min_value=0.0)
                     u_vol = math.pi * ((od/2)**2) * height
-                else: # กลวง
+                else: # ทรงกระบอกกลวง
                     od = c2.number_input("OD [mm]", min_value=0.0)
                     thickness = c2.number_input("ความหนาเนื้อ [mm]", min_value=0.0)
                     id_inner = max(0.0, od - (2*thickness))
                     u_vol = math.pi * ((od/2)**2 - (id_inner/2)**2) * height
 
-                if st.form_submit_button("➕ ลงทะเบียน"):
+                st.info(f"💡 ปริมาตรที่จะบันทึก: {u_vol:,.2f} mm³")
+
+                if st.form_submit_button("➕ ลงทะเบียนสินค้า"):
                     if not p_code: st.error("กรุณาระบุรหัสสินค้า")
                     else:
-                        payload = {
-                            "product_code": p_code, "product_name": p_name,
-                            "surface_finish": s_finish, "unit_volume": u_vol,
-                            "height": height, "width": width, "thickness": thickness, "outer_diameter": od
-                        }
-                        supabase.table("products").insert(payload).execute()
-                        st.success(f"ลงทะเบียน {p_code} สำเร็จ (Vol: {u_vol:,.2f})")
+                        try:
+                            payload = {
+                                "product_code": p_code, "product_name": p_name,
+                                "surface_finish": s_finish, "unit_volume": u_vol,
+                                "height": height, "width": width, "thickness": thickness, "outer_diameter": od
+                            }
+                            supabase.table("products").insert(payload).execute()
+                            st.success(f"ลงทะเบียน {p_code} เรียบร้อย!")
+                        except Exception as e:
+                            st.error(f"Database Error: {e}")
 
-        # 2. ลงทะเบียนจิ๊ก
+        # 3.2 ลงทะเบียนจิ๊ก
         with sub_jig:
+            st.subheader("เพิ่มรหัสจิ๊กใหม่")
             with st.form("add_jig"):
-                j_code = st.text_input("รหัสจิ๊กใหม่")
+                j_code = st.text_input("รหัสจิ๊ก")
                 if st.form_submit_button("ลงทะเบียนจิ๊ก"):
-                    supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
-                    st.success("สำเร็จ")
+                    try:
+                        supabase.table("jigs").insert({"jig_model_code": j_code}).execute()
+                        st.success("บันทึกจิ๊กใหม่สำเร็จ")
+                    except Exception as e: st.error(f"Error: {e}")
 
-        # 3. บันทึกผลผลิต (บันทึก Log การใช้งาน)
+        # 3.3 บันทึกผลผลิต (บันทึกการใช้งานจิ๊ก)
         with sub_log:
-            st.subheader("⚡ บันทึกการผลิตลงจิ๊ก")
-            prods = get_options("products", "product_id", "product_code")
-            jigs = get_options("jigs", "jig_id", "jig_model_code")
+            st.subheader("บันทึกการผลิตรายจิ๊ก")
+            prod_options = get_options("products", "product_id", "product_code")
+            jig_options = get_options("jigs", "jig_id", "jig_model_code")
             
-            if prods and jigs:
-                c1, c2 = st.columns(2)
-                sel_p = c1.selectbox("สินค้า", list(prods.keys()))
-                sel_j = c2.selectbox("จิ๊ก", list(jigs.keys()))
+            if prod_options and jig_options:
+                col_a, col_b = st.columns(2)
+                sel_p_id = col_a.selectbox("เลือกสินค้า", list(prod_options.keys()))
+                sel_j_id = col_b.selectbox("เลือกจิ๊ก", list(jig_options.keys()))
                 
-                # ดึง Volume
-                p_data = supabase.table("products").select("unit_volume").eq("product_id", prods[sel_p]).single().execute().data
-                u_vol = p_data['unit_volume'] if p_data else 0
+                # ดึง Unit Volume มาเตรียมไว้
+                p_info = supabase.table("products").select("unit_volume").eq("product_id", prod_options[sel_p_id]).single().execute().data
+                vol_per_pcs = p_info['unit_volume'] if p_info else 0
 
-                with st.form("prod_log"):
-                    pcs = st.number_input("จำนวนชิ้นงาน (Pcs)", min_value=1)
+                with st.form("prod_log_form"):
+                    pcs = st.number_input("จำนวนที่ใส่ในจิ๊ก (Pcs)", min_value=1)
                     tank_list = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
-                    sel_tank = st.selectbox("บ่อที่ลง", list(tank_list.keys()))
+                    sel_tank = st.selectbox("ชุบที่บ่อ", list(tank_list.keys()))
                     
-                    if st.form_submit_button("💾 บันทึกการผลิต"):
-                        total_v = u_vol * pcs
-                        # Insert Log
+                    if st.form_submit_button("💾 บันทึกผลผลิต"):
+                        total_v = vol_per_pcs * pcs
+                        # 1. บันทึก Log
                         supabase.table("jig_usage_log").insert({
-                            "product_id": prods[sel_p], "jig_id": jigs[sel_j],
+                            "product_id": prod_options[sel_p_id], "jig_id": jig_options[sel_j_id],
                             "total_pieces": pcs, "total_volume": total_v,
                             "tank_id": tank_list[sel_tank], "recorded_date": datetime.now(ICT).isoformat()
                         }).execute()
-                        # Update Status
+                        # 2. อัปเดตสถานะจิ๊ก
                         supabase.table("jig_status").upsert({
-                            "jig_id": jigs[sel_j], "status_type": "In-Process",
+                            "jig_id": jig_options[sel_j_id], "status_type": "In-Process",
                             "current_tank_id": tank_list[sel_tank], "updated_at": datetime.now(ICT).isoformat()
                         }).execute()
-                        st.success(f"บันทึกสำเร็จ! ปริมาตรรวม: {total_v:,.2f} mm³")
+                        st.success(f"บันทึกการผลิตสำเร็จ! (ปริมาตรรวม: {total_v:,.2f} mm³)")
+            else:
+                st.warning("กรุณาลงทะเบียนสินค้าและจิ๊กก่อนเริ่มบันทึกผลผลิต")
