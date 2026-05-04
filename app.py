@@ -328,10 +328,8 @@ if menu == "Dashboard":
         })
 
     st.dataframe(pd.DataFrame(alert_ano), use_container_width=True)
-
-        available_ano_tanks = sorted(df_a["tank_name"].dropna().unique())
-        selected_ano = st.selectbox("เลือกบ่ออโนไดซ์เพื่อดูแนวโน้ม", available_ano_tanks)
-
+    available_ano_tanks = sorted(df_a["tank_name"].dropna().unique())
+    selected_ano = st.selectbox("เลือกบ่ออโนไดซ์เพื่อดูแนวโน้ม", available_ano_tanks)
         # กรองข้อมูล
         ano_filtered = df_a[df_a["tank_name"] == selected_ano].sort_values("recorded_at")
 
