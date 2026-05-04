@@ -489,7 +489,6 @@ elif menu == "บันทึกข้อมูลการผลิต":
                 p_name = c1.text_input("ชื่อสินค้า")
                 s_finish = c1.text_input("พื้นผิว *", value="-")
                 height = c2.number_input("ความยาว (H) [mm]", min_value=0.0)
-                
                 width, thickness, od, u_vol = 0.0, 0.0, 0.0, 0.0
                 if shape == "สี่เหลี่ยม":
                     width = c2.number_input("กว้าง [mm]", min_value=0.0)
@@ -507,11 +506,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
                 st.info(f"💡 ปริมาตร: {u_vol:,.2f} mm³")
                 if st.form_submit_button("➕ ลงทะเบียนสินค้า"):
                     if p_code:
-                        payload = {
-                            "product_code": p_code, "product_name": p_name, "surface_finish": s_finish,
-                            "unit_volume": u_vol, "height": height, "width": width, "thickness": thickness,
-                            "depth": thickness, "outer_diameter": od, "inner_diameter": id_inner if 'id_inner' in locals() else 0.0
-                        }
+                        payload = {"product_code": p_code, "product_name": p_name, "surface_finish": s_finish, "unit_volume": u_vol, "height": height, "width": width, "thickness": thickness, "depth": thickness, "outer_diameter": od, "inner_diameter": id_inner if 'id_inner' in locals() else 0.0}
                         supabase.table("products").insert(payload).execute()
                         st.success("ลงทะเบียนสำเร็จ!")
                     else: st.error("กรุณาระบุรหัสสินค้า")
@@ -529,8 +524,6 @@ elif menu == "บันทึกข้อมูลการผลิต":
         with sub_log:
             prods = get_options("products", "product_id", "product_code")
             jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
-            
-            # กรองจิ๊กที่ยังไม่ Finished
             available_jigs = []
             for j in (jigs_data or []):
                 status_res = supabase.table("jig_status").select("status_type").eq("jig_id", j["jig_id"]).order("updated_at", desc=True).limit(1).execute()
@@ -542,12 +535,10 @@ elif menu == "บันทึกข้อมูลการผลิต":
             else:
                 jig_map = {j['jig_model_code']: j['jig_id'] for j in available_jigs}
                 color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
-
                 if prods and color_tanks_all:
                     sel_j = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()), key="sel_j_log")
                     jig_id = jig_map[sel_j]
                     sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()), key="sel_p_log")
-                    
                     p_info = supabase.table("products").select("*").eq("product_id", prods[sel_p]).single().execute().data
                     action = st.radio("การทำงาน", ["🔵 บันทึกงานต่อ", "🟢 เสร็จสิ้นงาน"], key="action_radio")
 
@@ -555,39 +546,23 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         sel_c_new = st.selectbox("เลือกสี", sorted(set(TANK_COLOR_MAP.values())), key="sel_c_log")
                         filtered_tanks = {n: i for n, i in color_tanks_all.items() if TANK_COLOR_MAP.get(n) == sel_c_new}
                         sel_tank_name = st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()), key="sel_t_log")
-                        
                         with st.form("continue_form_fixed", clear_on_submit=True):
                             c1, c2 = st.columns(2)
-                            pcs = c1.number_input("จำนวนต่อแถว", min_value=0, key="pcs_in")
-                            rows = c1.number_input("แถวที่เต็ม", min_value=0, key="rows_in")
-                            partial = c1.number_input("เศษ", min_value=0, key="part_in")
-                            
+                            pcs = c1.number_input("จำนวนต่อแถว", min_value=0)
+                            rows = c1.number_input("แถวที่เต็ม", min_value=0)
+                            partial = c1.number_input("เศษ", min_value=0)
                             total_pcs = (rows * pcs) + partial
                             unit_vol = p_info.get('unit_volume', 0)
                             total_vol = unit_vol * total_pcs
-
                             c2.metric("จำนวนรวม (Pcs)", total_pcs)
                             c2.metric("ปริมาตรรวม (mm³)", f"{total_vol:,.2f}")
-
                             if st.form_submit_button("💾 บันทึก"):
-                                supabase.table("jig_usage_log").insert({
-                                    "product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c_new,
-                                    "tank_id": filtered_tanks[sel_tank_name], "total_pieces": total_pcs,
-                                    "total_volume": total_vol, "recorded_date": datetime.now(ICT).isoformat()
-                                }).execute()
-                                
-                                supabase.table("jig_status").upsert({
-                                    "jig_id": jig_id, "status_type": "In-Process",
-                                    "current_tank_id": filtered_tanks[sel_tank_name], "updated_at": datetime.now(ICT).isoformat()
-                                }).execute()
+                                supabase.table("jig_usage_log").insert({"product_id": prods[sel_p], "jig_id": jig_id, "color": sel_c_new, "tank_id": filtered_tanks[sel_tank_name], "total_pieces": total_pcs, "total_volume": total_vol, "recorded_date": datetime.now(ICT).isoformat()}).execute()
+                                supabase.table("jig_status").upsert({"jig_id": jig_id, "status_type": "In-Process", "current_tank_id": filtered_tanks[sel_tank_name], "updated_at": datetime.now(ICT).isoformat()}).execute()
                                 st.success("บันทึกสำเร็จ")
                                 st.rerun()
-
                     elif action == "🟢 เสร็จสิ้นงาน":
-                        if st.button("🏁 ยืนยันเสร็จสิ้นงาน", key="finish_btn"):
-                            supabase.table("jig_status").upsert({
-                                "jig_id": jig_id, "status_type": "Finished",
-                                "current_tank_id": None, "updated_at": datetime.now(ICT).isoformat()
-                            }).execute()
+                        if st.button("🏁 ยืนยันเสร็จสิ้นงาน"):
+                            supabase.table("jig_status").upsert({"jig_id": jig_id, "status_type": "Finished", "current_tank_id": None, "updated_at": datetime.now(ICT).isoformat()}).execute()
                             st.success("งานเสร็จสิ้น")
                             st.rerun()
