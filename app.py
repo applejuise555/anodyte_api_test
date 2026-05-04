@@ -303,7 +303,7 @@ if menu == "Dashboard":
                     value = row['ph_value'],
                     title = {'text': "ค่า pH"},
                     gauge = {
-                        'axis': {'range': [0, 3]},
+                        'axis': {'range': [0, 14]},
                         'bar': {'color': "darkblue"},
                         'steps': [
                             {'range': [0, PH_ANO_MIN], 'color': "#ff4b4b"},
