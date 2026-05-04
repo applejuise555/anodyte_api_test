@@ -103,44 +103,28 @@ if menu == "Dashboard":
     tank_map = load_tanks()
     inv_tank_map = {v: k for k, v in tank_map.items()} # ย้ายขึ้นมาไว้ตรงนี้
 
-    # ================= KPI SECTION =================
-    col1, col2 = st.columns(2)
-    active_jigs_res = supabase.table("jig_status").select("jig_id, current_tank_id").eq("status_type", "In-Process").execute()
-    active_jigs_data = active_jigs_res.data if active_jigs_res.data else []
+# 3. KPI Top Row (ใช้พื้นที่น้อยแต่ได้ใจความ)
+    m1, m2, m3 = st.columns(3)
+    active_jigs = len(supabase.table("jig_status").select("jig_id").eq("status_type", "In-Process").execute().data)
     
-    production_count = len(active_jigs_data)
-    active_tanks_set = {item["current_tank_id"] for item in active_jigs_data if item["current_tank_id"] is not None}
-    active_tanks_count = len(active_tanks_set)
+    m1.metric("📦 Production (Jigs)", active_jigs)
+    m2.metric("🧪 Active Tanks", len(df_c) + len(df_a))
+    if total_alerts > 0:
+        m3.metric("⚠️ Total Issues", total_alerts, delta=f"{total_alerts} tanks out of spec", delta_color="inverse")
+    else:
+        m3.metric("⚠️ Total Issues", 0, delta="All Systems Normal")
 
-    col1.metric("🟢 กำลังผลิต (จิ๊ก)", production_count)
-    col2.metric("🧪 บ่อที่กำลังใช้งาน", active_tanks_count)
+    # 4. Smart Alerts (ย้ายการเตือนไปไว้ใน Expander เพื่อความสะอาด)
+    if total_alerts > 0:
+        with st.expander(f"🔴 พบความผิดปกติ {total_alerts} รายการ (คลิกเพื่อดูรายละเอียด)", expanded=False):
+            for _, row in bad_color.iterrows():
+                st.write(f"🎨 **{inv_tank_map.get(row['tank_id'], 'Unknown')}**: pH {row['ph_value']:.2f} (Std: {PH_MIN}-{PH_MAX})")
+            for _, row in bad_ano.iterrows():
+                st.write(f"🧪 **{inv_tank_map.get(row['tank_id'], 'Unknown')}**: pH {row['ph_value']:.2f} (Std: {PH_ANO_MIN}-{PH_ANO_MAX})")
+    else:
+        st.success("✨ ระบบทำงานปกติ: ค่าทางเคมีอยู่ในเกณฑ์มาตรฐานทั้งหมด")
+
     st.markdown("---")
-    st.subheader("⚠️ การแจ้งเตือนความผิดปกติ (Real-time Alerts)")
-
-    # ดึงข้อมูลล่าสุดของบ่อสี
-    color_logs_all = load_color_logs()
-    out_of_std_color = pd.DataFrame() # เตรียมไว้กัน Error ถ้าไม่มีข้อมูล
-    if color_logs_all:
-        df_c_alert = pd.DataFrame(color_logs_all).drop_duplicates("tank_id")
-        out_of_std_color = df_c_alert[(df_c_alert["ph_value"] < PH_MIN) | (df_c_alert["ph_value"] > PH_MAX)]
-    
-        for _, row in out_of_std_color.iterrows():
-            t_name = inv_tank_map.get(row['tank_id'], "Unknown")
-            st.error(f"🚨 **บ่อสี {t_name}**: ค่า pH ผิดปกติ! ปัจจุบันอยู่ที่ **{row['ph_value']:.2f}** (เกณฑ์: {PH_MIN}-{PH_MAX})")
-
-    # ดึงข้อมูลล่าสุดของบ่ออโนไดซ์
-    ano_logs_all = load_anodize_logs()
-    out_of_std_ano = pd.DataFrame() # เตรียมไว้กัน Error
-    if ano_logs_all:
-        df_a_alert = pd.DataFrame(ano_logs_all).drop_duplicates("tank_id")
-        out_of_std_ano = df_a_alert[(df_a_alert["ph_value"] < PH_ANO_MIN) | (df_a_alert["ph_value"] > PH_ANO_MAX)]
-    
-        for _, row in out_of_std_ano.iterrows():
-            t_name = inv_tank_map.get(row['tank_id'], "Unknown")
-            st.warning(f"🧪 **บ่ออโนไดซ์ {t_name}**: ค่า pH อยู่นอกเกณฑ์! ปัจจุบันอยู่ที่ **{row['ph_value']:.2f}** (เกณฑ์: {PH_ANO_MIN}-{PH_ANO_MAX})")
-
-    if out_of_std_color.empty and out_of_std_ano.empty:
-        st.success("✅ ค่า pH ทุกบ่ออยู่ในเกณฑ์ปกติ")
     
 
 # --- Color Tank Analysis ---
