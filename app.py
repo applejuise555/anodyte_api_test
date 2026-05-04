@@ -55,135 +55,109 @@ supabase = init_connection()
 
 # --- [ADD] Helper Functions ---
 
-def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
-    """ฟังก์ชันสำหรับดึงข้อมูลจาก Database มาทำ Dropdown"""
-    query = supabase.table(table).select(f"{id_col}, {name_col}")
-    if filter_col and filter_val:
-        query = query.eq(filter_col, filter_val)
-    res = query.execute()
-    if res.data:
-        return {item[name_col]: item[id_col] for item in res.data}
+@st.cache_data(ttl=60)
+def load_tank_mapping():
+    """ฟังก์ชันสำหรับสร้าง Map ID -> Name (แก้ Error บรรทัด 98)"""
+    try:
+        res = supabase.table("tanks").select("tank_id, tank_name").execute()
+        if res.data:
+            return {item['tank_id']: item['tank_name'] for item in res.data}
+    except:
+        pass
     return {}
 
-def render_color_bar(color_name):
-    """แสดงแถบสีตัวอย่างในหน้าบันทึกข้อมูล"""
-    hex_code = COLOR_HEX_MAP.get(color_name, "#FFFFFF")
-    st.markdown(f"""
-        <div style="display: flex; align-items: center; margin-bottom: 10px;">
-            <div style="width: 50px; height: 20px; background-color: {hex_code}; border: 1px solid #ddd; margin-right: 10px;"></div>
-            <span>สีที่ตรวจพบ: <b>{color_name}</b></span>
-        </div>
-    """, unsafe_allow_html=True)
-
-@st.cache_data(ttl=60)
-def load_tanks():
-    return get_options("tanks", "tank_id", "tank_name")
+def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
+    try:
+        query = supabase.table(table).select(f"{id_col}, {name_col}")
+        if filter_col and filter_val:
+            query = query.eq(filter_col, filter_val)
+        res = query.execute()
+        if res.data:
+            return {item[name_col]: item[id_col] for item in res.data}
+    except:
+        pass
+    return {}
 
 @st.cache_data(ttl=10)
 def load_color_logs():
-    return supabase.table("color_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
+    res = supabase.table("color_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute()
+    return res.data if res.data else []
 
 @st.cache_data(ttl=10)
 def load_anodize_logs():
-    return supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
-    
-menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
+    res = supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute()
+    return res.data if res.data else []
 
-# ================= DASHBOARD (CLEAN VERSION) =================
-# ================= DASHBOARD (CLEAN VERSION) =================
+# --- UI Sidebar ---
+menu = st.sidebar.radio("เมนู", ["Dashboard", "บันทึกข้อมูลการผลิต"])
+
+# ================= DASHBOARD =================
 if menu == "Dashboard":
     st.title("📊 Production Overview")
     
-    # 1. Load Data
-    inv_tank_map = load_tank_mapping() # เรียกใช้ฟังก์ชันที่สร้างใหม่
+    # ดึงข้อมูล Mapping มาไว้ก่อน
+    inv_tank_map = load_tank_mapping()
     color_logs = load_color_logs()
     ano_logs = load_anodize_logs()
 
     df_c = pd.DataFrame(color_logs) if color_logs else pd.DataFrame()
     df_a = pd.DataFrame(ano_logs) if ano_logs else pd.DataFrame()
 
-    # 2. Alerts Analysis
-    bad_color = []
-    bad_ano = []
-    
-    if not df_c.empty:
-        latest_c = df_c.drop_duplicates("tank_id")
-        bad_color = latest_c[(latest_c["ph_value"] < PH_MIN) | (latest_c["ph_value"] > PH_MAX)].to_dict('records')
-        
-    if not df_a.empty:
-        latest_a = df_a.drop_duplicates("tank_id")
-        bad_ano = latest_a[(latest_a["ph_value"] < PH_ANO_MIN) | (latest_a["ph_value"] > PH_ANO_MAX)].to_dict('records')
-
-    total_alerts = len(bad_color) + len(bad_ano)
-
-    # 3. KPI Metrics
+    # Metrics
     m1, m2, m3 = st.columns(3)
-    jig_res = supabase.table("jig_status").select("jig_id").eq("status_type", "In-Process").execute()
-    active_jigs = len(jig_res.data) if jig_res.data else 0
+    try:
+        jig_res = supabase.table("jig_status").select("jig_id", count="exact").eq("status_type", "In-Process").execute()
+        active_jigs = jig_res.count if jig_res.count is not None else 0
+    except:
+        active_jigs = 0
     
     m1.metric("📦 Production (Jigs)", active_jigs)
     m2.metric("🧪 Active Tanks", (df_c["tank_id"].nunique() if not df_c.empty else 0) + (df_a["tank_id"].nunique() if not df_a.empty else 0))
-    m3.metric("⚠️ Total Issues", total_alerts, delta=f"{total_alerts} abnormal", delta_color="inverse" if total_alerts > 0 else "normal")
-
-    # 4. Smart Alerts
-    if total_alerts > 0:
-        with st.expander(f"🔴 พบความผิดปกติ {total_alerts} รายการ", expanded=True):
-            for row in bad_color:
-                st.error(f"🎨 **{inv_tank_map.get(row['tank_id'], 'Unknown')}**: pH {row['ph_value']:.2f} (เกณฑ์: {PH_MIN}-{PH_MAX})")
-            for row in bad_ano:
-                st.error(f"🧪 **{inv_tank_map.get(row['tank_id'], 'Unknown')}**: pH {row['ph_value']:.2f} (เกณฑ์: {PH_ANO_MIN}-{PH_ANO_MAX})")
-    else:
-        st.success("✨ ระบบทำงานปกติ: ค่าทางเคมีอยู่ในเกณฑ์มาตรฐาน")
-
-    # 5. Visualizations
-    tabs = st.tabs(["🎨 Color Status", "📈 Detailed Trends"])
     
-    with tabs[0]:
+    # Alert Logic
+    bad_color = df_c.drop_duplicates("tank_id")[(df_c["ph_value"] < PH_MIN) | (df_c["ph_value"] > PH_MAX)] if not df_c.empty else pd.DataFrame()
+    bad_ano = df_a.drop_duplicates("tank_id")[(df_a["ph_value"] < PH_ANO_MIN) | (df_a["ph_value"] > PH_ANO_MAX)] if not df_a.empty else pd.DataFrame()
+    total_alerts = len(bad_color) + len(bad_ano)
+    m3.metric("⚠️ Issues", total_alerts, delta=f"{total_alerts} abnormal", delta_color="inverse" if total_alerts > 0 else "normal")
+
+    if total_alerts > 0:
+        with st.expander("🔴 รายละเอียดความผิดปกติ", expanded=True):
+            for _, row in bad_color.iterrows():
+                st.error(f"🎨 {inv_tank_map.get(row['tank_id'], 'Unknown')}: pH {row['ph_value']:.2f}")
+            for _, row in bad_ano.iterrows():
+                st.error(f"🧪 {inv_tank_map.get(row['tank_id'], 'Unknown')}: pH {row['ph_value']:.2f}")
+    else:
+        st.success("✅ ระบบทำงานปกติ")
+
+    # กราฟหลัก
+    t1, t2 = st.tabs(["Dashboard", "Detailed Trends"])
+    
+    with t1:
         if not df_c.empty:
+            st.subheader("เปรียบเทียบค่า pH บ่อสี")
             latest_c = df_c.drop_duplicates("tank_id").copy()
             latest_c["tank_name"] = latest_c["tank_id"].map(inv_tank_map)
-            fig_c = go.Figure(go.Bar(
+            fig = go.Figure(go.Bar(
                 x=latest_c["tank_name"], y=latest_c["ph_value"],
-                marker_color=['#ff4b4b' if (v < PH_MIN or v > PH_MAX) else '#00cc96' for v in latest_c["ph_value"]],
-                text=latest_c["ph_value"], textposition='outside'
+                marker_color=['#ff4b4b' if (v < PH_MIN or v > PH_MAX) else '#00cc96' for v in latest_c["ph_value"]]
             ))
-            fig_c.update_layout(title="Current pH Level", yaxis_range=[0, 10])
-            st.plotly_chart(fig_c, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("ไม่มีข้อมูลบ่อสี")
 
-    with tabs[1]:
-        st.subheader("🔍 วิเคราะห์ข้อมูลรายบ่อ")
-        all_recorded_tanks = []
-        if not df_c.empty: all_recorded_tanks += df_c["tank_id"].unique().tolist()
-        if not df_a.empty: all_recorded_tanks += df_a["tank_id"].unique().tolist()
-        
-        selection_map = {inv_tank_map.get(tid, f"ID:{tid}"): tid for tid in set(all_recorded_tanks)}
-        if selection_map:
-            selected_name = st.selectbox("เลือกบ่อที่ต้องการดูประวัติ", list(selection_map.keys()))
-            sid = selection_map[selected_name]
-            
-            t_df = df_c[df_c["tank_id"] == sid] if not df_c.empty and sid in df_c["tank_id"].values else (df_a[df_a["tank_id"] == sid] if not df_a.empty else pd.DataFrame())
-            
-            if not t_df.empty:
-                fig_trend = go.Figure()
-                fig_trend.add_trace(go.Scatter(x=t_df["recorded_at"], y=t_df["ph_value"], mode='lines+markers', name='pH'))
-                st.plotly_chart(fig_trend, use_container_width=True)
+    with t2:
+        st.subheader("วิเคราะห์แนวโน้มรายบ่อ")
+        all_ids = list(set((df_c["tank_id"].tolist() if not df_c.empty else []) + (df_a["tank_id"].tolist() if not df_a.empty else [])))
+        if all_ids:
+            sel_id = st.selectbox("เลือกบ่อ", all_ids, format_func=lambda x: inv_tank_map.get(x, f"ID: {x}"))
+            # กรองข้อมูลมาแสดงกราฟ (pH)
+            target_df = df_c[df_c["tank_id"] == sel_id] if not df_c.empty and sel_id in df_c["tank_id"].values else (df_a[df_a["tank_id"] == sel_id] if not df_a.empty else pd.DataFrame())
+            if not target_df.empty:
+                st.line_chart(target_df.set_index("recorded_at")["ph_value"])
+        else:
+            st.warning("ไม่มีข้อมูลประวัติ")
 
-    # --- ส่วน Color Tank Analysis ด้านล่าง ---
-    if not df_c.empty:
-        st.subheader("🎨 วิเคราะห์ข้อมูลบ่อสี (Color Tanks)")
-        df_c_viz = df_c.copy()
-        df_c_viz["tank_name"] = df_c_viz["tank_id"].map(inv_tank_map)
-        latest_c_viz = df_c_viz.drop_duplicates("tank_id")
-
-        fig = make_subplots(specs=[[{"secondary_y": True}]])
-        fig.add_trace(go.Bar(x=latest_c_viz["tank_name"], y=latest_c_viz["ph_value"], name="pH (5.0-6.0)", marker_color="#98FB98", offsetgroup=1), secondary_y=False)
-        fig.add_trace(go.Bar(x=latest_c_viz["tank_name"], y=latest_c_viz["temperature"], name="Temp (30-40°C)", marker_color="#AFEEEE", offsetgroup=2), secondary_y=True)
-        
-        fig.update_layout(title="เปรียบเทียบค่า pH และอุณหภูมิ (ล่าสุด)", barmode="group")
-        st.plotly_chart(fig, use_container_width=True)
-
-    st_autorefresh(interval=30000, key="auto_refresh_dashboard")
-
+    st_autorefresh(interval=30000, key="auto_refresh")
 # ================= RECORD PAGE =================
 elif menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูล")
