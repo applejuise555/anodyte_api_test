@@ -269,11 +269,11 @@ if menu == "Dashboard":
             with st.expander(f"ดูประวัติข้อมูลดิบของ {selected_tank}"):
                 st.dataframe(tank_df[["recorded_at", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
 
-    # =========================================================
-    # ================= ANODIZE (แยกกราฟรายค่า) =================
+# =========================================================
+    # ================= ANODIZE (Gauge Chart สำหรับ 1-2 บ่อ) =================
     # =========================================================
     st.markdown("---")
-    st.subheader("🧪 Anodize Tanks Monitoring (Detailed View)")
+    st.subheader("🧪 Anodize Tanks Monitoring (Gauge View)")
 
     logs_a = load_anodize_logs()
 
@@ -281,118 +281,73 @@ if menu == "Dashboard":
         df_a = pd.DataFrame(logs_a)
         df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"])
 
-        tank_map = load_tanks()
-        inv = {v: k for k, v in tank_map.items()}
-        df_a["tank_name"] = df_a["tank_id"].map(inv)
+        # --- ส่วนสำคัญ: ต้อง Map ชื่อบ่อก่อนใช้งาน ---
+        tank_map = load_tanks() # ดึง {ชื่อบ่อ: id}
+        inv_map = {v: k for k, v in tank_map.items()} # สลับเป็น {id: ชื่อบ่อ}
+        df_a["tank_name"] = df_a["tank_id"].map(inv_map) # นำชื่อมาใส่ใน DataFrame
 
         # ดึงข้อมูลล่าสุดรายบ่อ
-        # --- ตัวอย่างการสร้าง Gauge สำหรับ 1 บ่อ ---
-    if logs_a:
-        df_a = pd.DataFrame(logs_a)
         latest = df_a.sort_values("recorded_at").drop_duplicates("tank_id", keep="last")
-    
-    # วนลูปสร้าง Gauge สำหรับทุกบ่อที่มี (1-2 บ่อ)
-    for _, row in latest.iterrows():
-        st.subheader(f"📍 {row['tank_name']}")
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            fig_ph = go.Figure(go.Indicator(
-                mode = "gauge+number",
-                value = row['ph_value'],
-                title = {'text': "pH Value"},
-                gauge = {
-                    'axis': {'range': [0, 3]}, # ปรับช่วงตามความเหมาะสม
-                    'bar': {'color': "darkblue"},
-                    'steps': [
-                        {'range': [0, PH_ANO_MIN], 'color': "red"},
-                        {'range': [PH_ANO_MIN, PH_ANO_MAX], 'color': "green"},
-                        {'range': [PH_ANO_MAX, 3], 'color': "red"}
-                    ],
-                }
-            ))
-            fig_ph.update_layout(height=250, margin=dict(t=0, b=0, l=10, r=10))
-            st.plotly_chart(fig_ph, use_container_width=True)
 
-        with col2:
-            fig_temp = go.Figure(go.Indicator(
-                mode = "gauge+number",
-                value = row['temperature'],
-                title = {'text': "Temperature (°C)"},
-                gauge = {
-                    'axis': {'range': [10, 30]},
-                    'steps': [
-                        {'range': [10, TEMP_ANO_MIN], 'color': "lightblue"},
-                        {'range': [TEMP_ANO_MIN, TEMP_ANO_MAX], 'color': "green"},
-                        {'range': [TEMP_ANO_MAX, 30], 'color': "red"}
-                    ],
-                }
-            ))
-            fig_temp.update_layout(height=250, margin=dict(t=0, b=0, l=10, r=10))
-            st.plotly_chart(fig_temp, use_container_width=True)
-            
-        with col3:
-            st.metric("Density", f"{row['density']:.3f}")
-            # หรือทำ Gauge สำหรับ Density ด้วยก็ได้
-
-        # เตรียมสี Alert สำหรับแต่ละค่า
-        ph_colors = ["#98FB98" if PH_ANO_MIN <= v <= PH_ANO_MAX else "#ef4444" for v in latest["ph_value"]]
-        temp_colors = ["#3b82f6" if TEMP_ANO_MIN <= v <= TEMP_ANO_MAX else "#ef4444" for v in latest["temperature"]]
-        den_colors = ["#a855f7"] * len(latest) # Density มักเป็นค่าบวกเสมอ หรือตั้งเกณฑ์เพิ่มได้
-
-        # สร้าง Subplots แบบ 3 แถว 1 คอลัมน์
-        fig = make_subplots(
-            rows=3, cols=1,
-            shared_xaxes=True, # ใช้แกน X ร่วมกัน (ชื่อบ่อ)
-            vertical_spacing=0.1, # ระยะห่างระหว่างกราฟ
-            subplot_titles=("ค่า pH รายบ่อ", "อุณหภูมิ (°C) รายบ่อ", "ความหนาแน่น (Density) รายบ่อ")
-        )
-
-        # 1. กราฟ pH
-        fig.add_trace(go.Bar(
-            x=latest["tank_name"], y=latest["ph_value"],
-            marker_color=ph_colors, name="pH",
-            text=latest["ph_value"], textposition='auto'
-        ), row=1, col=1)
-        # เพิ่มเส้น Standard pH
-        fig.add_hline(y=PH_MIN, line_dash="dash", line_color="green", row=1, col=1)
-        fig.add_hline(y=PH_MAX, line_dash="dash", line_color="green", row=1, col=1)
-
-        # 2. กราฟ Temperature
-        fig.add_trace(go.Bar(
-            x=latest["tank_name"], y=latest["temperature"],
-            marker_color=temp_colors, name="Temp",
-            text=latest["temperature"], textposition='auto'
-        ), row=2, col=1)
-        # เพิ่มเส้น Standard Temp
-        fig.add_hline(y=TEMP_ANO_MIN, line_dash="dash", line_color="blue", row=2, col=1)
-        fig.add_hline(y=TEMP_ANO_MAX, line_dash="dash", line_color="blue", row=2, col=1)
-
-        # 3. กราฟ Density
-        fig.add_trace(go.Bar(
-            x=latest["tank_name"], y=latest["density"],
-            marker_color=den_colors, name="Density",
-            text=latest["density"], textposition='auto'
-        ), row=3, col=1)
-
-        # ตั้งค่า Layout
-        fig.update_layout(height=800, showlegend=False, margin=dict(t=50, b=50))
-        fig.update_xaxes(title_text="ชื่อบ่อ", row=3, col=1)
-        
-        st.plotly_chart(fig, use_container_width=True)
-
-        # ระบบแจ้งเตือน (Alerts)
-        alerts = []
+        # วนลูปสร้าง Gauge สำหรับทุกบ่อที่มี (รองรับ 1 บ่อ หรือมากกว่า)
         for _, row in latest.iterrows():
-            if not (PH_MIN <= row["ph_value"] <= PH_MAX):
-                alerts.append(f"⚠️ {row['tank_name']}: pH ผิดปกติ ({row['ph_value']})")
-            if not (TEMP_ANO_MIN <= row["temperature"] <= TEMP_ANO_MAX):
-                alerts.append(f"⚠️ {row['tank_name']}: อุณหภูมิผิดปกติ ({row['temperature']}°C)")
+            st.markdown(f"### 📍 {row['tank_name']}")
+            
+            # แบ่งเป็น 3 คอลัมน์สำหรับ pH, Temp และ Density
+            c1, c2, c3 = st.columns(3)
+            
+            with c1:
+                # Gauge สำหรับ pH
+                fig_ph = go.Figure(go.Indicator(
+                    mode = "gauge+number",
+                    value = row['ph_value'],
+                    title = {'text': "ค่า pH"},
+                    gauge = {
+                        'axis': {'range': [0, 3]},
+                        'bar': {'color': "darkblue"},
+                        'steps': [
+                            {'range': [0, PH_ANO_MIN], 'color': "#ff4b4b"},
+                            {'range': [PH_ANO_MIN, PH_ANO_MAX], 'color': "#98FB98"},
+                            {'range': [PH_ANO_MAX, 3], 'color': "#ff4b4b"}
+                        ],
+                    }
+                ))
+                fig_ph.update_layout(height=280, margin=dict(t=50, b=20, l=30, r=30))
+                st.plotly_chart(fig_ph, use_container_width=True)
 
-        if alerts:
-            for a in alerts: st.error(a)
-        else:
-            st.success("✅ บ่ออโนไดซ์ทุกบ่ออยู่ในเกณฑ์มาตรฐาน")
+            with c2:
+                # Gauge สำหรับ Temperature
+                fig_temp = go.Figure(go.Indicator(
+                    mode = "gauge+number",
+                    value = row['temperature'],
+                    title = {'text': "อุณหภูมิ (°C)"},
+                    gauge = {
+                        'axis': {'range': [10, 30]},
+                        'bar': {'color': "darkblue"},
+                        'steps': [
+                            {'range': [10, TEMP_ANO_MIN], 'color': "#AFEEEE"},
+                            {'range': [TEMP_ANO_MIN, TEMP_ANO_MAX], 'color': "#3b82f6"},
+                            {'range': [TEMP_ANO_MAX, 30], 'color': "#ff4b4b"}
+                        ],
+                    }
+                ))
+                fig_temp.update_layout(height=280, margin=dict(t=50, b=20, l=30, r=30))
+                st.plotly_chart(fig_temp, use_container_width=True)
+
+            with c3:
+                # แสดงค่า Density เป็นตัวเลขใหญ่ๆ (Metric)
+                st.write("") # เติมที่ว่างให้ตรงกับกราฟ
+                st.write("")
+                st.metric(label="ความหนาแน่น (Density)", value=f"{row['density']:.3f}")
+                
+                # แสดงสถานะสรุป
+                if (PH_ANO_MIN <= row['ph_value'] <= PH_ANO_MAX) and \
+                   (TEMP_ANO_MIN <= row['temperature'] <= TEMP_ANO_MAX):
+                    st.success("✅ บ่อนี้สถานะปกติ")
+                else:
+                    st.error("🚨 ตรวจพบค่าผิดปกติ")
+            
+            st.markdown("---") # เส้นคั่นระหว่างบ่อ (กรณีมี 2 บ่อ)
 
     else:
         st.info("ยังไม่มีข้อมูลในระบบ Anodize")
