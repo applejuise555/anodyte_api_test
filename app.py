@@ -267,11 +267,11 @@ if menu == "Dashboard":
             with st.expander(f"ดูประวัติข้อมูลดิบของ {selected_tank}"):
                 st.dataframe(tank_df[["recorded_at", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
 
-    # =========================================================
-    # ================= ANODIZE =================
+# =========================================================
+    # ================= ANODIZE (แยกกราฟรายค่า) =================
     # =========================================================
     st.markdown("---")
-    st.subheader("🧪 Anodize Tanks (Smart Monitoring)")
+    st.subheader("🧪 Anodize Tanks Monitoring (Detailed View)")
 
     logs_a = load_anodize_logs()
 
@@ -283,67 +283,70 @@ if menu == "Dashboard":
         inv = {v: k for k, v in tank_map.items()}
         df_a["tank_name"] = df_a["tank_id"].map(inv)
 
-        latest = df_a.drop_duplicates("tank_id")
+        # ดึงข้อมูลล่าสุดรายบ่อ
+        latest = df_a.sort_values("recorded_at").drop_duplicates("tank_id", keep="last")
 
-        alerts = []
+        # เตรียมสี Alert สำหรับแต่ละค่า
+        ph_colors = ["#98FB98" if PH_ANO_MIN <= v <= PH_ANO_MAX else "#ef4444" for v in latest["ph_value"]]
+        temp_colors = ["#3b82f6" if TEMP_ANO_MIN <= v <= TEMP_ANO_MAX else "#ef4444" for v in latest["temperature"]]
+        den_colors = ["#a855f7"] * len(latest) # Density มักเป็นค่าบวกเสมอ หรือตั้งเกณฑ์เพิ่มได้
 
-        ph_colors, temp_colors, den_colors = [], [], []
+        # สร้าง Subplots แบบ 3 แถว 1 คอลัมน์
+        fig = make_subplots(
+            rows=3, cols=1,
+            shared_xaxes=True, # ใช้แกน X ร่วมกัน (ชื่อบ่อ)
+            vertical_spacing=0.1, # ระยะห่างระหว่างกราฟ
+            subplot_titles=("ค่า pH รายบ่อ", "อุณหภูมิ (°C) รายบ่อ", "ความหนาแน่น (Density) รายบ่อ")
+        )
 
-        for _, row in latest.iterrows():
-
-            # pH
-            if PH_MIN <= row["ph_value"] <= PH_MAX:
-                ph_colors.append("#98FB98")
-            else:
-                ph_colors.append("#ef4444")
-                alerts.append(f"{row['tank_name']} → pH ผิด ({row['ph_value']:.2f})")
-
-            # Temp
-            if TEMP_ANO_MIN <= row["temperature"] <= TEMP_ANO_MAX:
-                temp_colors.append("#3b82f6")
-            else:
-                temp_colors.append("#ef4444")
-                alerts.append(f"{row['tank_name']} → Temp ผิด ({row['temperature']:.1f})")
-
-            # Density
-            den_colors.append("#a855f7")
-
-        fig = go.Figure()
-
+        # 1. กราฟ pH
         fig.add_trace(go.Bar(
-            x=latest["tank_name"],
-            y=latest["ph_value"],
-            name="pH",
-            marker_color=ph_colors
-        ))
+            x=latest["tank_name"], y=latest["ph_value"],
+            marker_color=ph_colors, name="pH",
+            text=latest["ph_value"], textposition='auto'
+        ), row=1, col=1)
+        # เพิ่มเส้น Standard pH
+        fig.add_hline(y=PH_MIN, line_dash="dash", line_color="green", row=1, col=1)
+        fig.add_hline(y=PH_MAX, line_dash="dash", line_color="green", row=1, col=1)
 
+        # 2. กราฟ Temperature
         fig.add_trace(go.Bar(
-            x=latest["tank_name"],
-            y=latest["temperature"],
-            name="Temperature",
-            marker_color=temp_colors
-        ))
+            x=latest["tank_name"], y=latest["temperature"],
+            marker_color=temp_colors, name="Temp",
+            text=latest["temperature"], textposition='auto'
+        ), row=2, col=1)
+        # เพิ่มเส้น Standard Temp
+        fig.add_hline(y=TEMP_ANO_MIN, line_dash="dash", line_color="blue", row=2, col=1)
+        fig.add_hline(y=TEMP_ANO_MAX, line_dash="dash", line_color="blue", row=2, col=1)
 
+        # 3. กราฟ Density
         fig.add_trace(go.Bar(
-            x=latest["tank_name"],
-            y=latest["density"],
-            name="Density",
-            marker_color=den_colors
-        ))
+            x=latest["tank_name"], y=latest["density"],
+            marker_color=den_colors, name="Density",
+            text=latest["density"], textposition='auto'
+        ), row=3, col=1)
 
-        fig.update_layout(barmode="group")
-
+        # ตั้งค่า Layout
+        fig.update_layout(height=800, showlegend=False, margin=dict(t=50, b=50))
+        fig.update_xaxes(title_text="ชื่อบ่อ", row=3, col=1)
+        
         st.plotly_chart(fig, use_container_width=True)
 
+        # ระบบแจ้งเตือน (Alerts)
+        alerts = []
+        for _, row in latest.iterrows():
+            if not (PH_MIN <= row["ph_value"] <= PH_MAX):
+                alerts.append(f"⚠️ {row['tank_name']}: pH ผิดปกติ ({row['ph_value']})")
+            if not (TEMP_ANO_MIN <= row["temperature"] <= TEMP_ANO_MAX):
+                alerts.append(f"⚠️ {row['tank_name']}: อุณหภูมิผิดปกติ ({row['temperature']}°C)")
+
         if alerts:
-            st.error("🚨 พบค่าผิดปกติในบ่ออโนไดซ์")
-            for a in alerts:
-                st.write("•", a)
+            for a in alerts: st.error(a)
         else:
-            st.success("✅ ทุกบ่ออยู่ในมาตรฐาน")
+            st.success("✅ บ่ออโนไดซ์ทุกบ่ออยู่ในเกณฑ์มาตรฐาน")
 
     else:
-        st.info("ไม่มีข้อมูล Anodize")
+        st.info("ยังไม่มีข้อมูลในระบบ Anodize")
 
     # ================= AUTO REFRESH =================
     try:
