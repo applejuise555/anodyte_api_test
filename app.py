@@ -73,7 +73,14 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
         return {item[name_col]: item[id_col] for item in response.data}
     except Exception:
         return {}
-
+def get_status_icon(value, min_val, max_val, warn_margin=0.1):
+    if value is None:
+        return "⚪"
+    if value < min_val or value > max_val:
+        return "🔴"
+    elif value < (min_val + warn_margin) or value > (max_val - warn_margin):
+        return "🟡"
+    return "🟢"
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
 # ================= DASHBOARD (FULL SYSTEM VIEW) =================
@@ -196,6 +203,26 @@ if menu == "Dashboard":
             )
 
             st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("🚨 ตารางแจ้งเตือนบ่อสี")
+
+    alert_data = []
+
+    for _, row in latest.iterrows():
+        tank = row["tank_name"]
+
+        ph = row["ph_value"]
+        temp = row["temperature"]
+
+        alert_data.append({
+            "Tank": tank,
+            "pH": f"{get_status_icon(ph, PH_MIN, PH_MAX)} {ph:.2f}",
+            "Temp (°C)": f"{get_status_icon(temp, TEMP_COLOR_MIN, TEMP_COLOR_MAX)} {temp:.1f}"
+    })
+
+    alert_df = pd.DataFrame(alert_data)
+
+    st.dataframe(alert_df, use_container_width=True)
     # =========================================================
     # ================= INDIVIDUAL TANK VIEW =================
     # =========================================================
@@ -285,6 +312,22 @@ if menu == "Dashboard":
         tank_map = load_tanks()
         inv_map = {v: k for k, v in tank_map.items()}
         df_a["tank_name"] = df_a["tank_id"].map(inv_map)
+            # ================= ALERT TABLE =================
+    st.subheader("🚨 ตารางแจ้งเตือนบ่ออโนไดซ์")
+
+    latest_ano = df_a.sort_values("recorded_at").groupby("tank_name").tail(1)
+
+    alert_ano = []
+
+    for _, row in latest_ano.iterrows():
+        alert_ano.append({
+            "Tank": row["tank_name"],
+            "pH": f"{get_status_icon(row['ph_value'], PH_ANO_MIN, PH_ANO_MAX)} {row['ph_value']:.2f}",
+            "Temp": f"{get_status_icon(row['temperature'], TEMP_ANO_MIN, TEMP_ANO_MAX)} {row['temperature']:.1f}",
+            "Density": f"{get_status_icon(row['density'], DEN_ANO_MIN, DEN_ANO_MAX)} {row['density']:.3f}"
+        })
+
+    st.dataframe(pd.DataFrame(alert_ano), use_container_width=True)
 
         available_ano_tanks = sorted(df_a["tank_name"].dropna().unique())
         selected_ano = st.selectbox("เลือกบ่ออโนไดซ์เพื่อดูแนวโน้ม", available_ano_tanks)
