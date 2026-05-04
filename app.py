@@ -331,8 +331,6 @@ if menu == "Dashboard":
                 # ถ้ามีค่ามาตรฐาน Density (เช่น 1.05 - 1.10) สามารถเพิ่ม hrect ได้เหมือน pH
                 # ส่วนในกราฟ Density (g3)
                 fig_den.add_hrect(y0=DEN_ANO_MIN, y1=DEN_ANO_MAX, fillcolor="purple", opacity=0.1, line_width=0)
-                fig_den.add_hline(y=DEN_ANO_MIN, line_dash="dash", line_color="purple")
-                fig_den.add_hline(y=DEN_ANO_MAX, line_dash="dash", line_color="red") # เส้นแดงเตือนว่าความหนาแน่นสูงเกินไป
                 fig_den.update_layout(title="แนวโน้มความหนาแน่น", height=350, margin=dict(t=50, b=20, l=10, r=10))
                 st.plotly_chart(fig_den, use_container_width=True)
 
