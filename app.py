@@ -459,12 +459,19 @@ elif menu == "บันทึกข้อมูลการผลิต":
         with sub_jig:
             st.subheader("เพิ่มรหัสจิ๊กใหม่")
             with st.form("add_jig_fixed", clear_on_submit=True):
-                j_code = st.text_input("รหัสจิ๊ก", key="j_code_input")
+                j_code = st.text_input("รหัสจิ๊ก", key="j_code_input").strip()
                 if st.form_submit_button("ลงทะเบียนจิ๊ก"):
                     if j_code:
-                        supabase.table("jigs").insert({"jig_model_code": j_code, "total_pcs_in_jig": 0}).execute()
-                        st.success(f"ลงทะเบียนจิ๊ก {j_code} สำเร็จ")
-                    else: st.error("กรุณากรอกรหัสจิ๊ก")
+                        # --- ส่วนตรวจสอบการซ้ำ ---
+                        check_jig = supabase.table("jigs").select("jig_model_code").eq("jig_model_code", j_code).execute()
+                        
+                        if check_jig.data:
+                            st.error(f"❌ รหัสจิ๊ก '{j_code}' นี้มีอยู่ในระบบแล้ว")
+                        else:
+                            supabase.table("jigs").insert({"jig_model_code": j_code, "total_pcs_in_jig": 0}).execute()
+                            st.success(f"✅ ลงทะเบียนจิ๊ก {j_code} สำเร็จ")
+                    else: 
+                        st.error("กรุณากรอกรหัสจิ๊ก")
 
         with sub_log:
             prods = get_options("products", "product_id", "product_code")
