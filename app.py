@@ -138,7 +138,7 @@ if menu == "Dashboard":
     st.markdown("---")
 
     # 5. Visualized Data (แบ่งเป็น 2 ฝั่งซ้ายขวาให้ดูสมดุล)
-    tab_color, tab_ano = st.tabs(["🎨 Color Tanks Status", "🧪 Anodize Tanks Status"])
+    tab_color = st.tabs(["🎨 Color Tanks Status"])
 
     with tab_color:
         if not df_c.empty:
