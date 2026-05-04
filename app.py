@@ -11,6 +11,12 @@ from plotly.subplots import make_subplots
 ICT = timezone(timedelta(hours=7))
 st.set_page_config(page_title="SCADA Dashboard", layout="wide")
 
+PH_MIN, PH_MAX = 5.0, 6.0
+PH_ANO_MIN, PH_ANO_MAX = 0.5, 1.5
+TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30.0, 40.0
+TEMP_ANO_MIN, TEMP_ANO_MAX = 18.0, 22.0
+DEN_ANO_MIN, DEN_ANO_MAX = 1.050, 1.150
+
 # --- Configuration ---
 COLOR_HEX_MAP = {
     "Black": "#000000", "Red": "#FF0000", "Dark Red": "#8B0000", 
