@@ -306,9 +306,9 @@ if menu == "Dashboard":
                         'axis': {'range': [0, 14]},
                         'bar': {'color': "darkblue"},
                         'steps': [
-                            {'range': [0, PH_ANO_MIN], 'color': "#ff4b4b"},
+                            {'range': [5, PH_ANO_MIN], 'color': "#ff4b4b"},
                             {'range': [PH_ANO_MIN, PH_ANO_MAX], 'color': "#98FB98"},
-                            {'range': [PH_ANO_MAX, 3], 'color': "#ff4b4b"}
+                            {'range': [PH_ANO_MAX, 6], 'color': "#ff4b4b"}
                         ],
                     }
                 ))
