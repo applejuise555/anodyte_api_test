@@ -477,38 +477,21 @@ elif menu == "บันทึกข้อมูลการผลิต":
                             st.error(f"Database Error: {e}")
 
         # 3.3 บันทึกผลผลิต (บันทึกการใช้งานจิ๊ก)
-        with sub_log:
-            st.subheader("บันทึกการผลิตรายจิ๊ก")
-            prod_options = get_options("products", "product_id", "product_code")
-            jig_options = get_options("jigs", "jig_id", "jig_model_code")
-            
-            if prod_options and jig_options:
-                col_a, col_b = st.columns(2)
-                sel_p_id = col_a.selectbox("เลือกสินค้า", list(prod_options.keys()))
-                sel_j_id = col_b.selectbox("เลือกจิ๊ก", list(jig_options.keys()))
-                
-                # ดึง Unit Volume มาเตรียมไว้
-                p_info = supabase.table("products").select("unit_volume").eq("product_id", prod_options[sel_p_id]).single().execute().data
-                vol_per_pcs = p_info['unit_volume'] if p_info else 0
-
-                with st.form("prod_log_form"):
-                    pcs = st.number_input("จำนวนที่ใส่ในจิ๊ก (Pcs)", min_value=1)
-                    tank_list = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
-                    sel_tank = st.selectbox("ชุบที่บ่อ", list(tank_list.keys()))
-                    
-                    if st.form_submit_button("💾 บันทึกผลผลิต"):
-                        total_v = vol_per_pcs * pcs
-                        # 1. บันทึก Log
-                        supabase.table("jig_usage_log").insert({
-                            "product_id": prod_options[sel_p_id], "jig_id": jig_options[sel_j_id],
-                            "total_pieces": pcs, "total_volume": total_v,
-                            "tank_id": tank_list[sel_tank], "recorded_date": datetime.now(ICT).isoformat()
-                        }).execute()
-                        # 2. อัปเดตสถานะจิ๊ก
-                        supabase.table("jig_status").upsert({
-                            "jig_id": jig_options[sel_j_id], "status_type": "In-Process",
-                            "current_tank_id": tank_list[sel_tank], "updated_at": datetime.now(ICT).isoformat()
-                        }).execute()
-                        st.success(f"บันทึกการผลิตสำเร็จ! (ปริมาตรรวม: {total_v:,.2f} mm³)")
-            else:
-                st.warning("กรุณาลงทะเบียนสินค้าและจิ๊กก่อนเริ่มบันทึกผลผลิต")
+        with sub_jig:
+            st.subheader("เพิ่มรหัสจิ๊กใหม่")
+            with st.form("add_jig", clear_on_submit=True):
+                j_code = st.text_input("รหัสจิ๊ก")
+                if st.form_submit_button("ลงทะเบียนจิ๊ก"):
+                    if not j_code:
+                        st.error("กรุณากรอกรหัสจิ๊ก")
+                    else:
+                        try:
+                            # แก้ไข payload ให้ส่งค่า 0 ไปที่ total_pcs_in_jig
+                            payload_jig = {
+                                "jig_model_code": j_code,
+                                "total_pcs_in_jig": 0  # เพิ่มบรรทัดนี้เพื่อแก้ Error
+                            }
+                            supabase.table("jigs").insert(payload_jig).execute()
+                            st.success(f"ลงทะเบียนจิ๊ก {j_code} สำเร็จ")
+                        except Exception as e:
+                            st.error(f"Database Error: {e}")
