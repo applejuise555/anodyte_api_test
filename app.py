@@ -475,22 +475,33 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         st.error("❌ กรุณากรอกขนาดชิ้นงานให้ครบถ้วนและมากกว่า 0")
                     else:
                         try:
-                            # บันทึกข้อมูล
-                            supabase.table("products").insert({
+                            payload = {
                                 "product_code": p_code, 
-                                "product_name": f"[{shape.split(' ')[0]}] {p_name}", # เก็บแค่ชื่อทรงในวงเล็บ
+                                "product_name": f"[{shape.split(' ')[0]}] {p_name}",
                                 "height": height, 
-                                "width": width if "สี่เหลี่ยม" in shape else 0, # สี่เหลี่ยมเก็บ width ปกติ, ทรงกลมเก็บ 0 เพราะมี OD แล้ว
                                 "thickness": thickness,
                                 "outer_diameter": calc_od, 
                                 "inner_diameter": calc_id, 
                                 "surface_finish": s_finish
-                            }).execute()
+    }
+
+    # แก้ไขปัญหา Null Constraint:
+    # ถ้าเป็นสี่เหลี่ยม ให้ใช้ค่า width และ depth จากที่กรอก
+                            if "สี่เหลี่ยม" in shape:
+                                payload["width"] = width
+                                payload["depth"] = depth
+                            else:
+        # ถ้าเป็นทรงกระบอก ให้ส่งเป็น 0.0 แทน null เพื่อไม่ให้ Error
+                                payload["width"] = 0.0
+                                payload["depth"] = 0.0
+
+    # บันทึกลง Supabase
+                            supabase.table("products").insert(payload).execute()
                             st.success(f"✅ บันทึกสินค้า {p_code} เรียบร้อยแล้ว!")
+    
                         except Exception as e: 
                             st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
-        
-        
+
         with sub_jig:
             with st.form("add_jig_form", clear_on_submit=True):
                 j_code = st.text_input("รหัสจิ๊ก")
