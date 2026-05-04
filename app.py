@@ -11,13 +11,6 @@ from plotly.subplots import make_subplots
 ICT = timezone(timedelta(hours=7))
 st.set_page_config(page_title="SCADA Dashboard", layout="wide")
 
-# --- [ADD] Constants & Thresholds ---
-PH_MIN, PH_MAX = 5.0, 6.0
-PH_ANO_MIN, PH_ANO_MAX = 0.5, 1.5
-TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30.0, 40.0
-TEMP_ANO_MIN, TEMP_ANO_MAX = 15.0, 25.0
-DEN_ANO_MIN, DEN_ANO_MAX = 1.050, 1.150
-
 # --- Configuration ---
 COLOR_HEX_MAP = {
     "Black": "#000000", "Red": "#FF0000", "Dark Red": "#8B0000", 
@@ -40,6 +33,8 @@ TANK_COLOR_MAP = {
     "HotSealH60": "Black"
 }
 
+st.set_page_config(page_title="Production Log System", layout="wide")
+
 # --- เชื่อมต่อ Supabase ---
 @st.cache_resource
 def init_connection():
@@ -53,111 +48,316 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- [ADD] Helper Functions ---
+# --- Helper Functions ---
+def get_hex_from_name(name):
+    sorted_colors = sorted(COLOR_HEX_MAP.keys(), key=len, reverse=True)
+    name_lower = str(name).lower()
+    for color_name in sorted_colors:
+        if color_name.lower() in name_lower:
+            return COLOR_HEX_MAP[color_name]
+    return "#CCCCCC"
 
-@st.cache_data(ttl=60)
-def load_tank_mapping():
-    """ฟังก์ชันสำหรับสร้าง Map ID -> Name (แก้ Error บรรทัด 98)"""
-    try:
-        res = supabase.table("tanks").select("tank_id, tank_name").execute()
-        if res.data:
-            return {item['tank_id']: item['tank_name'] for item in res.data}
-    except:
-        pass
-    return {}
+def render_color_bar(name):
+    hex_code = get_hex_from_name(name)
+    st.markdown(f"""
+        <div style="background-color:{hex_code}; width:100%; height:20px; border-radius:5px; border: 1px solid #ccc; margin-bottom: 10px;"></div>
+    """, unsafe_allow_html=True)
 
 def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
+    if not supabase: return {}
     try:
         query = supabase.table(table).select(f"{id_col}, {name_col}")
         if filter_col and filter_val:
             query = query.eq(filter_col, filter_val)
-        res = query.execute()
-        if res.data:
-            return {item[name_col]: item[id_col] for item in res.data}
+        response = query.execute()
+        return {item[name_col]: item[id_col] for item in response.data}
+    except Exception:
+        return {}
+
+menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
+
+# ================= DASHBOARD (FULL SYSTEM VIEW) =================
+if menu == "Dashboard":
+    st.title("📊 Production Dashboard (System Overview)")
+
+    # ================= STANDARD =================
+    PH_MIN, PH_MAX = 5.0, 6.0
+    TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30, 40
+    PH_ANO_MIN, PH_ANO_MAX = 1, 1.5       # <--- เพิ่มบรรทัดนี้ (ปรับค่าตามมาตรฐานจริงของคุณ)
+    TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22     # มาตรฐานอุณหภูมิ บ่ออโนไดซ์
+    DEN_ANO_MIN, DEN_ANO_MAX = 1.080, 1.150  #เพิ่มค่ามาตรฐาน Density (ปรับตัวเลขตาม Spec ของสารเคมีที่โรงงานใช้)
+
+    # ================= CACHE & DATA LOADING =================
+    @st.cache_data(ttl=10)
+    def load_color_logs():
+        return supabase.table("color_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
+
+    @st.cache_data(ttl=10)
+    def load_anodize_logs():
+        return supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
+
+    @st.cache_data(ttl=60)
+    def load_tanks():
+        return get_options("tanks", "tank_id", "tank_name")
+
+    # ================= KPI SECTION =================
+    col1, col2 = st.columns(2)
+    active_jigs_res = supabase.table("jig_status").select("jig_id, current_tank_id").eq("status_type", "In-Process").execute()
+    active_jigs_data = active_jigs_res.data if active_jigs_res.data else []
+    
+    production_count = len(active_jigs_data)
+    active_tanks_set = {item["current_tank_id"] for item in active_jigs_data if item["current_tank_id"] is not None}
+    active_tanks_count = len(active_tanks_set)
+
+    col1.metric("🟢 กำลังผลิต (จิ๊ก)", production_count)
+    col2.metric("🧪 บ่อที่กำลังใช้งาน", active_tanks_count)
+    st.markdown("---")
+
+# --- Color Tank Analysis ---
+    st.subheader("🎨 วิเคราะห์ข้อมูลบ่อสี (Color Tanks)")
+    logs = load_color_logs()
+    if logs:
+        df = pd.DataFrame(logs)
+        df["recorded_at"] = pd.to_datetime(df["recorded_at"])
+        tank_map = load_tanks()
+        inv_tank_map = {v: k for k, v in tank_map.items()}
+        df["tank_name"] = df["tank_id"].map(inv_tank_map)
+
+        latest = df.drop_duplicates("tank_id").copy()
+        if not latest.empty:
+            # สร้าง Subplots แบบ 2 แกน Y (ซ้าย pH, ขวา Temp)
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+            # 1. กราฟแท่ง pH (แกนซ้าย)
+            fig.add_trace(
+                go.Bar(
+                    x=latest["tank_name"],
+                    y=latest["ph_value"],
+                    name="ค่า pH (Std: 5.0-6.0)",
+                    marker_color="#98FB98",
+                    text=latest["ph_value"],
+                    textposition='auto',
+                    offsetgroup=1, # จัดกลุ่มที่ 1
+                ),
+                secondary_y=False,
+            )
+
+            # 2. กราฟแท่ง อุณหภูมิ (แกนขวา)
+            fig.add_trace(
+                go.Bar(
+                    x=latest["tank_name"],
+                    y=latest["temperature"],
+                    name="อุณหภูมิ (Std: 30-40 °C)",
+                    marker_color="#AFEEEE",
+                    text=latest["temperature"],
+                    textposition='auto',
+                    offsetgroup=2, # จัดกลุ่มที่ 2 (ทำให้แท่งวางข้างกัน)
+                ),
+                secondary_y=True,
+            )
+
+            # --- ตั้งค่าแกน Y ---
+            fig.update_yaxes(
+                title_text="<b>ค่า pH</b>", 
+                secondary_y=False, 
+                range=[0, 14], 
+                dtick=1,
+                title_font=dict(color="#22c55e"),
+                tickfont=dict(color="#22c55e"),
+                gridcolor='rgba(34, 197, 94, 0.1)' # เส้นกริดจางๆ ตามสีแกน
+            )
+            
+            fig.update_yaxes(
+                title_text="<b>อุณหภูมิ (°C)</b>", 
+                secondary_y=True, 
+                range=[0, 100],
+                title_font=dict(color="#3b82f6"),
+                tickfont=dict(color="#3b82f6"),
+                showgrid=False # ปิดกริดฝั่งขวาเพื่อไม่ให้ลายตา
+            )
+
+            # --- เพิ่มเส้น Threshold (เส้นเกณฑ์มาตรฐาน) ---
+            # เส้น pH
+            fig.add_hline(y=PH_MIN, line_dash="dash", line_color="#166534", secondary_y=False)
+            fig.add_hline(y=PH_MAX, line_dash="dash", line_color="#166534", secondary_y=False)
+            
+            # เส้น Temp
+            fig.add_hline(y=TEMP_COLOR_MIN, line_dash="dot", line_color="#1d4ed8", secondary_y=True)
+            fig.add_hline(y=TEMP_COLOR_MAX, line_dash="dot", line_color="#1d4ed8", secondary_y=True)
+
+            # การตั้งค่า Layout
+            fig.update_layout(
+                title=dict(text="เปรียบเทียบค่า pH และอุณหภูมิ (ล่าสุดรายบ่อ)", x=0.5),
+                xaxis_title="ชื่อบ่อสี",
+                barmode="group", # คำสั่งสำคัญที่ทำให้แท่งวางคู่กัน
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                height=500,
+                margin=dict(t=100) # เพิ่มพื้นที่ด้านบนให้ Legend
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+    # =========================================================
+    # ================= INDIVIDUAL TANK VIEW =================
+    # =========================================================
+    st.markdown("---")
+    st.subheader("🔍 วิเคราะห์ข้อมูลรายบ่อ (Individual Tank Analysis)")
+
+    # ดึงรายชื่อบ่อสีที่มีใน logs มาให้เลือก
+    if logs:
+        df_all = pd.DataFrame(logs)
+        df_all["recorded_at"] = pd.to_datetime(df_all["recorded_at"])
+        
+        # สร้าง Mapping ชื่อบ่อ
+        tank_map = load_tanks()
+        inv_map = {v: k for k, v in tank_map.items()}
+        df_all["tank_name"] = df_all["tank_id"].map(inv_map)
+        
+        # ตัวเลือกบ่อ
+        available_tanks = sorted(df_all["tank_name"].unique())
+        selected_tank = st.selectbox("เลือกบ่อที่ต้องการดูรายละเอียด", available_tanks)
+
+        # กรองข้อมูลเฉพาะบ่อที่เลือก
+        tank_df = df_all[df_all["tank_name"] == selected_tank].sort_values("recorded_at")
+
+        if not tank_df.empty:
+            # สร้าง Column สำหรับกราฟ 2 ฝั่ง (pH และ Temp)
+            g1, g2 = st.columns(2)
+
+            with g1:
+                fig_ph = go.Figure()
+                fig_ph.add_trace(go.Scatter(
+                    x=tank_df["recorded_at"],
+                    y=tank_df["ph_value"],
+                    mode='lines+markers',
+                    name='pH Value',
+                    line=dict(color='#22c55e', width=3),
+                    marker=dict(size=8)
+                ))
+                # เพิ่มเส้นขอบเขตมาตรฐาน
+                fig_ph.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1, line_width=0, annotation_text="Standard Range")
+                
+                fig_ph.update_layout(
+                    title=f"แนวโน้มค่า pH: {selected_tank}",
+                    xaxis_title="เวลาที่บันทึก",
+                    yaxis_title="pH",
+                    hovermode="x unified"
+                )
+                st.plotly_chart(fig_ph, use_container_width=True)
+
+            with g2:
+                fig_temp = go.Figure()
+                fig_temp.add_trace(go.Scatter(
+                    x=tank_df["recorded_at"],
+                    y=tank_df["temperature"],
+                    mode='lines+markers',
+                    name='Temperature',
+                    line=dict(color='#22c55e', width=3),
+                    marker=dict(size=8)
+                ))
+                # เพิ่มเส้นขอบเขตมาตรฐาน
+                fig_temp.add_hrect(y0=TEMP_COLOR_MIN, y1=TEMP_COLOR_MAX, fillcolor="orange", opacity=0.1, line_width=0, annotation_text="Standard Range")
+                
+                fig_temp.update_layout(
+                    title=f"แนวโน้มอุณหภูมิ: {selected_tank}",
+                    xaxis_title="เวลาที่บันทึก",
+                    yaxis_title="อุณหภูมิ (°C)",
+                    hovermode="x unified"
+                )
+                st.plotly_chart(fig_temp, use_container_width=True)
+            
+            # แสดงตารางข้อมูลล่าสุดของบ่อนี้
+            with st.expander(f"ดูประวัติข้อมูลดิบของ {selected_tank}"):
+                st.dataframe(tank_df[["recorded_at", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
+
+# =========================================================
+    # ================= ANODIZE TREND ANALYSIS ================
+    # =========================================================
+    st.markdown("---")
+    st.subheader("📈 วิเคราะห์แนวโน้มบ่ออโนไดซ์ (Anodize Detailed Trend)")
+
+    logs_a = load_anodize_logs()
+
+    if logs_a:
+        df_a = pd.DataFrame(logs_a)
+        df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"])
+        
+        # Mapping ชื่อบ่อ
+        tank_map = load_tanks()
+        inv_map = {v: k for k, v in tank_map.items()}
+        df_a["tank_name"] = df_a["tank_id"].map(inv_map)
+
+        available_ano_tanks = sorted(df_a["tank_name"].dropna().unique())
+        selected_ano = st.selectbox("เลือกบ่ออโนไดซ์เพื่อดูแนวโน้ม", available_ano_tanks)
+
+        # กรองข้อมูล
+        ano_filtered = df_a[df_a["tank_name"] == selected_ano].sort_values("recorded_at")
+
+        if not ano_filtered.empty:
+            # สร้าง 3 คอลัมน์สำหรับ 3 กราฟ
+            g1, g2, g3 = st.columns(3)
+
+            # --- กราฟที่ 1: pH ---
+            with g1:
+                fig_ph = go.Figure()
+                fig_ph.add_trace(go.Scatter(
+                    x=ano_filtered["recorded_at"], y=ano_filtered["ph_value"],
+                    mode='lines+markers', name='pH',
+                    line=dict(color='#22c55e', width=2), marker=dict(size=6)
+                ))
+                fig_ph.add_hrect(y0=PH_ANO_MIN, y1=PH_ANO_MAX, fillcolor="green", opacity=0.1, line_width=0)
+                fig_ph.update_layout(title="แนวโน้ม pH", height=350, margin=dict(t=50, b=20, l=10, r=10))
+                st.plotly_chart(fig_ph, use_container_width=True)
+
+            # --- กราฟที่ 2: Temperature ---
+            with g2:
+                fig_temp = go.Figure()
+                fig_temp.add_trace(go.Scatter(
+                    x=ano_filtered["recorded_at"], y=ano_filtered["temperature"],
+                    mode='lines+markers', name='Temp',
+                    line=dict(color='#3b82f6', width=2), marker=dict(size=6)
+                ))
+                fig_temp.add_hrect(y0=TEMP_ANO_MIN, y1=TEMP_ANO_MAX, fillcolor="blue", opacity=0.1, line_width=0)
+                fig_temp.update_layout(title="แนวโน้มอุณหภูมิ (°C)", height=350, margin=dict(t=50, b=20, l=10, r=10))
+                st.plotly_chart(fig_temp, use_container_width=True)
+
+            # --- กราฟที่ 3: Density ---
+            with g3:
+                fig_den = go.Figure()
+                fig_den.add_trace(go.Scatter(
+                    x=ano_filtered["recorded_at"], y=ano_filtered["density"],
+                    mode='lines+markers', name='Density',
+                    line=dict(color='#a855f7', width=2), marker=dict(size=6)
+                ))
+                # ถ้ามีค่ามาตรฐาน Density (เช่น 1.05 - 1.10) สามารถเพิ่ม hrect ได้เหมือน pH
+                # ส่วนในกราฟ Density (g3)
+                fig_den.add_hrect(y0=DEN_ANO_MIN, y1=DEN_ANO_MAX, fillcolor="purple", opacity=0.1, line_width=0)
+                fig_den.update_layout(title="แนวโน้มความหนาแน่น", height=350, margin=dict(t=50, b=20, l=10, r=10))
+                st.plotly_chart(fig_den, use_container_width=True)
+
+            # --- ตาราง Log ข้อมูล ---
+            with st.expander(f"📋 รายละเอียดข้อมูลบันทึก {selected_ano}"):
+                log_display = ano_filtered[["recorded_at", "ph_value", "temperature", "density"]].copy()
+                log_display = log_display.sort_values("recorded_at", ascending=False)
+                # จัดฟอร์แมตตัวเลขให้สวยงาม
+                st.dataframe(
+                    log_display.style.format({
+                        "ph_value": "{:.2f}",
+                        "temperature": "{:.1f}",
+                        "density": "{:.3f}"
+                    }), 
+                    use_container_width=True
+                )
+        else:
+            st.warning("ไม่พบข้อมูลบันทึกสำหรับบ่อนี้")
+    else:
+        st.info("ไม่มีข้อมูลในระบบ Anodize")
+    # ================= AUTO REFRESH =================
+    try:
+        st_autorefresh(interval=10000, key="refresh")
     except:
         pass
-    return {}
 
-@st.cache_data(ttl=10)
-def load_color_logs():
-    res = supabase.table("color_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute()
-    return res.data if res.data else []
 
-@st.cache_data(ttl=10)
-def load_anodize_logs():
-    res = supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute()
-    return res.data if res.data else []
-
-# --- UI Sidebar ---
-menu = st.sidebar.radio("เมนู", ["Dashboard", "บันทึกข้อมูลการผลิต"])
-
-# ================= DASHBOARD =================
-if menu == "Dashboard":
-    st.title("📊 Production Overview")
-    
-    # ดึงข้อมูล Mapping มาไว้ก่อน
-    inv_tank_map = load_tank_mapping()
-    color_logs = load_color_logs()
-    ano_logs = load_anodize_logs()
-
-    df_c = pd.DataFrame(color_logs) if color_logs else pd.DataFrame()
-    df_a = pd.DataFrame(ano_logs) if ano_logs else pd.DataFrame()
-
-    # Metrics
-    m1, m2, m3 = st.columns(3)
-    try:
-        jig_res = supabase.table("jig_status").select("jig_id", count="exact").eq("status_type", "In-Process").execute()
-        active_jigs = jig_res.count if jig_res.count is not None else 0
-    except:
-        active_jigs = 0
-    
-    m1.metric("📦 Production (Jigs)", active_jigs)
-    m2.metric("🧪 Active Tanks", (df_c["tank_id"].nunique() if not df_c.empty else 0) + (df_a["tank_id"].nunique() if not df_a.empty else 0))
-    
-    # Alert Logic
-    bad_color = df_c.drop_duplicates("tank_id")[(df_c["ph_value"] < PH_MIN) | (df_c["ph_value"] > PH_MAX)] if not df_c.empty else pd.DataFrame()
-    bad_ano = df_a.drop_duplicates("tank_id")[(df_a["ph_value"] < PH_ANO_MIN) | (df_a["ph_value"] > PH_ANO_MAX)] if not df_a.empty else pd.DataFrame()
-    total_alerts = len(bad_color) + len(bad_ano)
-    m3.metric("⚠️ Issues", total_alerts, delta=f"{total_alerts} abnormal", delta_color="inverse" if total_alerts > 0 else "normal")
-
-    if total_alerts > 0:
-        with st.expander("🔴 รายละเอียดความผิดปกติ", expanded=True):
-            for _, row in bad_color.iterrows():
-                st.error(f"🎨 {inv_tank_map.get(row['tank_id'], 'Unknown')}: pH {row['ph_value']:.2f}")
-            for _, row in bad_ano.iterrows():
-                st.error(f"🧪 {inv_tank_map.get(row['tank_id'], 'Unknown')}: pH {row['ph_value']:.2f}")
-    else:
-        st.success("✅ ระบบทำงานปกติ")
-
-    # กราฟหลัก
-    t1, t2 = st.tabs(["Dashboard", "Detailed Trends"])
-    
-    with t1:
-        if not df_c.empty:
-            st.subheader("เปรียบเทียบค่า pH บ่อสี")
-            latest_c = df_c.drop_duplicates("tank_id").copy()
-            latest_c["tank_name"] = latest_c["tank_id"].map(inv_tank_map)
-            fig = go.Figure(go.Bar(
-                x=latest_c["tank_name"], y=latest_c["ph_value"],
-                marker_color=['#ff4b4b' if (v < PH_MIN or v > PH_MAX) else '#00cc96' for v in latest_c["ph_value"]]
-            ))
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("ไม่มีข้อมูลบ่อสี")
-
-    with t2:
-        st.subheader("วิเคราะห์แนวโน้มรายบ่อ")
-        all_ids = list(set((df_c["tank_id"].tolist() if not df_c.empty else []) + (df_a["tank_id"].tolist() if not df_a.empty else [])))
-        if all_ids:
-            sel_id = st.selectbox("เลือกบ่อ", all_ids, format_func=lambda x: inv_tank_map.get(x, f"ID: {x}"))
-            # กรองข้อมูลมาแสดงกราฟ (pH)
-            target_df = df_c[df_c["tank_id"] == sel_id] if not df_c.empty and sel_id in df_c["tank_id"].values else (df_a[df_a["tank_id"] == sel_id] if not df_a.empty else pd.DataFrame())
-            if not target_df.empty:
-                st.line_chart(target_df.set_index("recorded_at")["ph_value"])
-        else:
-            st.warning("ไม่มีข้อมูลประวัติ")
-
-    st_autorefresh(interval=30000, key="auto_refresh")
 # ================= RECORD PAGE =================
 elif menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูล")
