@@ -47,32 +47,23 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- Helper Functions ---
-def get_hex_from_name(name):
-    sorted_colors = sorted(COLOR_HEX_MAP.keys(), key=len, reverse=True)
-    name_lower = str(name).lower()
-    for color_name in sorted_colors:
-        if color_name.lower() in name_lower:
-            return COLOR_HEX_MAP[color_name]
-    return "#CCCCCC"
+# --- Helper Functions / Functions Declaration (ย้ายมาไว้ตรงนี้ทั้งหมด) ---
 
-def render_color_bar(name):
-    hex_code = get_hex_from_name(name)
-    st.markdown(f"""
-        <div style="background-color:{hex_code}; width:100%; height:20px; border-radius:5px; border: 1px solid #ccc; margin-bottom: 10px;"></div>
-    """, unsafe_allow_html=True)
+@st.cache_data(ttl=60)
+def load_tanks():
+    return get_options("tanks", "tank_id", "tank_name")
 
-def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
-    if not supabase: return {}
-    try:
-        query = supabase.table(table).select(f"{id_col}, {name_col}")
-        if filter_col and filter_val:
-            query = query.eq(filter_col, filter_val)
-        response = query.execute()
-        return {item[name_col]: item[id_col] for item in response.data}
-    except Exception:
-        return {}
+@st.cache_data(ttl=10)
+def load_color_logs():
+    return supabase.table("color_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
 
+@st.cache_data(ttl=10)
+def load_anodize_logs():
+    return supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
+
+# ---------------------------------------------------------
+# เมื่อประกาศเสร็จแล้ว ถึงจะเริ่มเรียกใช้งานในส่วน Dashboard
+# ---------------------------------------------------------
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
 # ================= DASHBOARD (CLEAN VERSION) =================
