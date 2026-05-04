@@ -82,9 +82,9 @@ if menu == "Dashboard":
     # ================= STANDARD =================
     PH_MIN, PH_MAX = 5.0, 6.0
     TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30, 40
-    PH_ANO_MIN, PH_ANO_MAX = 1, 1.5       # <--- เพิ่มบรรทัดนี้ (ปรับค่าตามมาตรฐานจริงของคุณ)
-    TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22     # มาตรฐานอุณหภูมิ บ่ออโนไดซ์
-    DEN_ANO_MIN, DEN_ANO_MAX = 1.080, 1.150  #เพิ่มค่ามาตรฐาน Density (ปรับตัวเลขตาม Spec ของสารเคมีที่โรงงานใช้)
+    PH_ANO_MIN, PH_ANO_MAX = 1, 1.5
+    TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22
+    DEN_ANO_MIN, DEN_ANO_MAX = 1.080, 1.150
 
     # ================= CACHE & DATA LOADING =================
     @st.cache_data(ttl=10)
@@ -98,6 +98,10 @@ if menu == "Dashboard":
     @st.cache_data(ttl=60)
     def load_tanks():
         return get_options("tanks", "tank_id", "tank_name")
+
+    # --- เตรียม Mapping สำหรับใช้ใน Alert และส่วนอื่นๆ ---
+    tank_map = load_tanks()
+    inv_tank_map = {v: k for k, v in tank_map.items()} # ย้ายขึ้นมาไว้ตรงนี้
 
     # ================= KPI SECTION =================
     col1, col2 = st.columns(2)
@@ -113,22 +117,22 @@ if menu == "Dashboard":
     st.markdown("---")
     st.subheader("⚠️ การแจ้งเตือนความผิดปกติ (Real-time Alerts)")
 
-# ดึงข้อมูลล่าสุดของบ่อสี
+    # ดึงข้อมูลล่าสุดของบ่อสี
     color_logs_all = load_color_logs()
+    out_of_std_color = pd.DataFrame() # เตรียมไว้กัน Error ถ้าไม่มีข้อมูล
     if color_logs_all:
         df_c_alert = pd.DataFrame(color_logs_all).drop_duplicates("tank_id")
-    # ตรวจสอบ pH บ่อสี (มาตรฐาน 5.0 - 6.0)
         out_of_std_color = df_c_alert[(df_c_alert["ph_value"] < PH_MIN) | (df_c_alert["ph_value"] > PH_MAX)]
     
         for _, row in out_of_std_color.iterrows():
             t_name = inv_tank_map.get(row['tank_id'], "Unknown")
             st.error(f"🚨 **บ่อสี {t_name}**: ค่า pH ผิดปกติ! ปัจจุบันอยู่ที่ **{row['ph_value']:.2f}** (เกณฑ์: {PH_MIN}-{PH_MAX})")
 
-# ดึงข้อมูลล่าสุดของบ่ออโนไดซ์
+    # ดึงข้อมูลล่าสุดของบ่ออโนไดซ์
     ano_logs_all = load_anodize_logs()
+    out_of_std_ano = pd.DataFrame() # เตรียมไว้กัน Error
     if ano_logs_all:
         df_a_alert = pd.DataFrame(ano_logs_all).drop_duplicates("tank_id")
-    # ตรวจสอบ pH บ่ออโนไดซ์ (มาตรฐาน 1.0 - 1.5)
         out_of_std_ano = df_a_alert[(df_a_alert["ph_value"] < PH_ANO_MIN) | (df_a_alert["ph_value"] > PH_ANO_MAX)]
     
         for _, row in out_of_std_ano.iterrows():
@@ -137,8 +141,6 @@ if menu == "Dashboard":
 
     if out_of_std_color.empty and out_of_std_ano.empty:
         st.success("✅ ค่า pH ทุกบ่ออยู่ในเกณฑ์ปกติ")
-
-    st.markdown("---")
     
 
 # --- Color Tank Analysis ---
