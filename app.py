@@ -92,7 +92,7 @@ if menu == "Dashboard":
     TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30, 40
     PH_ANO_MIN, PH_ANO_MAX = 1, 1.5       # <--- เพิ่มบรรทัดนี้ (ปรับค่าตามมาตรฐานจริงของคุณ)
     TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22     # มาตรฐานอุณหภูมิ บ่ออโนไดซ์
-    DEN_ANO_MIN, DEN_ANO_MAX = 1.080, 1.150  #เพิ่มค่ามาตรฐาน Density (ปรับตัวเลขตาม Spec ของสารเคมีที่โรงงานใช้)
+    DEN_ANO_MIN, DEN_ANO_MAX = 0.5, 1.5  #เพิ่มค่ามาตรฐาน Density (ปรับตัวเลขตาม Spec ของสารเคมีที่โรงงานใช้)
 
     # ================= CACHE & DATA LOADING =================
     @st.cache_data(ttl=10)
