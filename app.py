@@ -412,192 +412,182 @@ elif menu == "บันทึกข้อมูลการผลิต":
 
     with tab3:
         sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
+        tab3 = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
+sub_prod, sub_jig, sub_log = tab3
 
-        # ================= 1. ลงทะเบียนชิ้นงาน (Improved Version) =================
-        with sub_prod:
-            st.subheader("📦 ลงทะเบียนรายละเอียดสินค้าใหม่")
-            
-            # ย้ายออกมาเพื่อให้ UI เปลี่ยนตามรูปทรงที่เลือก
-            shape = st.selectbox(
-                "📐 เลือกรูปทรงชิ้นงาน", 
-                ["สี่เหลี่ยม (Solid Plate/Bar)", "ทรงกระบอกทึบ (Solid Cylinder)", "ทรงกระบอกกลวง (Hollow Cylinder/Tube)"], 
-                key="shape_selector"
-            )
-            
-            with st.form("add_prod_form_fixed", clear_on_submit=True):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    p_code = st.text_input("รหัสสินค้า (Product Code) *", placeholder="เช่น PC-1234")
-                    p_name = st.text_input("ชื่อ/รายละเอียดสินค้า", placeholder="เช่น ฝาครอบเครื่องปรับอากาศ")
-                    s_finish = st.text_input("พื้นผิว (Surface Finish)", placeholder="เช่น Satin, Sand Blast")
-                
-                with col2:
-                    st.info(f"📍 กำลังบันทึกข้อมูลรูปทรง: **{shape}**")
-                    height = st.number_input("ความยาว/ความสูง (Height) [mm]", min_value=0.0, step=0.1, help="ความยาวของชิ้นงานในแนวตั้ง")
-                    
-                    # ปรับ UI ตามรูปทรง
-                    if "สี่เหลี่ยม" in shape:
-                        width = st.number_input("ความกว้าง (Width) [mm]", min_value=0.0, step=0.1)
-                        thickness = st.number_input("ความหนา (Thickness) [mm]", min_value=0.0, step=0.1)
-                        calc_od, calc_id = 0.0, 0.0
-                    
-                    elif "ทึบ" in shape:
-                        width = st.number_input("เส้นผ่านศูนย์กลางภายนอก (OD) [mm]", min_value=0.0, step=0.1)
-                        thickness = 0.0 # ทรงตันไม่มีความหนาขอบ
-                        calc_od, calc_id = width, 0.0
-                        
-                    else: # ทรงกระบอกกลวง
-                        width = st.number_input("เส้นผ่านศูนย์กลางภายนอก (OD) [mm]", min_value=0.0, step=0.1)
-                        thickness = st.number_input("ความหนาของเนื้อวัสดุ (Wall Thickness) [mm]", min_value=0.0, step=0.1)
-                        calc_od = width
-                        calc_id = max(0.0, calc_od - (2 * thickness))
-
-                st.markdown("---")
-                # ส่วนสรุปค่าที่จะถูกบันทึก (ReadOnly)
-                c_res1, c_res2, c_res3 = st.columns(3)
-                with c_res1:
-                    st.write("**ค่า OD ที่จะบันทึก:**")
-                    st.code(f"{calc_od:.2f} mm")
-                with c_res2:
-                    st.write("**ค่า ID ที่คำนวณได้:**")
-                    st.code(f"{calc_id:.2f} mm")
-                with c_res3:
-                    st.write("**ความหนาที่จะบันทึก:**")
-                    st.code(f"{thickness:.2f} mm")
-
-                if st.form_submit_button("➕ ลงทะเบียนชิ้นงานเข้าสู่ระบบ"):
-                    if not p_code: 
-                        st.error("❌ กรุณากรอกรหัสสินค้าก่อนบันทึก")
-                    elif ("สี่เหลี่ยม" in shape and (height <= 0 or width <= 0 or thickness <= 0)) or (height <=0 or width <=0):
-                        st.error("❌ กรุณากรอกขนาดชิ้นงานให้ครบถ้วนและมากกว่า 0")
-                    else:
-                        try:
-                            payload = {
-                                "product_code": p_code, 
-                                "product_name": f"[{shape.split(' ')[0]}] {p_name}",
-                                "height": height, 
-                                "thickness": thickness,
-                                "outer_diameter": calc_od, 
-                                "inner_diameter": calc_id, 
-                                "surface_finish": s_finish
-    }
-
-    # แก้ไขปัญหา Null Constraint:
-    # ถ้าเป็นสี่เหลี่ยม ให้ใช้ค่า width และ depth จากที่กรอก
-                            if "สี่เหลี่ยม" in shape:
-                                payload["width"] = width
-                                payload["depth"] = depth
-                            else:
-        # ถ้าเป็นทรงกระบอก ให้ส่งเป็น 0.0 แทน null เพื่อไม่ให้ Error
-                                payload["width"] = 0.0
-                                payload["depth"] = 0.0
-
-    # บันทึกลง Supabase
-                            supabase.table("products").insert(payload).execute()
-                            st.success(f"✅ บันทึกสินค้า {p_code} เรียบร้อยแล้ว!")
+# ---------------------------------------------------------
+# 1. ลงทะเบียนชิ้นงาน (sub_prod)
+# ---------------------------------------------------------
+with sub_prod:
+    st.subheader("📦 ลงทะเบียนรายละเอียดสินค้าใหม่")
+    shape = st.selectbox(
+        "📐 เลือกรูปทรงชิ้นงาน", 
+        ["สี่เหลี่ยม (Solid Plate/Bar)", "ทรงกระบอกทึบ (Solid Cylinder)", "ทรงกระบอกกลวง (Hollow Cylinder/Tube)"], 
+        key="shape_selector"
+    )
     
-                        except Exception as e: 
-                            st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
-
-        with sub_jig:
-            with st.form("add_jig_form", clear_on_submit=True):
-                j_code = st.text_input("รหัสจิ๊ก")
-                if st.form_submit_button("ลงทะเบียนจิ๊ก"):
-                    if not j_code:
-                        st.error("กรุณากรอกรหัสจิ๊ก")
-                    else:
-                        try:
-                            supabase.table("jigs").insert({
-                                "jig_model_code": j_code, 
-                                "total_pcs_in_jig": 0
-                            }).execute()
-                            st.success("ลงทะเบียนจิ๊กสำเร็จ")
-                        except Exception as e:
-                            st.error(f"Error: {e}")
-    
-
-        with sub_log:
-            prods = get_options("products", "product_id", "product_code")
-            jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
+    with st.form("add_prod_form_fixed", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            p_code = st.text_input("รหัสสินค้า (Product Code) *")
+            p_name = st.text_input("ชื่อ/รายละเอียดสินค้า")
+            s_finish = st.text_input("พื้นผิว (Surface Finish)")
+        
+        with col2:
+            height = st.number_input("ความยาว/ความสูง (Height) [mm]", min_value=0.0, step=0.1)
             
-            # กรองจิ๊กที่ยังไม่ Finished
-            available_jigs = []
-            for j in jigs_data:
-                status_res = supabase.table("jig_status").select("status_type").eq("jig_id", j["jig_id"]).order("updated_at", desc=True).limit(1).execute()
-                if not status_res.data or status_res.data[0]["status_type"] != "Finished":
-                    available_jigs.append(j)
+            # ตัวแปรสำหรับคำนวณ
+            width, thickness, calc_od, calc_id = 0.0, 0.0, 0.0, 0.0
+            unit_vol = 0.0
 
-            if not available_jigs:
-                st.warning("❌ ไม่มีจิ๊กที่ใช้งานได้")
+            if "สี่เหลี่ยม" in shape:
+                width = st.number_input("ความกว้าง (Width) [mm]", min_value=0.0, step=0.1)
+                thickness = st.number_input("ความหนา (Thickness) [mm]", min_value=0.0, step=0.1)
+                unit_vol = height * width * thickness
+                calc_od, calc_id = 0.0, 0.0
+            elif "ทึบ" in shape:
+                calc_od = st.number_input("เส้นผ่านศูนย์กลางภายนอก (OD) [mm]", min_value=0.0, step=0.1)
+                unit_vol = math.pi * ((calc_od/2)**2) * height
+                width, thickness, calc_id = 0.0, 0.0, 0.0
+            else: # ทรงกระบอกกลวง
+                calc_od = st.number_input("เส้นผ่านศูนย์กลางภายนอก (OD) [mm]", min_value=0.0, step=0.1)
+                thickness = st.number_input("ความหนาเนื้อ (t) [mm]", min_value=0.0, step=0.1)
+                calc_id = max(0.0, calc_od - (2 * thickness))
+                unit_vol = math.pi * ((calc_od/2)**2 - (calc_id/2)**2) * height
+                width = 0.0
+
+        st.info(f"💡 ปริมาตรต่อชิ้นที่คำนวณได้: {unit_vol:,.2f} mm³")
+
+        if st.form_submit_button("➕ ลงทะเบียนชิ้นงาน"):
+            if not p_code:
+                st.error("กรุณากรอกรหัสสินค้า")
             else:
-                jig_map = {j['jig_model_code']: j['jig_id'] for j in available_jigs}
-                color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
+                payload = {
+                    "product_code": p_code, 
+                    "product_name": f"[{shape.split(' ')[0]}] {p_name}",
+                    "height": height, 
+                    "thickness": thickness,
+                    "outer_diameter": calc_od, 
+                    "inner_diameter": calc_id, 
+                    "width": width,
+                    "depth": 0.0, 
+                    "unit_volume": unit_vol # บันทึกลงคอลัมน์ unit_volume ใน DB
+                }
+                try:
+                    supabase.table("products").insert(payload).execute()
+                    st.success("ลงทะเบียนสินค้าสำเร็จ!")
+                except Exception as e:
+                    st.error(f"เกิดข้อผิดพลาด: {e}")
 
-                if prods and color_tanks_all:
-                    sel_j = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()))
-                    jig_id = jig_map[sel_j]
-                    sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
+# ---------------------------------------------------------
+# 2. ลงทะเบียนจิ๊ก (sub_jig)
+# ---------------------------------------------------------
+with sub_jig:
+    st.subheader("🛠️ ลงทะเบียนจิ๊กใหม่")
+    with st.form("add_jig_form", clear_on_submit=True):
+        j_code = st.text_input("รหัสจิ๊ก")
+        if st.form_submit_button("ลงทะเบียนจิ๊ก"):
+            if not j_code:
+                st.error("กรุณากรอกรหัสจิ๊ก")
+            else:
+                try:
+                    supabase.table("jigs").insert({
+                        "jig_model_code": j_code, 
+                        "total_pcs_in_jig": 0
+                    }).execute()
+                    st.success("ลงทะเบียนจิ๊กสำเร็จ")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+# ---------------------------------------------------------
+# 3. บันทึกผลผลิต (sub_log)
+# ---------------------------------------------------------
+with sub_log:
+    st.subheader("📝 บันทึกการใช้งานจิ๊กและผลผลิต")
+    
+    # ดึงข้อมูล Master Data
+    prods = get_options("products", "product_id", "product_code")
+    jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
+    
+    # กรองจิ๊กที่ยังไม่ Finished (เช็คจากสถานะล่าสุด)
+    available_jigs = []
+    for j in jigs_data:
+        status_res = supabase.table("jig_status").select("status_type").eq("jig_id", j["jig_id"]).order("updated_at", desc=True).limit(1).execute()
+        if not status_res.data or status_res.data[0]["status_type"] != "Finished":
+            available_jigs.append(j)
+
+    if not available_jigs:
+        st.warning("❌ ไม่มีจิ๊กที่ว่างสำหรับการใช้งาน")
+    else:
+        jig_map = {j['jig_model_code']: j['jig_id'] for j in available_jigs}
+        color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
+
+        if prods and color_tanks_all:
+            col_sel1, col_sel2 = st.columns(2)
+            with col_sel1:
+                sel_j = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()))
+                jig_id = jig_map[sel_j]
+            with col_sel2:
+                sel_p = st.selectbox("เลือกสินค้า", list(prods.keys()))
+                p_id = prods[sel_p]
+            
+            # ดึงข้อมูลสินค้า (เพื่อเอา unit_volume ที่บันทึกไว้มาใช้)
+            p_info = supabase.table("products").select("unit_volume").eq("product_id", p_id).single().execute().data
+            unit_vol_db = p_info.get('unit_volume', 0.0) if p_info else 0.0
+
+            action = st.radio("การทำงาน", ["🔵 บันทึกงานต่อ", "🟢 เสร็จสิ้นงาน"], horizontal=True)
+
+            if action == "🔵 บันทึกงานต่อ":
+                sel_c_new = st.selectbox("เลือกสี", sorted(set(TANK_COLOR_MAP.values())))
+                filtered_tanks = {n: i for n, i in color_tanks_all.items() if TANK_COLOR_MAP.get(n) == sel_c_new}
+                sel_tank_name = st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))
+                tank_id = filtered_tanks[sel_tank_name]
+
+                with st.form("continue_form", clear_on_submit=True):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        pcs_row = st.number_input("จำนวนต่อแถว", min_value=0)
+                        rows = st.number_input("แถวที่เต็ม", min_value=0)
+                        part = st.number_input("เศษ", min_value=0)
                     
-                    # ดึงข้อมูลสินค้าเพื่อใช้คำนวณปริมาตร
-                    p_info = supabase.table("products").select("*").eq("product_id", prods[sel_p]).single().execute().data
-                    
-                    action = st.radio("การทำงาน", ["🔵 บันทึกงานต่อ", "🟢 เสร็จสิ้นงาน"])
+                    total_pcs = (rows * pcs_row) + part
+                    total_vol = unit_vol_db * total_pcs
 
-                    if action == "🔵 บันทึกงานต่อ":
-                        # Logic เลือกสีและบ่อ (เดิม)
-                        sel_c_new = st.selectbox("เลือกสี", sorted(set(TANK_COLOR_MAP.values())))
-                        filtered_tanks = {n: i for n, i in color_tanks_all.items() if TANK_COLOR_MAP.get(n) == sel_c_new}
-                        sel_tank_name = st.selectbox("เลือกบ่อสี", list(filtered_tanks.keys()))
-                        tank_id = filtered_tanks[sel_tank_name]
+                    with c2:
+                        st.metric("จำนวนรวม (Pcs)", f"{total_pcs:,}")
+                        st.metric("ปริมาตรรวม (mm³)", f"{total_vol:,.2f}")
 
-                        with st.form("continue_form", clear_on_submit=True):
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                pcs = st.number_input("จำนวนต่อแถว", min_value=0)
-                                rows = st.number_input("แถวที่เต็ม", min_value=0)
-                                partial = st.number_input("เศษ", min_value=0)
-                            
-                            # --- Logic คำนวณปริมาตร ---
-                            total_pcs = (rows * pcs) + partial
-                            unit_vol = 0.0
-                            h, w, t = p_info['height'], p_info['width'], p_info['thickness']
-                            od, id_ = p_info['outer_diameter'], p_info['inner_diameter']
+                    if st.form_submit_button("💾 บันทึก"):
+                        # 1. บันทึก Log การผลิต
+                        supabase.table("jig_usage_log").insert({
+                            "product_id": p_id, 
+                            "jig_id": jig_id,
+                            "color": sel_c_new, 
+                            "tank_id": tank_id,
+                            "total_pieces": total_pcs, 
+                            "total_volume": total_vol,
+                            "recorded_date": datetime.now(ICT).isoformat()
+                        }).execute()
+                        
+                        # 2. อัปเดตสถานะจิ๊กเป็น In-Process
+                        supabase.table("jig_status").upsert({
+                            "jig_id": jig_id, 
+                            "status_type": "In-Process",
+                            "current_tank_id": tank_id, 
+                            "updated_at": datetime.now(ICT).isoformat()
+                        }).execute()
+                        
+                        st.success("บันทึกข้อมูลเรียบร้อย")
+                        st.rerun()
 
-                            if od > 0: # กลุ่มทรงกระบอก
-                                if id_ > 0: # ทรงกระบอกกลวง
-                                    unit_vol = math.pi * ((od/2)**2 - (id_/2)**2) * h
-                                else: # ทรงกระบอกทึบ
-                                    unit_vol = math.pi * (od/2)**2 * h
-                            else: # สี่เหลี่ยม
-                                unit_vol = h * w * t
-                            
-                            total_vol = unit_vol * total_pcs
-
-                            with c2:
-                                st.metric("จำนวนรวม (Pcs)", total_pcs)
-                                st.metric("ปริมาตรรวม (mm³)", f"{total_vol:,.2f}")
-
-                            if st.form_submit_button("💾 บันทึก"):
-                                supabase.table("jig_usage_log").insert({
-                                    "product_id": prods[sel_p], "jig_id": jig_id,
-                                    "color": sel_c_new, "tank_id": tank_id,
-                                    "total_pieces": total_pcs, "total_volume": total_vol, # ต้องมี column total_volume ใน DB
-                                    "recorded_date": datetime.now(ICT).isoformat()
-                                }).execute()
-                                
-                                supabase.table("jig_status").upsert({
-                                    "jig_id": jig_id, "status_type": "In-Process",
-                                    "current_tank_id": tank_id, "updated_at": datetime.now(ICT).isoformat()
-                                }).execute()
-                                st.success("บันทึกสำเร็จ")
-                                st.rerun()
-
-                    elif action == "🟢 เสร็จสิ้นงาน":
-                        if st.button("🏁 ยืนยันเสร็จสิ้นงาน"):
-                            supabase.table("jig_status").upsert({
-                                "jig_id": jig_id, "status_type": "Finished",
-                                "current_tank_id": None, "updated_at": datetime.now(ICT).isoformat()
-                            }).execute()
-                            st.success("งานเสร็จสิ้น")
-                            st.rerun()
+            elif action == "🟢 เสร็จสิ้นงาน":
+                st.warning("คุณกำลังจะปิดงานสำหรับจิ๊กนี้")
+                if st.button("🏁 ยืนยันเสร็จสิ้นงาน (Finish)"):
+                    supabase.table("jig_status").upsert({
+                        "jig_id": jig_id, 
+                        "status_type": "Finished",
+                        "current_tank_id": None, 
+                        "updated_at": datetime.now(ICT).isoformat()
+                    }).execute()
+                    st.success("ปิดงานสำเร็จ จิ๊กว่างพร้อมรับงานใหม่")
+                    st.rerun()
