@@ -438,16 +438,22 @@ elif menu == "บันทึกข้อมูลการผลิต":
                     if not p_code: st.error("กรุณาระบุรหัสสินค้า")
                     else:
                         try:
+                            # แก้ไข payload ให้ส่งค่า 'depth' ไปด้วยเพื่อป้องกัน Error NOT NULL
                             payload = {
-                                "product_code": p_code, "product_name": p_name,
-                                "surface_finish": s_finish, "unit_volume": u_vol,
-                                "height": height, "width": width, "thickness": thickness, "outer_diameter": od
+                                "product_code": p_code, 
+                                "product_name": p_name,
+                                "surface_finish": s_finish, 
+                                "unit_volume": u_vol,
+                                "height": height, 
+                                "width": width, 
+                                "thickness": thickness, 
+                                "depth": thickness,  # เพิ่มบรรทัดนี้: ส่งค่า thickness เข้าคอลัมน์ depth
+                                "outer_diameter": od
                             }
                             supabase.table("products").insert(payload).execute()
                             st.success(f"ลงทะเบียน {p_code} เรียบร้อย!")
                         except Exception as e:
                             st.error(f"Database Error: {e}")
-
         # 3.2 ลงทะเบียนจิ๊ก
         with sub_jig:
             st.subheader("เพิ่มรหัสจิ๊กใหม่")
