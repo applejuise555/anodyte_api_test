@@ -435,10 +435,11 @@ elif menu == "บันทึกข้อมูลการผลิต":
                 st.info(f"💡 ปริมาตรที่จะบันทึก: {u_vol:,.2f} mm³")
 
                 if st.form_submit_button("➕ ลงทะเบียนสินค้า"):
-                    if not p_code: st.error("กรุณาระบุรหัสสินค้า")
+                    if not p_code: 
+                        st.error("กรุณาระบุรหัสสินค้า")
                     else:
                         try:
-                            # แก้ไข payload ให้ส่งค่า 'depth' ไปด้วยเพื่อป้องกัน Error NOT NULL
+                            # ปรับ payload ให้ส่งค่า 0.0 แทน null ในคอลัมน์ที่ DB บังคับ
                             payload = {
                                 "product_code": p_code, 
                                 "product_name": p_name,
@@ -447,8 +448,9 @@ elif menu == "บันทึกข้อมูลการผลิต":
                                 "height": height, 
                                 "width": width, 
                                 "thickness": thickness, 
-                                "depth": thickness,  # เพิ่มบรรทัดนี้: ส่งค่า thickness เข้าคอลัมน์ depth
-                                "outer_diameter": od
+                                "depth": thickness,  # ใช้ค่า thickness แทน depth
+                                "outer_diameter": od if od else 0.0,
+                                "inner_diameter": id_inner if 'id_inner' in locals() else 0.0
                             }
                             supabase.table("products").insert(payload).execute()
                             st.success(f"ลงทะเบียน {p_code} เรียบร้อย!")
