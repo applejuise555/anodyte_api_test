@@ -431,7 +431,6 @@ elif menu == "บันทึกข้อมูลการผลิต":
 
                 st.info(f"💡 ปริมาตร: {u_vol:,.2f} mm³")
                 if st.form_submit_button("➕ ลงทะเบียนสินค้า"):
-                    if st.form_submit_button("➕ ลงทะเบียนสินค้า"):
                     if p_code:
                         # --- ส่วนตรวจสอบการซ้ำ ---
                         check_exist = supabase.table("products").select("product_code").eq("product_code", p_code).execute()
