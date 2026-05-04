@@ -115,31 +115,31 @@ if menu == "Dashboard":
     st.subheader("⚠️ การแจ้งเตือนความผิดปกติ (Real-time Alerts)")
 
 # ดึงข้อมูลล่าสุดของบ่อสี
-color_logs_all = load_color_logs()
-if color_logs_all:
-    df_c_alert = pd.DataFrame(color_logs_all).drop_duplicates("tank_id")
+    color_logs_all = load_color_logs()
+    if color_logs_all:
+        df_c_alert = pd.DataFrame(color_logs_all).drop_duplicates("tank_id")
     # ตรวจสอบ pH บ่อสี (มาตรฐาน 5.0 - 6.0)
-    out_of_std_color = df_c_alert[(df_c_alert["ph_value"] < PH_MIN) | (df_c_alert["ph_value"] > PH_MAX)]
+        out_of_std_color = df_c_alert[(df_c_alert["ph_value"] < PH_MIN) | (df_c_alert["ph_value"] > PH_MAX)]
     
-    for _, row in out_of_std_color.iterrows():
-        t_name = inv_tank_map.get(row['tank_id'], "Unknown")
-        st.error(f"🚨 **บ่อสี {t_name}**: ค่า pH ผิดปกติ! ปัจจุบันอยู่ที่ **{row['ph_value']:.2f}** (เกณฑ์: {PH_MIN}-{PH_MAX})")
+        for _, row in out_of_std_color.iterrows():
+            t_name = inv_tank_map.get(row['tank_id'], "Unknown")
+            st.error(f"🚨 **บ่อสี {t_name}**: ค่า pH ผิดปกติ! ปัจจุบันอยู่ที่ **{row['ph_value']:.2f}** (เกณฑ์: {PH_MIN}-{PH_MAX})")
 
 # ดึงข้อมูลล่าสุดของบ่ออโนไดซ์
-ano_logs_all = load_anodize_logs()
-if ano_logs_all:
-    df_a_alert = pd.DataFrame(ano_logs_all).drop_duplicates("tank_id")
+    ano_logs_all = load_anodize_logs()
+    if ano_logs_all:
+        df_a_alert = pd.DataFrame(ano_logs_all).drop_duplicates("tank_id")
     # ตรวจสอบ pH บ่ออโนไดซ์ (มาตรฐาน 1.0 - 1.5)
-    out_of_std_ano = df_a_alert[(df_a_alert["ph_value"] < PH_ANO_MIN) | (df_a_alert["ph_value"] > PH_ANO_MAX)]
+        out_of_std_ano = df_a_alert[(df_a_alert["ph_value"] < PH_ANO_MIN) | (df_a_alert["ph_value"] > PH_ANO_MAX)]
     
-    for _, row in out_of_std_ano.iterrows():
-        t_name = inv_tank_map.get(row['tank_id'], "Unknown")
-        st.warning(f"🧪 **บ่ออโนไดซ์ {t_name}**: ค่า pH อยู่นอกเกณฑ์! ปัจจุบันอยู่ที่ **{row['ph_value']:.2f}** (เกณฑ์: {PH_ANO_MIN}-{PH_ANO_MAX})")
+        for _, row in out_of_std_ano.iterrows():
+            t_name = inv_tank_map.get(row['tank_id'], "Unknown")
+            st.warning(f"🧪 **บ่ออโนไดซ์ {t_name}**: ค่า pH อยู่นอกเกณฑ์! ปัจจุบันอยู่ที่ **{row['ph_value']:.2f}** (เกณฑ์: {PH_ANO_MIN}-{PH_ANO_MAX})")
 
-if out_of_std_color.empty and out_of_std_ano.empty:
-    st.success("✅ ค่า pH ทุกบ่ออยู่ในเกณฑ์ปกติ")
+    if out_of_std_color.empty and out_of_std_ano.empty:
+        st.success("✅ ค่า pH ทุกบ่ออยู่ในเกณฑ์ปกติ")
 
-st.markdown("---")
+    st.markdown("---")
     
 
 # --- Color Tank Analysis ---
