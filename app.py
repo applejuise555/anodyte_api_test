@@ -84,7 +84,7 @@ if menu == "Dashboard":
     PH_MIN, PH_MAX = 5.0, 6.0
     TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30, 40
     TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22
-    PH_ANO_MIN, PH_ANO_MAX = 0.5, 1.5       # <--- เพิ่มบรรทัดนี้ (ปรับค่าตามมาตรฐานจริงของคุณ)
+    PH_ANO_MIN, PH_ANO_MAX = 5.0, 6.0       # <--- เพิ่มบรรทัดนี้ (ปรับค่าตามมาตรฐานจริงของคุณ)
     TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22     # มาตรฐานอุณหภูมิ บ่ออโนไดซ์
 
     # ================= CACHE & DATA LOADING =================
