@@ -75,35 +75,26 @@ def get_options(table, id_col, name_col, filter_col=None, filter_val=None):
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
-# ================= DASHBOARD (FULL SYSTEM VIEW) =================
+# ================= DASHBOARD (CLEAN VERSION) =================
 if menu == "Dashboard":
-    st.title("📊 Production Dashboard (System Overview)")
-
-    # ================= STANDARD =================
-    PH_MIN, PH_MAX = 5.0, 6.0
-    TEMP_COLOR_MIN, TEMP_COLOR_MAX = 30, 40
-    PH_ANO_MIN, PH_ANO_MAX = 1, 1.5
-    TEMP_ANO_MIN, TEMP_ANO_MAX = 18, 22
-    DEN_ANO_MIN, DEN_ANO_MAX = 1.080, 1.150
-
-    # ================= CACHE & DATA LOADING =================
-    @st.cache_data(ttl=10)
-    def load_color_logs():
-        return supabase.table("color_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
-
-    @st.cache_data(ttl=10)
-    def load_anodize_logs():
-        return supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
-
-    @st.cache_data(ttl=60)
-    def load_tanks():
-        return get_options("tanks", "tank_id", "tank_name")
-
-    # --- เตรียม Mapping สำหรับใช้ใน Alert และส่วนอื่นๆ ---
+    st.title("📊 Production Overview")
+    
+    # 1. Load Data & Prepare Mapping
     tank_map = load_tanks()
-    inv_tank_map = {v: k for k, v in tank_map.items()} # ย้ายขึ้นมาไว้ตรงนี้
+    inv_tank_map = {v: k for k, v in tank_map.items()}
+    color_logs = load_color_logs()
+    ano_logs = load_anodize_logs()
 
-# 3. KPI Top Row (ใช้พื้นที่น้อยแต่ได้ใจความ)
+    # 2. Alerts Analysis (ประมวลผลเงียบๆ ก่อนแสดงผล)
+    df_c = pd.DataFrame(color_logs).drop_duplicates("tank_id") if color_logs else pd.DataFrame()
+    df_a = pd.DataFrame(ano_logs).drop_duplicates("tank_id") if ano_logs else pd.DataFrame()
+    
+    # หาบ่อที่ผิดปกติ
+    bad_color = df_c[(df_c["ph_value"] < PH_MIN) | (df_c["ph_value"] > PH_MAX)] if not df_c.empty else pd.DataFrame()
+    bad_ano = df_a[(df_a["ph_value"] < PH_ANO_MIN) | (df_a["ph_value"] > PH_ANO_MAX)] if not df_a.empty else pd.DataFrame()
+    total_alerts = len(bad_color) + len(bad_ano)
+
+    # 3. KPI Top Row (ใช้พื้นที่น้อยแต่ได้ใจความ)
     m1, m2, m3 = st.columns(3)
     active_jigs = len(supabase.table("jig_status").select("jig_id").eq("status_type", "In-Process").execute().data)
     
@@ -125,6 +116,47 @@ if menu == "Dashboard":
         st.success("✨ ระบบทำงานปกติ: ค่าทางเคมีอยู่ในเกณฑ์มาตรฐานทั้งหมด")
 
     st.markdown("---")
+
+    # 5. Visualized Data (แบ่งเป็น 2 ฝั่งซ้ายขวาให้ดูสมดุล)
+    tab_color, tab_ano = st.tabs(["🎨 Color Tanks Status", "🧪 Anodize Tanks Status"])
+
+    with tab_color:
+        if not df_c.empty:
+            df_c["tank_name"] = df_c["tank_id"].map(inv_tank_map)
+            # กราฟแบบ Clean (โชว์เฉพาะ pH ล่าสุดของทุกบ่อ)
+            fig_c = go.Figure()
+            fig_c.add_trace(go.Bar(
+                x=df_c["tank_name"], y=df_c["ph_value"],
+                marker_color=['#ff4b4b' if (v < PH_MIN or v > PH_MAX) else '#00cc96' for v in df_c["ph_value"]],
+                text=df_c["ph_value"], textposition='outside'
+            ))
+            fig_c.add_hline(y=PH_MIN, line_dash="dash", line_color="gray")
+            fig_c.add_hline(y=PH_MAX, line_dash="dash", line_color="gray")
+            fig_c.update_layout(title="Current pH Level by Tank", height=400, margin=dict(t=50, b=20), yaxis_range=[4, 8])
+            st.plotly_chart(fig_c, use_container_width=True)
+
+    with tab_ano:
+        if not df_a.empty:
+            # แสดงข้อมูลแบบ Grid แทนตารางยาวๆ
+            cols = st.columns(len(df_a) if len(df_a) <= 4 else 4)
+            for i, (_, row) in enumerate(df_a.iterrows()):
+                with cols[i % 4]:
+                    st.markdown(f"""
+                    <div style="padding:15px; border-radius:10px; background-color:#f0f2f6; margin-bottom:10px; border-left: 5px solid {'#ff4b4b' if (row['ph_value'] < PH_ANO_MIN or row['ph_value'] > PH_ANO_MAX) else '#00cc96'};">
+                        <small>{inv_tank_map.get(row['tank_id'], 'N/A')}</small><br>
+                        <strong>pH: {row['ph_value']:.2f}</strong><br>
+                        <small>Temp: {row['temperature']}°C</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    # 6. Detail View (เฉพาะเมื่ออยากดู)
+    st.markdown("---")
+    with st.expander("🔍 ดูแนวโน้มย้อนหลังรายบ่อ (Historical Trends)"):
+        # ย้าย Logic เลือกบ่อมาไว้ในนี้
+        all_logs = pd.concat([pd.DataFrame(color_logs), pd.DataFrame(ano_logs)])
+        if not all_logs.empty:
+            all_logs["tank_name"] = all_logs["tank_id"].map(inv_tank_map)
+            target_tank = st.selectbox("เลือกบ่อที่ต้องการตรวจสอบ", sorted(all_logs["tank_name"].unique()))
     
 
 # --- Color Tank Analysis ---
