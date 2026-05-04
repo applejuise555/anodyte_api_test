@@ -270,88 +270,85 @@ if menu == "Dashboard":
                 st.dataframe(tank_df[["recorded_at", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
 
 # =========================================================
-    # ================= ANODIZE (Gauge Chart สำหรับ 1-2 บ่อ) =================
+    # ================= ANODIZE TREND ANALYSIS ================
     # =========================================================
     st.markdown("---")
-    st.subheader("🧪 Anodize Tanks Monitoring (Gauge View)")
+    st.subheader("📈 วิเคราะห์แนวโน้มบ่ออโนไดซ์ (Anodize Detailed Trend)")
 
     logs_a = load_anodize_logs()
 
     if logs_a:
         df_a = pd.DataFrame(logs_a)
         df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"])
+        
+        # Mapping ชื่อบ่อ
+        tank_map = load_tanks()
+        inv_map = {v: k for k, v in tank_map.items()}
+        df_a["tank_name"] = df_a["tank_id"].map(inv_map)
 
-        # --- ส่วนสำคัญ: ต้อง Map ชื่อบ่อก่อนใช้งาน ---
-        tank_map = load_tanks() # ดึง {ชื่อบ่อ: id}
-        inv_map = {v: k for k, v in tank_map.items()} # สลับเป็น {id: ชื่อบ่อ}
-        df_a["tank_name"] = df_a["tank_id"].map(inv_map) # นำชื่อมาใส่ใน DataFrame
+        available_ano_tanks = sorted(df_a["tank_name"].dropna().unique())
+        selected_ano = st.selectbox("เลือกบ่ออโนไดซ์เพื่อดูแนวโน้ม", available_ano_tanks)
 
-        # ดึงข้อมูลล่าสุดรายบ่อ
-        latest = df_a.sort_values("recorded_at").drop_duplicates("tank_id", keep="last")
+        # กรองข้อมูล
+        ano_filtered = df_a[df_a["tank_name"] == selected_ano].sort_values("recorded_at")
 
-        # วนลูปสร้าง Gauge สำหรับทุกบ่อที่มี (รองรับ 1 บ่อ หรือมากกว่า)
-        for _, row in latest.iterrows():
-            st.markdown(f"### 📍 {row['tank_name']}")
-            
-            # แบ่งเป็น 3 คอลัมน์สำหรับ pH, Temp และ Density
-            c1, c2, c3 = st.columns(3)
-            
-            with c1:
-                # Gauge สำหรับ pH
-                fig_ph = go.Figure(go.Indicator(
-                    mode = "gauge+number",
-                    value = row['ph_value'],
-                    title = {'text': "ค่า pH"},
-                    gauge = {
-                        'axis': {'range': [0, 14]},
-                        'bar': {'color': "darkblue"},
-                        'steps': [
-                            {'range': [5, PH_ANO_MIN], 'color': "#ff4b4b"},
-                            {'range': [PH_ANO_MIN, PH_ANO_MAX], 'color': "#98FB98"},
-                            {'range': [PH_ANO_MAX, 6], 'color': "#ff4b4b"}
-                        ],
-                    }
+        if not ano_filtered.empty:
+            # สร้าง 3 คอลัมน์สำหรับ 3 กราฟ
+            g1, g2, g3 = st.columns(3)
+
+            # --- กราฟที่ 1: pH ---
+            with g1:
+                fig_ph = go.Figure()
+                fig_ph.add_trace(go.Scatter(
+                    x=ano_filtered["recorded_at"], y=ano_filtered["ph_value"],
+                    mode='lines+markers', name='pH',
+                    line=dict(color='#22c55e', width=2), marker=dict(size=6)
                 ))
-                fig_ph.update_layout(height=280, margin=dict(t=50, b=20, l=30, r=30))
+                fig_ph.add_hrect(y0=PH_ANO_MIN, y1=PH_ANO_MAX, fillcolor="green", opacity=0.1, line_width=0)
+                fig_ph.update_layout(title="แนวโน้ม pH", height=350, margin=dict(t=50, b=20, l=10, r=10))
                 st.plotly_chart(fig_ph, use_container_width=True)
 
-            with c2:
-                # Gauge สำหรับ Temperature
-                fig_temp = go.Figure(go.Indicator(
-                    mode = "gauge+number",
-                    value = row['temperature'],
-                    title = {'text': "อุณหภูมิ (°C)"},
-                    gauge = {
-                        'axis': {'range': [10, 30]},
-                        'bar': {'color': "darkblue"},
-                        'steps': [
-                            {'range': [10, TEMP_ANO_MIN], 'color': "#AFEEEE"},
-                            {'range': [TEMP_ANO_MIN, TEMP_ANO_MAX], 'color': "#3b82f6"},
-                            {'range': [TEMP_ANO_MAX, 30], 'color': "#ff4b4b"}
-                        ],
-                    }
+            # --- กราฟที่ 2: Temperature ---
+            with g2:
+                fig_temp = go.Figure()
+                fig_temp.add_trace(go.Scatter(
+                    x=ano_filtered["recorded_at"], y=ano_filtered["temperature"],
+                    mode='lines+markers', name='Temp',
+                    line=dict(color='#3b82f6', width=2), marker=dict(size=6)
                 ))
-                fig_temp.update_layout(height=280, margin=dict(t=50, b=20, l=30, r=30))
+                fig_temp.add_hrect(y0=TEMP_ANO_MIN, y1=TEMP_ANO_MAX, fillcolor="blue", opacity=0.1, line_width=0)
+                fig_temp.update_layout(title="แนวโน้มอุณหภูมิ (°C)", height=350, margin=dict(t=50, b=20, l=10, r=10))
                 st.plotly_chart(fig_temp, use_container_width=True)
 
-            with c3:
-                # แสดงค่า Density เป็นตัวเลขใหญ่ๆ (Metric)
-                st.write("") # เติมที่ว่างให้ตรงกับกราฟ
-                st.write("")
-                st.metric(label="ความหนาแน่น (Density)", value=f"{row['density']:.3f}")
-                
-                # แสดงสถานะสรุป
-                if (PH_ANO_MIN <= row['ph_value'] <= PH_ANO_MAX) and \
-                   (TEMP_ANO_MIN <= row['temperature'] <= TEMP_ANO_MAX):
-                    st.success("✅ บ่อนี้สถานะปกติ")
-                else:
-                    st.error("🚨 ตรวจพบค่าผิดปกติ")
-            
-            st.markdown("---") # เส้นคั่นระหว่างบ่อ (กรณีมี 2 บ่อ)
+            # --- กราฟที่ 3: Density ---
+            with g3:
+                fig_den = go.Figure()
+                fig_den.add_trace(go.Scatter(
+                    x=ano_filtered["recorded_at"], y=ano_filtered["density"],
+                    mode='lines+markers', name='Density',
+                    line=dict(color='#a855f7', width=2), marker=dict(size=6)
+                ))
+                # ถ้ามีค่ามาตรฐาน Density (เช่น 1.05 - 1.10) สามารถเพิ่ม hrect ได้เหมือน pH
+                fig_den.update_layout(title="แนวโน้มความหนาแน่น", height=350, margin=dict(t=50, b=20, l=10, r=10))
+                st.plotly_chart(fig_den, use_container_width=True)
 
+            # --- ตาราง Log ข้อมูล ---
+            with st.expander(f"📋 รายละเอียดข้อมูลบันทึก {selected_ano}"):
+                log_display = ano_filtered[["recorded_at", "ph_value", "temperature", "density"]].copy()
+                log_display = log_display.sort_values("recorded_at", ascending=False)
+                # จัดฟอร์แมตตัวเลขให้สวยงาม
+                st.dataframe(
+                    log_display.style.format({
+                        "ph_value": "{:.2f}",
+                        "temperature": "{:.1f}",
+                        "density": "{:.3f}"
+                    }), 
+                    use_container_width=True
+                )
+        else:
+            st.warning("ไม่พบข้อมูลบันทึกสำหรับบ่อนี้")
     else:
-        st.info("ยังไม่มีข้อมูลในระบบ Anodize")
-
+        st.info("ไม่มีข้อมูลในระบบ Anodize")
     # ================= AUTO REFRESH =================
     try:
         st_autorefresh(interval=10000, key="refresh")
