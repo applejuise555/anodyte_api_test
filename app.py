@@ -313,23 +313,23 @@ if menu == "Dashboard":
         inv_map = {v: k for k, v in tank_map.items()}
         df_a["tank_name"] = df_a["tank_id"].map(inv_map)
             # ================= ALERT TABLE =================
-    st.subheader("🚨 ตารางแจ้งเตือนบ่ออโนไดซ์")
+        st.subheader("🚨 ตารางแจ้งเตือนบ่ออโนไดซ์")
 
-    latest_ano = df_a.sort_values("recorded_at").groupby("tank_name").tail(1)
+        latest_ano = df_a.sort_values("recorded_at").groupby("tank_name").tail(1)
 
-    alert_ano = []
+        alert_ano = []
 
-    for _, row in latest_ano.iterrows():
-        alert_ano.append({
-            "Tank": row["tank_name"],
-            "pH": f"{get_status_icon(row['ph_value'], PH_ANO_MIN, PH_ANO_MAX)} {row['ph_value']:.2f}",
-            "Temp": f"{get_status_icon(row['temperature'], TEMP_ANO_MIN, TEMP_ANO_MAX)} {row['temperature']:.1f}",
-            "Density": f"{get_status_icon(row['density'], DEN_ANO_MIN, DEN_ANO_MAX)} {row['density']:.3f}"
+        for _, row in latest_ano.iterrows():
+            alert_ano.append({
+                "Tank": row["tank_name"],
+                "pH": f"{get_status_icon(row['ph_value'], PH_ANO_MIN, PH_ANO_MAX)} {row['ph_value']:.2f}",
+                "Temp": f"{get_status_icon(row['temperature'], TEMP_ANO_MIN, TEMP_ANO_MAX)} {row['temperature']:.1f}",
+                "Density": f"{get_status_icon(row['density'], DEN_ANO_MIN, DEN_ANO_MAX)} {row['density']:.3f}"
         })
 
-    st.dataframe(pd.DataFrame(alert_ano), use_container_width=True)
-    available_ano_tanks = sorted(df_a["tank_name"].dropna().unique())
-    selected_ano = st.selectbox("เลือกบ่ออโนไดซ์เพื่อดูแนวโน้ม", available_ano_tanks)
+        st.dataframe(pd.DataFrame(alert_ano), use_container_width=True)
+        available_ano_tanks = sorted(df_a["tank_name"].dropna().unique())
+        selected_ano = st.selectbox("เลือกบ่ออโนไดซ์เพื่อดูแนวโน้ม", available_ano_tanks)
         # กรองข้อมูล
         ano_filtered = df_a[df_a["tank_name"] == selected_ano].sort_values("recorded_at")
 
