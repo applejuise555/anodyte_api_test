@@ -415,56 +415,80 @@ elif menu == "บันทึกข้อมูลการผลิต":
     with tab3:
         sub_prod, sub_jig, sub_log = st.tabs(["1. ลงทะเบียนชิ้นงาน", "2. ลงทะเบียนจิ๊ก", "3. บันทึกผลผลิต"])
 
-        # ================= 1. ลงทะเบียนชิ้นงาน (แก้ไขให้ Update ทันที) =================
+        # ================= 1. ลงทะเบียนชิ้นงาน (Improved Version) =================
         with sub_prod:
-            # ย้าย Selectbox ออกมานอก Form เพื่อให้เกิดการ Rerun ทันทีที่เปลี่ยนค่า
-            shape = st.selectbox("รูปทรงชิ้นงาน", ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง"], key="shape_selector")
+            st.subheader("📦 ลงทะเบียนรายละเอียดสินค้าใหม่")
+            
+            # ย้ายออกมาเพื่อให้ UI เปลี่ยนตามรูปทรงที่เลือก
+            shape = st.selectbox(
+                "📐 เลือกรูปทรงชิ้นงาน", 
+                ["สี่เหลี่ยม (Solid Plate/Bar)", "ทรงกระบอกทึบ (Solid Cylinder)", "ทรงกระบอกกลวง (Hollow Cylinder/Tube)"], 
+                key="shape_selector"
+            )
             
             with st.form("add_prod_form_fixed", clear_on_submit=True):
                 col1, col2 = st.columns(2)
-                with col1:
-                    p_code = st.text_input("รหัสสินค้า (Product Code)")
-                    p_name = st.text_input("ชื่อ/รายละเอียดสินค้า")
-                    height = st.number_input("ความสูง (Height)", min_value=0.0, step=0.1)
-                    width = st.number_input("ความกว้าง / OD (Width)", min_value=0.0, step=0.1)
-                    thickness = st.number_input("ความหนา (Thickness)", min_value=0.0, step=0.1)
                 
-                # --- Logic การคำนวณ (ทำงานทันทีเพราะ shape อยู่นอก Form) ---
-                calc_od = 0.0
-                calc_id = 0.0
-                if shape == "ทรงกระบอกทึบ":
-                    calc_od = width
-                    calc_id = 0.0
-                elif shape == "ทรงกระบอกกลวง":
-                    calc_od = width
-                    calc_id = max(0.0, calc_od - (2 * thickness))
+                with col1:
+                    p_code = st.text_input("รหัสสินค้า (Product Code) *", placeholder="เช่น PC-1234")
+                    p_name = st.text_input("ชื่อ/รายละเอียดสินค้า", placeholder="เช่น ฝาครอบเครื่องปรับอากาศ")
+                    s_finish = st.text_input("พื้นผิว (Surface Finish)", placeholder="เช่น Satin, Sand Blast")
                 
                 with col2:
-                    depth = st.number_input("ความลึก (Depth)", min_value=0.0, step=0.1)
-                    st.write("---")
-                    # แสดงสถานะการคำนวณที่เปลี่ยนตามรูปทรงจริง
-                    st.success(f"⚙️ ระบบกำลังใช้สูตรคำนวณ: **{shape}**")
+                    st.info(f"📍 กำลังบันทึกข้อมูลรูปทรง: **{shape}**")
+                    height = st.number_input("ความยาว/ความสูง (Height) [mm]", min_value=0.0, step=0.1, help="ความยาวของชิ้นงานในแนวตั้ง")
                     
-                    final_od = st.number_input("Outer Diameter", value=float(calc_od), format="%.2f", disabled=True)
-                    final_id = st.number_input("Inner Diameter (ID = OD - 2T)", value=float(calc_id), format="%.2f", disabled=True)
+                    # ปรับ UI ตามรูปทรง
+                    if "สี่เหลี่ยม" in shape:
+                        width = st.number_input("ความกว้าง (Width) [mm]", min_value=0.0, step=0.1)
+                        thickness = st.number_input("ความหนา (Thickness) [mm]", min_value=0.0, step=0.1)
+                        calc_od, calc_id = 0.0, 0.0
                     
-                    s_finish = st.text_input("พื้นผิว (Surface Finish)")
-                
-                if st.form_submit_button("ลงทะเบียนชิ้นงาน"):
+                    elif "ทึบ" in shape:
+                        width = st.number_input("เส้นผ่านศูนย์กลางภายนอก (OD) [mm]", min_value=0.0, step=0.1)
+                        thickness = 0.0 # ทรงตันไม่มีความหนาขอบ
+                        calc_od, calc_id = width, 0.0
+                        
+                    else: # ทรงกระบอกกลวง
+                        width = st.number_input("เส้นผ่านศูนย์กลางภายนอก (OD) [mm]", min_value=0.0, step=0.1)
+                        thickness = st.number_input("ความหนาของเนื้อวัสดุ (Wall Thickness) [mm]", min_value=0.0, step=0.1)
+                        calc_od = width
+                        calc_id = max(0.0, calc_od - (2 * thickness))
+
+                st.markdown("---")
+                # ส่วนสรุปค่าที่จะถูกบันทึก (ReadOnly)
+                c_res1, c_res2, c_res3 = st.columns(3)
+                with c_res1:
+                    st.write("**ค่า OD ที่จะบันทึก:**")
+                    st.code(f"{calc_od:.2f} mm")
+                with c_res2:
+                    st.write("**ค่า ID ที่คำนวณได้:**")
+                    st.code(f"{calc_id:.2f} mm")
+                with c_res3:
+                    st.write("**ความหนาที่จะบันทึก:**")
+                    st.code(f"{thickness:.2f} mm")
+
+                if st.form_submit_button("➕ ลงทะเบียนชิ้นงานเข้าสู่ระบบ"):
                     if not p_code: 
-                        st.error("กรุณากรอกรหัสสินค้า")
+                        st.error("❌ กรุณากรอกรหัสสินค้าก่อนบันทึก")
+                    elif ("สี่เหลี่ยม" in shape and (height <= 0 or width <= 0 or thickness <= 0)) or (height <=0 or width <=0):
+                        st.error("❌ กรุณากรอกขนาดชิ้นงานให้ครบถ้วนและมากกว่า 0")
                     else:
                         try:
+                            # บันทึกข้อมูล
                             supabase.table("products").insert({
                                 "product_code": p_code, 
-                                "product_name": f"[{shape}] {p_name}",
-                                "height": height, "width": width, "thickness": thickness,
-                                "depth": depth, "outer_diameter": calc_od, 
-                                "inner_diameter": calc_id, "surface_finish": s_finish
+                                "product_name": f"[{shape.split(' ')[0]}] {p_name}", # เก็บแค่ชื่อทรงในวงเล็บ
+                                "height": height, 
+                                "width": width if "สี่เหลี่ยม" in shape else 0, # สี่เหลี่ยมเก็บ width ปกติ, ทรงกลมเก็บ 0 เพราะมี OD แล้ว
+                                "thickness": thickness,
+                                "outer_diameter": calc_od, 
+                                "inner_diameter": calc_id, 
+                                "surface_finish": s_finish
                             }).execute()
-                            st.success(f"บันทึกข้อมูล {shape} เข้าสู่ระบบเรียบร้อย!")
+                            st.success(f"✅ บันทึกสินค้า {p_code} เรียบร้อยแล้ว!")
                         except Exception as e: 
-                            st.error(f"Error: {e}")
+                            st.error(f"เกิดข้อผิดพลาดในการบันทึก: {e}")
         
         
         with sub_jig:
