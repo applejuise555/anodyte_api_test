@@ -269,7 +269,7 @@ if menu == "Dashboard":
             with st.expander(f"ดูประวัติข้อมูลดิบของ {selected_tank}"):
                 st.dataframe(tank_df[["recorded_at", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
 
-# =========================================================
+    # =========================================================
     # ================= ANODIZE (แยกกราฟรายค่า) =================
     # =========================================================
     st.markdown("---")
@@ -286,7 +286,54 @@ if menu == "Dashboard":
         df_a["tank_name"] = df_a["tank_id"].map(inv)
 
         # ดึงข้อมูลล่าสุดรายบ่อ
+        # --- ตัวอย่างการสร้าง Gauge สำหรับ 1 บ่อ ---
+    if logs_a:
+        df_a = pd.DataFrame(logs_a)
         latest = df_a.sort_values("recorded_at").drop_duplicates("tank_id", keep="last")
+    
+    # วนลูปสร้าง Gauge สำหรับทุกบ่อที่มี (1-2 บ่อ)
+    for _, row in latest.iterrows():
+        st.subheader(f"📍 {row['tank_name']}")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            fig_ph = go.Figure(go.Indicator(
+                mode = "gauge+number",
+                value = row['ph_value'],
+                title = {'text': "pH Value"},
+                gauge = {
+                    'axis': {'range': [0, 3]}, # ปรับช่วงตามความเหมาะสม
+                    'bar': {'color': "darkblue"},
+                    'steps': [
+                        {'range': [0, PH_ANO_MIN], 'color': "red"},
+                        {'range': [PH_ANO_MIN, PH_ANO_MAX], 'color': "green"},
+                        {'range': [PH_ANO_MAX, 3], 'color': "red"}
+                    ],
+                }
+            ))
+            fig_ph.update_layout(height=250, margin=dict(t=0, b=0, l=10, r=10))
+            st.plotly_chart(fig_ph, use_container_width=True)
+
+        with col2:
+            fig_temp = go.Figure(go.Indicator(
+                mode = "gauge+number",
+                value = row['temperature'],
+                title = {'text': "Temperature (°C)"},
+                gauge = {
+                    'axis': {'range': [10, 30]},
+                    'steps': [
+                        {'range': [10, TEMP_ANO_MIN], 'color': "lightblue"},
+                        {'range': [TEMP_ANO_MIN, TEMP_ANO_MAX], 'color': "green"},
+                        {'range': [TEMP_ANO_MAX, 30], 'color': "red"}
+                    ],
+                }
+            ))
+            fig_temp.update_layout(height=250, margin=dict(t=0, b=0, l=10, r=10))
+            st.plotly_chart(fig_temp, use_container_width=True)
+            
+        with col3:
+            st.metric("Density", f"{row['density']:.3f}")
+            # หรือทำ Gauge สำหรับ Density ด้วยก็ได้
 
         # เตรียมสี Alert สำหรับแต่ละค่า
         ph_colors = ["#98FB98" if PH_ANO_MIN <= v <= PH_ANO_MAX else "#ef4444" for v in latest["ph_value"]]
