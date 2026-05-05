@@ -459,7 +459,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
                 width, thickness, od, u_vol = 0.0, 0.0, 0.0, 0.0
                 if shape == "สี่เหลี่ยม":
                     width = c2.number_input("กว้าง [mm]", min_value=0.0)
-                    thickness = c2.number_input("หนา [mm]", min_value=0.0)
+                    thickness = c2.number_input("สูง/หนา [mm]", min_value=0.0)
                     u_vol = height * width * thickness
                 elif shape == "ทรงกระบอกทึบ":
                     od = c2.number_input("เส้นผ่านศูนย์กลาง (OD) [mm]", min_value=0.0)
@@ -500,7 +500,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
         with sub_jig:
             st.subheader("เพิ่มรหัสจิ๊กใหม่")
             with st.form("add_jig_fixed", clear_on_submit=True):
-                j_code = st.text_input("รหัสจิ๊ก(ตั้งรหัสเป็นปปปปดดววจิ๊กี่เท่าไหร่ เช่น 20260501001)", key="j_code_input").strip()
+                j_code = st.text_input("รหัสจิ๊ก(ตั้งรหัสเป็นปปปปดดววจิ๊กที่เท่าไหร่ เช่น 20260501001)", key="j_code_input").strip()
                 if st.form_submit_button("ลงทะเบียนจิ๊ก"):
                     if j_code:
                         # --- ส่วนตรวจสอบการซ้ำ ---
