@@ -576,6 +576,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
                                 c2.metric("ปริมาตรรวม (mm³)", f"{total_vol:,.2f}")
                                 
                                 if st.form_submit_button("💾 บันทึก"):
+                                    try:
                                     # ใช้ selected_prod_id ในการบันทึก
                                     supabase.table("jig_usage_log").insert({
                                         "product_id": selected_prod_id, 
@@ -586,13 +587,16 @@ elif menu == "บันทึกข้อมูลการผลิต":
                                         "total_volume": total_vol, 
                                         "recorded_date": datetime.now(ICT).isoformat()
                                     }).execute()
-                                    
-                                    supabase.table("jig_status").upsert({
+                            
+    # โค้ดเดิมของคุณที่บรรทัด 588
+                                response = supabase.table("jig_status").upsert({
                                         "jig_id": jig_id, 
                                         "status_type": "In-Process", 
                                         "current_tank_id": filtered_tanks[sel_tank_name], 
                                         "updated_at": datetime.now(ICT).isoformat()
                                     }).execute()
+                                    except Exception as e:
+                                        st.error(f"เกิดข้อผิดพลาดในการบันทึก: {str(e)}") # บรรทัดนี้จะคายความลับว่าทำไมถึงพัง
                                     
                                     st.success("บันทึกสำเร็จ")
                                     st.rerun()
