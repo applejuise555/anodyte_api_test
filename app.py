@@ -289,7 +289,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         "ph_value": ph, "temperature": temp, 
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
-                    st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
+                    st.toast("✅ บันทึกข้อมูลบ่อสีสำเร็จ!", icon="🎨")
                     st.balloons() # เพิ่มเอฟเฟกต์
                     st.rerun()    # รีเฟรชหน้าเพื่อเคลียร์ค่า
 
