@@ -6,6 +6,7 @@ from streamlit_autorefresh import st_autorefresh
 import plotly.graph_objects as go
 import math
 from plotly.subplots import make_subplots
+import time
 
 # 1. ตั้งค่า Timezone (UTC +7)
 ICT = timezone(timedelta(hours=7))
@@ -290,7 +291,6 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
                     st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
-                    st.balloons() # เพิ่มเอฟเฟกต์
                     time.sleep(1.5)
                     st.rerun()    # รีเฟรชหน้าเพื่อเคลียร์ค่า
 
@@ -304,6 +304,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
                 ph_a = st.number_input("ค่า pH", step=0.01, format="%.2f")
                 temp_a = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
                 den_a = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
+                with st.form("ano_form", clear_on_submit=True): # เพิ่ม clear_on_submit
                 if st.form_submit_button("บันทึกข้อมูลอโนไดซ์"):
                     supabase.table("anodize_tank_logs").insert({
                         "tank_id": ano_tanks[sel_ano], "ph_value": ph_a,
@@ -311,6 +312,8 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
                     st.success("บันทึกข้อมูลอโนไดซ์สำเร็จ")
+                    time.sleep(1.5)
+                    st.rerun()    # รีเฟรชหน้าเพื่อเคลียร์ค่า
 
     # --- Tab หลัก 3: ระบบงานจิ๊ก (Jig System) ---
     with tab_main[2]:
