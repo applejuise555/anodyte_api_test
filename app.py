@@ -10,7 +10,7 @@ import time
 
 # 1. ตั้งค่า Timezone (UTC +7)
 ICT = timezone(timedelta(hours=7))
-st.set_page_config(page_title="SCADA Dashboard", layout="wide")
+st.set_page_config(page_title="Gissco Production Line and Dashboard", layout="wide")
 
 # --- Configuration ---
 COLOR_HEX_MAP = {
