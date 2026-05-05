@@ -280,7 +280,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
             selected_tank_name = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()))
             detected_color = TANK_COLOR_MAP.get(selected_tank_name, "Black")
             render_color_bar(detected_color)
-            with st.form("color_log_form"):
+            with st.form("color_log_form", clear_on_submit=True): # เพิ่ม clear_on_submit
                 ph = st.number_input("ค่า pH", step=0.1, format="%.2f")
                 temp = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
                 if st.form_submit_button("บันทึกค่า"):
@@ -289,7 +289,9 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         "ph_value": ph, "temperature": temp, 
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
-                    st.success("บันทึกข้อมูลบ่อสีสำเร็จ")
+                    st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
+                    st.balloons() # เพิ่มเอฟเฟกต์
+                    st.rerun()    # รีเฟรชหน้าเพื่อเคลียร์ค่า
 
     # --- Tab 2: บ่ออโนไดซ์ ---
     with tab_main[1]:
