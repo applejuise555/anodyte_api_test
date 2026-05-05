@@ -33,7 +33,6 @@ TANK_COLOR_MAP = {
     "HotSealH60": "Black"
 }
 
-st.set_page_config(page_title="Production Log System", layout="wide")
 
 # --- เชื่อมต่อ Supabase ---
 @st.cache_resource
