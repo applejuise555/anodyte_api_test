@@ -415,6 +415,9 @@ elif menu == "บันทึกข้อมูลการผลิต":
                                                 "color": sel_c_new, "tank_id": filtered_tanks[sel_tank_name], 
                                                 "total_pieces": total_pcs, "total_volume": total_vol, 
                                                 "recorded_date": datetime.now(ICT).isoformat()
+                                                "rows_filled": rows, 
+                                                "partial_pieces": partial,
+                                                "pcs_per_row": pcs
                                             }).execute()
                                             supabase.table("jig_status").upsert({
                                                 "jig_id": jig_id, "status_type": "In-Process", 
