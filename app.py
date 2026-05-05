@@ -414,7 +414,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
                                                 "product_id": selected_prod_id, "jig_id": jig_id, 
                                                 "color": sel_c_new, "tank_id": filtered_tanks[sel_tank_name], 
                                                 "total_pieces": total_pcs, "total_volume": total_vol, 
-                                                "recorded_date": datetime.now(ICT).isoformat()
+                                                "recorded_date": datetime.now(ICT).isoformat(),
                                                 "rows_filled": rows, 
                                                 "partial_pieces": partial,
                                                 "pcs_per_row": pcs
