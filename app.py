@@ -423,11 +423,21 @@ elif menu == "บันทึกข้อมูลการผลิต":
             if prods_res:
                 display_options = {f"{p['product_code']} | {p['product_name']}": p['product_id'] for p in prods_res}
                 jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
+        
+        # --- 🟢 แก้ไขตรงนี้: ดึงสถานะจิ๊กทั้งหมดมาครั้งเดียว 🟢 ---
+                status_all = supabase.table("jig_status").select("jig_id, status_type").execute().data
+        # สร้าง Dictionary เพื่อให้หาได้เร็วขึ้น {jig_id: status_type}
+                status_dict = {item["jig_id"]: item["status_type"] for item in (status_all or [])}
+
                 available_jigs = []
                 for j in (jigs_data or []):
-                    status_res = supabase.table("jig_status").select("status_type").eq("jig_id", j["jig_id"]).order("updated_at", desc=True).limit(1).execute()
-                    if not status_res.data or status_res.data[0]["status_type"] != "Finished":
-                        available_jigs.append(j)
+            # เช็คสถานะจาก Dictionary ที่เราดึงมาพักไว้ (ไม่ต้องยิง Query ใหม่ในลูป)
+                    current_status = status_dict.get(j["jig_id"])
+            
+            # ถ้ายังไม่มีสถานะ หรือ สถานะไม่ใช่ Finished ให้ถือว่าใช้งานได้
+                    if current_status != "Finished":
+                    available_jigs.append(j)
+        # --- ------------------------------------------ ---
 
                 if not available_jigs:
                     st.warning("❌ ไม่มีจิ๊กที่ใช้งานได้")
