@@ -436,7 +436,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
             
             # ถ้ายังไม่มีสถานะ หรือ สถานะไม่ใช่ Finished ให้ถือว่าใช้งานได้
                     if current_status != "Finished":
-                    available_jigs.append(j)
+                        available_jigs.append(j)
         # --- ------------------------------------------ ---
 
                 if not available_jigs:
