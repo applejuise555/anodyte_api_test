@@ -101,8 +101,15 @@ if menu == "Dashboard":
         return supabase.table("color_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
 
     @st.cache_data(ttl=10)
-    def load_anodize_logs():
-        return supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(200).execute().data
+    def load_anodize_logs(limit_per_tank=10):
+    # ดึงข้อมูลดิบมาทั้งหมดก่อน (หรือจำกัดจำนวนรวมที่เหมาะสม)
+    # หมายเหตุ: PostgREST (Supabase) การทำ Limit per group ใน Query เดียวทำได้ยาก
+    # เราจึงใช้การดึงข้อมูลล่าสุด 100-200 แถวมาพักไว้ก่อน
+        return supabase.table("anodize_tank_logs") \
+            .select("*") \
+            .order("recorded_at", desc=True) \
+            .limit(200) \
+            .execute().data
 
     @st.cache_data(ttl=60)
     def load_tanks():
@@ -232,15 +239,28 @@ if menu == "Dashboard":
 
         available_ano_tanks = sorted(df_a["tank_name"].dropna().unique())
         selected_ano = st.selectbox("เลือกบ่ออโนไดซ์เพื่อดูแนวโน้ม", available_ano_tanks)
-        ano_filtered = df_a[df_a["tank_name"] == selected_ano].sort_values("recorded_at")
+    
+    # กรองข้อมูลเฉพาะบ่อที่เลือก -> เรียงใหม่ -> เอา 10 แถวบนสุด (ล่าสุด)
+        ano_filtered = df_a[df_a["tank_name"] == selected_ano] \
+                        .sort_values("recorded_at", ascending=False) \
+                        .head(10)
+    
+    # เรียงกลับเป็น อดีต -> ปัจจุบัน เพื่อให้กราฟเดินจากซ้ายไปขวา
+        ano_chart_df = ano_filtered.sort_values("recorded_at")
 
-        if not ano_filtered.empty:
+        if not ano_chart_df.empty:
             g1, g2, g3 = st.columns(3)
             with g1:
                 fig_ph = go.Figure()
-                fig_ph.add_trace(go.Scatter(x=ano_filtered["recorded_at"], y=ano_filtered["ph_value"], mode='lines+markers', name='pH', line=dict(color='#22c55e', width=2), marker=dict(size=6)))
+                fig_ph.add_trace(go.Scatter(
+                    x=ano_chart_df["recorded_at"], 
+                    y=ano_chart_df["ph_value"], 
+                    mode='lines+markers', 
+                    name='pH', 
+                    line=dict(color='#22c55e', width=2)
+            ))
                 fig_ph.add_hrect(y0=PH_ANO_MIN, y1=PH_ANO_MAX, fillcolor="green", opacity=0.1, line_width=0)
-                fig_ph.update_layout(title="แนวโน้ม pH", height=350, margin=dict(t=50, b=20, l=10, r=10))
+                fig_ph.update_layout(title="แนวโน้ม pH (10 ครั้งล่าสุด)", height=350)
                 st.plotly_chart(fig_ph, use_container_width=True)
             with g2:
                 fig_temp = go.Figure()
