@@ -158,8 +158,7 @@ if menu == "Dashboard":
         tank_map = load_tanks()
         inv_tank_map = {v: k for k, v in tank_map.items()}
         df["tank_name"] = df["tank_id"].map(inv_tank_map)
-    else:
-        st.info(f"📅 ไม่พบข้อมูลบันทึกบ่อสีในวันที่ {selected_date.strftime('%d/%m/%Y')}")
+    
         latest = df.drop_duplicates("tank_id").copy()
         if not latest.empty:
             fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -195,7 +194,9 @@ if menu == "Dashboard":
             fig.add_hline(y=TEMP_COLOR_MAX, line_dash="dot", line_color="#1d4ed8", secondary_y=True)
             fig.update_layout(title=dict(text="เปรียบเทียบค่า pH และอุณหภูมิ (ล่าสุดรายบ่อ)", x=0.5), xaxis_title="ชื่อบ่อสี", barmode="group", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), height=500, margin=dict(t=100))
             st.plotly_chart(fig, use_container_width=True)
-
+    else:
+        st.info(f"📅 ไม่พบข้อมูลบันทึกบ่อสีในวันที่ {selected_date.strftime('%d/%m/%Y')}")
+        
         st.subheader("🚨 ตารางแจ้งเตือนบ่อสี")
         alert_data = []
         for _, row in latest.iterrows():
@@ -247,8 +248,7 @@ if menu == "Dashboard":
         tank_map = load_tanks()
         inv_map = {v: k for k, v in tank_map.items()}
         df_a["tank_name"] = df_a["tank_id"].map(inv_map)
-    else:
-        st.info(f"📅 ไม่พบข้อมูลบันทึกบ่ออโนไดซ์ในวันที่ {selected_date.strftime('%d/%m/%Y')}")
+    
         
         st.subheader("🚨 ตารางแจ้งเตือนบ่ออโนไดซ์")
         latest_ano = df_a.sort_values("recorded_at").groupby("tank_name").tail(1)
@@ -304,7 +304,7 @@ if menu == "Dashboard":
                 log_display = ano_chart_df[["recorded_at", "ph_value", "temperature", "density"]].sort_values("recorded_at", ascending=False)
                 st.dataframe(log_display.style.format({"ph_value": "{:.2f}", "temperature": "{:.1f}", "density": "{:.3f}"}), use_container_width=True)
         else:
-            st.warning("ไม่พบข้อมูลบันทึกสำหรับบ่อนี้")
+            st.info(f"📅 ไม่พบข้อมูลบันทึกบ่ออโนไดซ์ในวันที่ {selected_date.strftime('%d/%m/%Y')}")
     else:
         st.info("ไม่มีข้อมูลในระบบ Anodize")
 
