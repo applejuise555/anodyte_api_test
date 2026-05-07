@@ -346,7 +346,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
                 p_code = c1.text_input("รหัสสินค้า *")
                 p_name = c1.text_input("ชื่อสินค้า")
                 s_finish = c1.text_input("พื้นผิว *", value="-")
-                height = c2.number_input("ความยาว (H) [mm]", min_value=0.0)
+                height = c2.number_input("ความยาว/ความสูง (H) [mm]", min_value=0.0)
                 width, thickness, od, u_vol, id_inner = 0.0, 0.0, 0.0, 0.0, 0.0
                 if shape == "สี่เหลี่ยม":
                     width = c2.number_input("กว้าง [mm]", min_value=0.0)
