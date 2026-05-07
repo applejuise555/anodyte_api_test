@@ -379,7 +379,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         st.error("กรุณาระบุรหัสสินค้า")
 
         with sub_jig:
-            st.subheader("เพิ่มรหัสจิ๊กใหม่ (Auto-Generate)")
+            st.subheader("เพิ่มรหัสจิ๊กใหม่")
             
             # 1. สร้าง Prefix ของวันนี้ (YYYYMMDD)
             today_prefix = datetime.now(ICT).strftime("%Y%m%d")
