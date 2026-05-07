@@ -82,11 +82,32 @@ def get_status_icon(value, min_val, max_val, warn_margin=0.1):
         return "🟡"
     return "🟢"
 
+#----------------------------------------------------------------
+# เพิ่มฟังก์ชันนี้ในส่วน Helper Functions หรือด้านบนของ Dashboard
+@st.cache_data(ttl=10)
+def load_filtered_logs(table_name, target_date):
+    # สร้างช่วงเวลา Start - End ของวันนั้น
+    start_dt = datetime.combine(target_date, datetime.min.time()).isoformat()
+    end_dt = datetime.combine(target_date, datetime.max.time()).isoformat()
+    
+    return supabase.table(table_name) \
+        .select("*") \
+        .gte("recorded_at", start_dt) \
+        .lte("recorded_at", end_dt) \
+        .order("recorded_at", desc=True) \
+        .execute().data
+
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
 # ================= DASHBOARD (FULL SYSTEM VIEW) =================
 if menu == "Dashboard":
     st.title("📊 Production Dashboard (System Overview)")
+    col_date, col_refresh = st.columns([2, 1])
+    selected_date = col_date.date_input("📅 เลือกวันที่ต้องการดูข้อมูล", datetime.now(ICT).date())
+    
+    # โหลดข้อมูลตามวันที่เลือก
+    logs = load_filtered_logs("color_tank_logs", selected_date)
+    logs_a = load_filtered_logs("anodize_tank_logs", selected_date)
 
     # ================= STANDARD =================
     PH_MIN, PH_MAX = 5.0, 6.0
@@ -129,7 +150,7 @@ if menu == "Dashboard":
     st.markdown("---")
 
     # --- Color Tank Analysis ---
-    st.subheader("🎨 วิเคราะห์ข้อมูลบ่อสี (Color Tanks)")
+    st.subheader(f"🎨 ข้อมูลบ่อสี ประจำวันที่ {selected_date.strftime('%d/%m/%Y')}")
     logs = load_color_logs()
     if logs:
         df = pd.DataFrame(logs)
@@ -137,7 +158,8 @@ if menu == "Dashboard":
         tank_map = load_tanks()
         inv_tank_map = {v: k for k, v in tank_map.items()}
         df["tank_name"] = df["tank_id"].map(inv_tank_map)
-
+    else:
+        st.info(f"📅 ไม่พบข้อมูลบันทึกบ่อสีในวันที่ {selected_date.strftime('%d/%m/%Y')}")
         latest = df.drop_duplicates("tank_id").copy()
         if not latest.empty:
             fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -215,8 +237,9 @@ if menu == "Dashboard":
                 st.dataframe(tank_df[["recorded_at", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
 
     # ================= ANODIZE TREND ANALYSIS ================
+    # --- ปรับปรุงส่วนอโนไดซ์ (Anodize Trend Analysis) ---
     st.markdown("---")
-    st.subheader("📈 วิเคราะห์แนวโน้มบ่ออโนไดซ์ (Anodize Detailed Trend)")
+    st.subheader(f"📈 ข้อมูลบ่ออโนไดซ์ ประจำวันที่ {selected_date.strftime('%d/%m/%Y')}")
     logs_a = load_anodize_logs()
     if logs_a:
         df_a = pd.DataFrame(logs_a)
@@ -224,6 +247,8 @@ if menu == "Dashboard":
         tank_map = load_tanks()
         inv_map = {v: k for k, v in tank_map.items()}
         df_a["tank_name"] = df_a["tank_id"].map(inv_map)
+    else:
+        st.info(f"📅 ไม่พบข้อมูลบันทึกบ่ออโนไดซ์ในวันที่ {selected_date.strftime('%d/%m/%Y')}")
         
         st.subheader("🚨 ตารางแจ้งเตือนบ่ออโนไดซ์")
         latest_ano = df_a.sort_values("recorded_at").groupby("tank_name").tail(1)
