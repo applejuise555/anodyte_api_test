@@ -197,11 +197,75 @@ if menu == "Dashboard":
         st.dataframe(pd.DataFrame(alert_data), use_container_width=True)
 
     # ================= INDIVIDUAL TANK VIEW =================
-    st.markdown("---")
-    st.subheader("🔍 วิเคราะห์ข้อมูลรายบ่อ (Individual Tank Analysis)")
-    if logs:
-        df_all = pd.DataFrame(logs)
-        df_all["recorded_at"] = pd.to_datetime(df_all["recorded_at"])
+    # ================= INDIVIDUAL TANK VIEW (MULTI-SELECT & TIME FILTER) =================
+st.markdown("---")
+st.subheader("🔍 วิเคราะห์ข้อมูลเชิงลึก (Multi-Tank Analysis)")
+
+if logs:
+    df_all = pd.DataFrame(logs)
+    df_all["recorded_at"] = pd.to_datetime(df_all["recorded_at"])
+    
+    # --- ส่วนที่ 1: ตัวเลือกช่วงเวลา ---
+    col_f1, col_f2, col_f3 = st.columns(3)
+    
+    time_unit = col_f1.selectbox("เลือกมุมมองเวลา", ["รายวัน (ปฏิทิน)", "รายเดือน", "รายไตรมาส", "รายปี"])
+    
+    filtered_df = df_all.copy()
+    
+    if time_unit == "รายวัน (ปฏิทิน)":
+        selected_date = col_f2.date_input("เลือกวันที่", datetime.now(ICT))
+        filtered_df = df_all[df_all["recorded_at"].dt.date == selected_date]
+        
+    elif time_unit == "รายเดือน":
+        month_list = df_all["recorded_at"].dt.strftime('%m/%Y').unique()
+        selected_month = col_f2.selectbox("เลือกเดือน/ปี", month_list)
+        filtered_df = df_all[df_all["recorded_at"].dt.strftime('%m/%Y') == selected_month]
+        
+    elif time_unit == "รายไตรมาส":
+        year_val = col_f2.number_input("ปี (ค.ศ.)", value=datetime.now().year)
+        q_val = col_f3.selectbox("ไตรมาส", [1, 2, 3, 4])
+        start_q, end_q = get_quarter_range(year_val, q_val)
+        filtered_df = df_all[(df_all["recorded_at"] >= start_q) & (df_all["recorded_at"] <= end_q)]
+        
+    elif time_unit == "รายปี":
+        year_list = sorted(df_all["recorded_at"].dt.year.unique(), reverse=True)
+        selected_year = col_f2.selectbox("เลือกปี", year_list)
+        filtered_df = df_all[df_all["recorded_at"].dt.year == selected_year]
+
+    # --- ส่วนที่ 2: ตัวเลือกหลายบ่อพร้อมกัน ---
+    available_tanks = sorted(df_all["tank_name"].unique())
+    selected_tanks = st.multiselect("เลือกบ่อที่ต้องการเปรียบเทียบ", available_tanks, default=available_tanks[:1])
+
+    if not filtered_df.empty and selected_tanks:
+        # กรองตามบ่อที่เลือก
+        final_df = filtered_df[filtered_df["tank_name"].isin(selected_tanks)].sort_values("recorded_at")
+        
+        g1, g2 = st.columns(2)
+        
+        with g1:
+            fig_ph = go.Figure()
+            for t_name in selected_tanks:
+                t_data = final_df[final_df["tank_name"] == t_name]
+                fig_ph.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["ph_value"], 
+                                          mode='lines+markers', name=f"pH: {t_name}"))
+            fig_ph.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1, line_width=0)
+            fig_ph.update_layout(title="แนวโน้มค่า pH (เปรียบเทียบ)", xaxis_title="เวลา", yaxis_title="pH")
+            st.plotly_chart(fig_ph, use_container_width=True)
+            
+        with g2:
+            fig_temp = go.Figure()
+            for t_name in selected_tanks:
+                t_data = final_df[final_df["tank_name"] == t_name]
+                fig_temp.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["temperature"], 
+                                            mode='lines+markers', name=f"Temp: {t_name}"))
+            fig_temp.add_hrect(y0=TEMP_COLOR_MIN, y1=TEMP_COLOR_MAX, fillcolor="orange", opacity=0.1, line_width=0)
+            fig_temp.update_layout(title="แนวโน้มอุณหภูมิ (เปรียบเทียบ)", xaxis_title="เวลา", yaxis_title="°C")
+            st.plotly_chart(fig_temp, use_container_width=True)
+            
+        with st.expander("📊 ดูข้อมูลตารางที่กรองแล้ว"):
+            st.dataframe(final_df[["recorded_at", "tank_name", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
+    else:
+        st.warning("⚠️ ไม่พบข้อมูลในช่วงเวลาที่เลือก หรือยังไม่ได้เลือกบ่อ")
         tank_map = load_tanks()
         inv_map = {v: k for k, v in tank_map.items()}
         df_all["tank_name"] = df_all["tank_id"].map(inv_map)
