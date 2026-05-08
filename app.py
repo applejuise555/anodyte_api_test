@@ -204,6 +204,9 @@ if menu == "Dashboard":
     if logs:
         df_all = pd.DataFrame(logs)
         df_all["recorded_at"] = pd.to_datetime(df_all["recorded_at"])
+        tank_map = load_tanks()
+        inv_tank_map = {v: k for k, v in tank_map.items()}
+        df_all["tank_name"] = df_all["tank_id"].map(inv_tank_map)
         
         # --- ส่วนที่ 1: ตัวเลือกช่วงเวลา ---
         col_f1, col_f2, col_f3 = st.columns(3)
