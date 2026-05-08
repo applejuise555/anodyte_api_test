@@ -152,8 +152,8 @@ if menu == "Dashboard":
     # --- Color Tank Analysis ---
     st.subheader(f"🎨 ข้อมูลบ่อสี ประจำวันที่ {selected_date.strftime('%d/%m/%Y')}")
     if logs:
-    df = pd.DataFrame(logs)
-    df["recorded_at"] = pd.to_datetime(df["recorded_at"])
+        df = pd.DataFrame(logs)
+        df["recorded_at"] = pd.to_datetime(df["recorded_at"])
         tank_map = load_tanks()
         inv_tank_map = {v: k for k, v in tank_map.items()}
         df["tank_name"] = df["tank_id"].map(inv_tank_map)
