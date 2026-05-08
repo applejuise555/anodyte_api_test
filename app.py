@@ -401,7 +401,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
 
             with st.form("bulk_jig_form", clear_on_submit=True):
                 col_lot, col_qty = st.columns(2)
-                lot_no_input = col_lot.text_input("หมายเลข Lot (Lot No.)", placeholder="เช่น LOT2026-001")
+                lot_no_input = col_lot.text_input("หมายเลข Lot (Lot No.)", placeholder=" 1 ")
                 jig_quantity = col_qty.number_input("จำนวนจิ๊กที่ต้องการสร้าง", min_value=1, max_value=50, value=1)
         
                 st.info(f"💡 ระบบจะเริ่มรันรหัสตั้งแต่: **{today_prefix}{last_number + 1:03d}** ถึง **{today_prefix}{last_number + jig_quantity:03d}**")
