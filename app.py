@@ -471,8 +471,6 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         action = st.radio("การทำงาน", ["🔵 บันทึกงานต่อ", "🟢 เสร็จสิ้นงาน"], key="action_radio")
 
                         if action == "🔵 บันทึกงานต่อ":
-                            
-                            jig_id = jig_map[sel_j_display]
                             sel_c_new = st.selectbox("เลือกสี", sorted(set(TANK_COLOR_MAP.values())), key="sel_c_log")
                             filtered_tanks = {n: i for n, i in color_tanks_all.items() if TANK_COLOR_MAP.get(n) == sel_c_new}
                             if filtered_tanks:
