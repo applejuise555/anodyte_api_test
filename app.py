@@ -379,36 +379,62 @@ elif menu == "บันทึกข้อมูลการผลิต":
                         st.error("กรุณาระบุรหัสสินค้า")
 
         with sub_jig:
-            st.subheader("เพิ่มรหัสจิ๊กใหม่")
+            st.subheader("📦 ลงทะเบียนจิ๊กชุดใหม่ (Bulk Registration)")
+    
+            # 1. ส่วนการตั้งค่า Prefix วันที่
             today_prefix = datetime.now(ICT).strftime("%Y%m%d")
-            jig_count_res = supabase.table("jigs").select("jig_model_code").like("jig_model_code", f"{today_prefix}%").execute()
-            current_count = len(jig_count_res.data)
-            next_number = current_count + 1
-            auto_jig_code = f"{today_prefix}{next_number:03d}"
-            st.info(f"🆔 รหัสจิ๊กที่จะสร้าง: **{auto_jig_code}**")
-           
-            with st.form("add_jig_auto", clear_on_submit=True):
-                j_code = st.text_input("รหัสจิ๊ก", value=auto_jig_code, disabled=True)
-                # --- ส่วนที่เพิ่มใหม่: Lot Number ---
-                lot_no = st.text_input("หมายเลข Lot (Lot No.)", placeholder="ระบุเลข Lot เช่น LOT67001")
-               
-                if st.form_submit_button("➕ ลงทะเบียนจิ๊กและ Lot"):
-                    if not lot_no:
-                        st.error("กรุณากรอก Lot No. ก่อนลงทะเบียน")
+    
+            # ดึงข้อมูลล่าสุดมาดูว่าวันนี้รันไปถึงเลขไหนแล้ว
+            jig_count_res = supabase.table("jigs") \
+                .select("jig_model_code") \
+                .like("jig_model_code", f"{today_prefix}%") \
+                .order("jig_model_code", desc=True) \
+                .limit(1) \
+                .execute()
+    
+            # หาเลขลำดับเริ่มต้น (ถ้ายังไม่มีเลยให้เริ่มที่ 0)
+            if jig_count_res.data:
+                last_code = jig_count_res.data[0]['jig_model_code']
+                last_number = int(last_code[-3:]) # ดึง 3 หลักสุดท้ายมาเป็นตัวเลข
+            else:
+                last_number = 0
+
+            with st.form("bulk_jig_form", clear_on_submit=True):
+                col_lot, col_qty = st.columns(2)
+                lot_no_input = col_lot.text_input("หมายเลข Lot (Lot No.)", placeholder="เช่น LOT2026-001")
+                jig_quantity = col_qty.number_input("จำนวนจิ๊กที่ต้องการสร้าง", min_value=1, max_value=50, value=1)
+        
+                st.info(f"💡 ระบบจะเริ่มรันรหัสตั้งแต่: **{today_prefix}{last_number + 1:03d}** ถึง **{today_prefix}{last_number + jig_quantity:03d}**")
+
+                if st.form_submit_button("🚀 สร้างรหัสจิ๊กทั้งหมด"):
+                    if not lot_no_input:
+                        st.error("❌ กรุณาระบุ Lot No. ก่อนสร้าง")
                     else:
-                        check_jig = supabase.table("jigs").select("jig_model_code").eq("jig_model_code", j_code).execute()
-                        if check_jig.data:
-                            st.error(f"❌ รหัส {j_code} ซ้ำ กรุณาลองใหม่")
-                        else:
-                            supabase.table("jigs").insert({
-                                "jig_model_code": j_code, 
-                                "lot_no": lot_no, # บันทึกลง Database
+                        new_jigs = []
+                # วนลูปสร้างข้อมูลตามจำนวนที่ระบุ
+                        for i in range(1, jig_quantity + 1):
+                            new_code = f"{today_prefix}{last_number + i:03d}"
+                            new_jigs.append({
+                                "jig_model_code": new_code,
+                                "lot_no": lot_no_input,
                                 "total_pcs_in_jig": 0
-                            }).execute()
-                            st.success(f"✅ ลงทะเบียนจิ๊ก {j_code} (Lot: {lot_no}) สำเร็จ!")
-                            time.sleep(1.5)
+                            })
+                
+                        try:
+                    # บันทึกข้อมูลแบบก้อนเดียว (Bulk Insert) เพื่อความรวดเร็ว
+                            supabase.table("jigs").insert(new_jigs).execute()
+                            st.success(f"✅ สำเร็จ! สร้างจิ๊กจำนวน {jig_quantity} อัน ลงใน Lot {lot_no_input} เรียบร้อยแล้ว")
+                            time.sleep(2)
                             st.rerun()
-                           
+                        except Exception as e:
+                            st.error(f"เกิดข้อผิดพลาด: {e}")
+
+    # ส่วนเสริม: แสดงประวัติการสร้างของวันนี้
+            with st.expander("📝 ดูรายการจิ๊กที่สร้างวันนี้"):
+                today_jigs = supabase.table("jigs").select("*").like("jig_model_code", f"{today_prefix}%").order("jig_model_code", desc=True).execute()
+                if today_jigs.data:
+                    st.dataframe(pd.DataFrame(today_jigs.data), use_container_width=True)
+    #-------------------------------------------------------------------------------                       
         with sub_log:
             prods_res = supabase.table("products").select("product_id, product_code, product_name").execute().data
             if prods_res:
