@@ -196,173 +196,173 @@ if menu == "Dashboard":
             })
         st.dataframe(pd.DataFrame(alert_data), use_container_width=True)
 
-    # ================= INDIVIDUAL TANK VIEW =================
-    # ================= INDIVIDUAL TANK VIEW (MULTI-SELECT & TIME FILTER) =================
-st.markdown("---")
-st.subheader("🔍 วิเคราะห์ข้อมูลเชิงลึก (Multi-Tank Analysis)")
-
-if logs:
-    df_all = pd.DataFrame(logs)
-    df_all["recorded_at"] = pd.to_datetime(df_all["recorded_at"])
-    
-    # --- ส่วนที่ 1: ตัวเลือกช่วงเวลา ---
-    col_f1, col_f2, col_f3 = st.columns(3)
-    
-    time_unit = col_f1.selectbox("เลือกมุมมองเวลา", ["รายวัน (ปฏิทิน)", "รายเดือน", "รายไตรมาส", "รายปี"])
-    
-    filtered_df = df_all.copy()
-    
-    if time_unit == "รายวัน (ปฏิทิน)":
-        selected_date = col_f2.date_input("เลือกวันที่", datetime.now(ICT))
-        filtered_df = df_all[df_all["recorded_at"].dt.date == selected_date]
-        
-    elif time_unit == "รายเดือน":
-        month_list = df_all["recorded_at"].dt.strftime('%m/%Y').unique()
-        selected_month = col_f2.selectbox("เลือกเดือน/ปี", month_list)
-        filtered_df = df_all[df_all["recorded_at"].dt.strftime('%m/%Y') == selected_month]
-        
-    elif time_unit == "รายไตรมาส":
-        year_val = col_f2.number_input("ปี (ค.ศ.)", value=datetime.now().year)
-        q_val = col_f3.selectbox("ไตรมาส", [1, 2, 3, 4])
-        start_q, end_q = get_quarter_range(year_val, q_val)
-        filtered_df = df_all[(df_all["recorded_at"] >= start_q) & (df_all["recorded_at"] <= end_q)]
-        
-    elif time_unit == "รายปี":
-        year_list = sorted(df_all["recorded_at"].dt.year.unique(), reverse=True)
-        selected_year = col_f2.selectbox("เลือกปี", year_list)
-        filtered_df = df_all[df_all["recorded_at"].dt.year == selected_year]
-
-    # --- ส่วนที่ 2: ตัวเลือกหลายบ่อพร้อมกัน ---
-    available_tanks = sorted(df_all["tank_name"].unique())
-    selected_tanks = st.multiselect("เลือกบ่อที่ต้องการเปรียบเทียบ", available_tanks, default=available_tanks[:1])
-
-    if not filtered_df.empty and selected_tanks:
-        # กรองตามบ่อที่เลือก
-        final_df = filtered_df[filtered_df["tank_name"].isin(selected_tanks)].sort_values("recorded_at")
-        
-        g1, g2 = st.columns(2)
-        
-        with g1:
-            fig_ph = go.Figure()
-            for t_name in selected_tanks:
-                t_data = final_df[final_df["tank_name"] == t_name]
-                fig_ph.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["ph_value"], 
-                                          mode='lines+markers', name=f"pH: {t_name}"))
-            fig_ph.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1, line_width=0)
-            fig_ph.update_layout(title="แนวโน้มค่า pH (เปรียบเทียบ)", xaxis_title="เวลา", yaxis_title="pH")
-            st.plotly_chart(fig_ph, use_container_width=True)
-            
-        with g2:
-            fig_temp = go.Figure()
-            for t_name in selected_tanks:
-                t_data = final_df[final_df["tank_name"] == t_name]
-                fig_temp.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["temperature"], 
-                                            mode='lines+markers', name=f"Temp: {t_name}"))
-            fig_temp.add_hrect(y0=TEMP_COLOR_MIN, y1=TEMP_COLOR_MAX, fillcolor="orange", opacity=0.1, line_width=0)
-            fig_temp.update_layout(title="แนวโน้มอุณหภูมิ (เปรียบเทียบ)", xaxis_title="เวลา", yaxis_title="°C")
-            st.plotly_chart(fig_temp, use_container_width=True)
-            
-        with st.expander("📊 ดูข้อมูลตารางที่กรองแล้ว"):
-            st.dataframe(final_df[["recorded_at", "tank_name", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
-    else:
-        st.warning("⚠️ ไม่พบข้อมูลในช่วงเวลาที่เลือก หรือยังไม่ได้เลือกบ่อ")
-        tank_map = load_tanks()
-        inv_map = {v: k for k, v in tank_map.items()}
-        df_all["tank_name"] = df_all["tank_id"].map(inv_map)
-        available_tanks = sorted(df_all["tank_name"].unique())
-        selected_tank = st.selectbox("เลือกบ่อที่ต้องการดูรายละเอียด", available_tanks)
-        tank_df = df_all[df_all["tank_name"] == selected_tank].sort_values("recorded_at")
-
-        if not tank_df.empty:
-            g1, g2 = st.columns(2)
-            with g1:
-                fig_ph = go.Figure()
-                fig_ph.add_trace(go.Scatter(x=tank_df["recorded_at"], y=tank_df["ph_value"], mode='lines+markers', name='pH Value', line=dict(color='#22c55e', width=3), marker=dict(size=8)))
-                fig_ph.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1, line_width=0, annotation_text="Standard Range")
-                fig_ph.update_layout(title=f"แนวโน้มค่า pH: {selected_tank}", xaxis_title="เวลาที่บันทึก", yaxis_title="pH", hovermode="x unified")
-                st.plotly_chart(fig_ph, use_container_width=True)
-            with g2:
-                fig_temp = go.Figure()
-                fig_temp.add_trace(go.Scatter(x=tank_df["recorded_at"], y=tank_df["temperature"], mode='lines+markers', name='Temperature', line=dict(color='#22c55e', width=3), marker=dict(size=8)))
-                fig_temp.add_hrect(y0=TEMP_COLOR_MIN, y1=TEMP_COLOR_MAX, fillcolor="orange", opacity=0.1, line_width=0, annotation_text="Standard Range")
-                fig_temp.update_layout(title=f"แนวโน้มอุณหภูมิ: {selected_tank}", xaxis_title="เวลาที่บันทึก", yaxis_title="อุณหภูมิ (°C)", hovermode="x unified")
-                st.plotly_chart(fig_temp, use_container_width=True)
-            with st.expander(f"ดูประวัติข้อมูลดิบของ {selected_tank}"):
-                st.dataframe(tank_df[["recorded_at", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
-
-    # ================= ANODIZE TREND ANALYSIS ================
+        # ================= INDIVIDUAL TANK VIEW =================
+        # ================= INDIVIDUAL TANK VIEW (MULTI-SELECT & TIME FILTER) =================
     st.markdown("---")
-    st.subheader("📈 วิเคราะห์แนวโน้มบ่ออโนไดซ์ (Anodize Detailed Trend)")
-    logs_a = load_anodize_logs()
-    if logs_a:
-        df_a = pd.DataFrame(logs_a)
-        df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"])
-        tank_map = load_tanks()
-        inv_map = {v: k for k, v in tank_map.items()}
-        df_a["tank_name"] = df_a["tank_id"].map(inv_map)
+    st.subheader("🔍 วิเคราะห์ข้อมูลเชิงลึก (Multi-Tank Analysis)")
+    
+    if logs:
+        df_all = pd.DataFrame(logs)
+        df_all["recorded_at"] = pd.to_datetime(df_all["recorded_at"])
         
-        st.subheader("🚨 ตารางแจ้งเตือนบ่ออโนไดซ์")
-        latest_ano = df_a.sort_values("recorded_at").groupby("tank_name").tail(1)
-        alert_ano = []
-        for _, row in latest_ano.iterrows():
-            alert_ano.append({
-                "Tank": row["tank_name"],
-                "pH": f"{get_status_icon(row['ph_value'], PH_ANO_MIN, PH_ANO_MAX)} {row['ph_value']:.2f}",
-                "Temp": f"{get_status_icon(row['temperature'], TEMP_ANO_MIN, TEMP_ANO_MAX)} {row['temperature']:.1f}",
-                "Density": f"{get_status_icon(row['density'], DEN_ANO_MIN, DEN_ANO_MAX)} {row['density']:.3f}"
-            })
-        st.dataframe(pd.DataFrame(alert_ano), use_container_width=True)
-
-        available_ano_tanks = sorted(df_a["tank_name"].dropna().unique())
-        selected_ano = st.selectbox("เลือกบ่ออโนไดซ์เพื่อดูแนวโน้ม", available_ano_tanks)
+        # --- ส่วนที่ 1: ตัวเลือกช่วงเวลา ---
+        col_f1, col_f2, col_f3 = st.columns(3)
+        
+        time_unit = col_f1.selectbox("เลือกมุมมองเวลา", ["รายวัน (ปฏิทิน)", "รายเดือน", "รายไตรมาส", "รายปี"])
+        
+        filtered_df = df_all.copy()
+        
+        if time_unit == "รายวัน (ปฏิทิน)":
+            selected_date = col_f2.date_input("เลือกวันที่", datetime.now(ICT))
+            filtered_df = df_all[df_all["recorded_at"].dt.date == selected_date]
+            
+        elif time_unit == "รายเดือน":
+            month_list = df_all["recorded_at"].dt.strftime('%m/%Y').unique()
+            selected_month = col_f2.selectbox("เลือกเดือน/ปี", month_list)
+            filtered_df = df_all[df_all["recorded_at"].dt.strftime('%m/%Y') == selected_month]
+            
+        elif time_unit == "รายไตรมาส":
+            year_val = col_f2.number_input("ปี (ค.ศ.)", value=datetime.now().year)
+            q_val = col_f3.selectbox("ไตรมาส", [1, 2, 3, 4])
+            start_q, end_q = get_quarter_range(year_val, q_val)
+            filtered_df = df_all[(df_all["recorded_at"] >= start_q) & (df_all["recorded_at"] <= end_q)]
+            
+        elif time_unit == "รายปี":
+            year_list = sorted(df_all["recorded_at"].dt.year.unique(), reverse=True)
+            selected_year = col_f2.selectbox("เลือกปี", year_list)
+            filtered_df = df_all[df_all["recorded_at"].dt.year == selected_year]
     
-    # กรองข้อมูลเฉพาะบ่อที่เลือก -> เรียงใหม่ -> เอา 10 แถวบนสุด (ล่าสุด)
-        ano_filtered = df_a[df_a["tank_name"] == selected_ano] \
-                        .sort_values("recorded_at", ascending=False) \
-                        .head(10)
+        # --- ส่วนที่ 2: ตัวเลือกหลายบ่อพร้อมกัน ---
+        available_tanks = sorted(df_all["tank_name"].unique())
+        selected_tanks = st.multiselect("เลือกบ่อที่ต้องการเปรียบเทียบ", available_tanks, default=available_tanks[:1])
     
-    # เรียงกลับเป็น อดีต -> ปัจจุบัน เพื่อให้กราฟเดินจากซ้ายไปขวา
-        ano_chart_df = ano_filtered.sort_values("recorded_at")
-
-        if not ano_chart_df.empty:
-            g1, g2, g3 = st.columns(3)
+        if not filtered_df.empty and selected_tanks:
+            # กรองตามบ่อที่เลือก
+            final_df = filtered_df[filtered_df["tank_name"].isin(selected_tanks)].sort_values("recorded_at")
+            
+            g1, g2 = st.columns(2)
+            
             with g1:
                 fig_ph = go.Figure()
-                fig_ph.add_trace(go.Scatter(
-                    x=ano_chart_df["recorded_at"], 
-                    y=ano_chart_df["ph_value"], 
-                    mode='lines+markers', 
-                    name='pH', 
-                    line=dict(color='#22c55e', width=2)
-            ))
-                fig_ph.add_hrect(y0=PH_ANO_MIN, y1=PH_ANO_MAX, fillcolor="green", opacity=0.1, line_width=0)
-                fig_ph.update_layout(title="แนวโน้ม pH (10 ครั้งล่าสุด)", height=350)
+                for t_name in selected_tanks:
+                    t_data = final_df[final_df["tank_name"] == t_name]
+                    fig_ph.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["ph_value"], 
+                                              mode='lines+markers', name=f"pH: {t_name}"))
+                fig_ph.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1, line_width=0)
+                fig_ph.update_layout(title="แนวโน้มค่า pH (เปรียบเทียบ)", xaxis_title="เวลา", yaxis_title="pH")
                 st.plotly_chart(fig_ph, use_container_width=True)
+                
             with g2:
                 fig_temp = go.Figure()
-                fig_temp.add_trace(go.Scatter(x=ano_chart_df["recorded_at"], y=ano_filtered["temperature"], mode='lines+markers', name='Temp', line=dict(color='#3b82f6', width=2), marker=dict(size=6)))
-                fig_temp.add_hrect(y0=TEMP_ANO_MIN, y1=TEMP_ANO_MAX, fillcolor="blue", opacity=0.1, line_width=0)
-                fig_temp.update_layout(title="แนวโน้มอุณหภูมิ (°C)", height=350, margin=dict(t=50, b=20, l=10, r=10))
+                for t_name in selected_tanks:
+                    t_data = final_df[final_df["tank_name"] == t_name]
+                    fig_temp.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["temperature"], 
+                                                mode='lines+markers', name=f"Temp: {t_name}"))
+                fig_temp.add_hrect(y0=TEMP_COLOR_MIN, y1=TEMP_COLOR_MAX, fillcolor="orange", opacity=0.1, line_width=0)
+                fig_temp.update_layout(title="แนวโน้มอุณหภูมิ (เปรียบเทียบ)", xaxis_title="เวลา", yaxis_title="°C")
                 st.plotly_chart(fig_temp, use_container_width=True)
-            with g3:
-                fig_den = go.Figure()
-                fig_den.add_trace(go.Scatter(x=ano_chart_df["recorded_at"], y=ano_filtered["density"], mode='lines+markers', name='Density', line=dict(color='#a855f7', width=2), marker=dict(size=6)))
-                fig_den.add_hrect(y0=DEN_ANO_MIN, y1=DEN_ANO_MAX, fillcolor="purple", opacity=0.1, line_width=0)
-                fig_den.update_layout(title="แนวโน้มความหนาแน่น", height=350, margin=dict(t=50, b=20, l=10, r=10))
-                st.plotly_chart(fig_den, use_container_width=True)
-
-            with st.expander(f"📋 รายละเอียดข้อมูลบันทึก {selected_ano}"):
-                log_display = ano_chart_df[["recorded_at", "ph_value", "temperature", "density"]].sort_values("recorded_at", ascending=False)
-                st.dataframe(log_display.style.format({"ph_value": "{:.2f}", "temperature": "{:.1f}", "density": "{:.3f}"}), use_container_width=True)
+                
+            with st.expander("📊 ดูข้อมูลตารางที่กรองแล้ว"):
+                st.dataframe(final_df[["recorded_at", "tank_name", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
         else:
-            st.warning("ไม่พบข้อมูลบันทึกสำหรับบ่อนี้")
-    else:
-        st.info("ไม่มีข้อมูลในระบบ Anodize")
-
-    try:
-        st_autorefresh(interval=10000, key="refresh")
-    except:
-        pass
+            st.warning("⚠️ ไม่พบข้อมูลในช่วงเวลาที่เลือก หรือยังไม่ได้เลือกบ่อ")
+            tank_map = load_tanks()
+            inv_map = {v: k for k, v in tank_map.items()}
+            df_all["tank_name"] = df_all["tank_id"].map(inv_map)
+            available_tanks = sorted(df_all["tank_name"].unique())
+            selected_tank = st.selectbox("เลือกบ่อที่ต้องการดูรายละเอียด", available_tanks)
+            tank_df = df_all[df_all["tank_name"] == selected_tank].sort_values("recorded_at")
+    
+            if not tank_df.empty:
+                g1, g2 = st.columns(2)
+                with g1:
+                    fig_ph = go.Figure()
+                    fig_ph.add_trace(go.Scatter(x=tank_df["recorded_at"], y=tank_df["ph_value"], mode='lines+markers', name='pH Value', line=dict(color='#22c55e', width=3), marker=dict(size=8)))
+                    fig_ph.add_hrect(y0=PH_MIN, y1=PH_MAX, fillcolor="green", opacity=0.1, line_width=0, annotation_text="Standard Range")
+                    fig_ph.update_layout(title=f"แนวโน้มค่า pH: {selected_tank}", xaxis_title="เวลาที่บันทึก", yaxis_title="pH", hovermode="x unified")
+                    st.plotly_chart(fig_ph, use_container_width=True)
+                with g2:
+                    fig_temp = go.Figure()
+                    fig_temp.add_trace(go.Scatter(x=tank_df["recorded_at"], y=tank_df["temperature"], mode='lines+markers', name='Temperature', line=dict(color='#22c55e', width=3), marker=dict(size=8)))
+                    fig_temp.add_hrect(y0=TEMP_COLOR_MIN, y1=TEMP_COLOR_MAX, fillcolor="orange", opacity=0.1, line_width=0, annotation_text="Standard Range")
+                    fig_temp.update_layout(title=f"แนวโน้มอุณหภูมิ: {selected_tank}", xaxis_title="เวลาที่บันทึก", yaxis_title="อุณหภูมิ (°C)", hovermode="x unified")
+                    st.plotly_chart(fig_temp, use_container_width=True)
+                with st.expander(f"ดูประวัติข้อมูลดิบของ {selected_tank}"):
+                    st.dataframe(tank_df[["recorded_at", "ph_value", "temperature"]].sort_values("recorded_at", ascending=False), use_container_width=True)
+    
+        # ================= ANODIZE TREND ANALYSIS ================
+        st.markdown("---")
+        st.subheader("📈 วิเคราะห์แนวโน้มบ่ออโนไดซ์ (Anodize Detailed Trend)")
+        logs_a = load_anodize_logs()
+        if logs_a:
+            df_a = pd.DataFrame(logs_a)
+            df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"])
+            tank_map = load_tanks()
+            inv_map = {v: k for k, v in tank_map.items()}
+            df_a["tank_name"] = df_a["tank_id"].map(inv_map)
+            
+            st.subheader("🚨 ตารางแจ้งเตือนบ่ออโนไดซ์")
+            latest_ano = df_a.sort_values("recorded_at").groupby("tank_name").tail(1)
+            alert_ano = []
+            for _, row in latest_ano.iterrows():
+                alert_ano.append({
+                    "Tank": row["tank_name"],
+                    "pH": f"{get_status_icon(row['ph_value'], PH_ANO_MIN, PH_ANO_MAX)} {row['ph_value']:.2f}",
+                    "Temp": f"{get_status_icon(row['temperature'], TEMP_ANO_MIN, TEMP_ANO_MAX)} {row['temperature']:.1f}",
+                    "Density": f"{get_status_icon(row['density'], DEN_ANO_MIN, DEN_ANO_MAX)} {row['density']:.3f}"
+                })
+            st.dataframe(pd.DataFrame(alert_ano), use_container_width=True)
+    
+            available_ano_tanks = sorted(df_a["tank_name"].dropna().unique())
+            selected_ano = st.selectbox("เลือกบ่ออโนไดซ์เพื่อดูแนวโน้ม", available_ano_tanks)
+        
+        # กรองข้อมูลเฉพาะบ่อที่เลือก -> เรียงใหม่ -> เอา 10 แถวบนสุด (ล่าสุด)
+            ano_filtered = df_a[df_a["tank_name"] == selected_ano] \
+                            .sort_values("recorded_at", ascending=False) \
+                            .head(10)
+        
+        # เรียงกลับเป็น อดีต -> ปัจจุบัน เพื่อให้กราฟเดินจากซ้ายไปขวา
+            ano_chart_df = ano_filtered.sort_values("recorded_at")
+    
+            if not ano_chart_df.empty:
+                g1, g2, g3 = st.columns(3)
+                with g1:
+                    fig_ph = go.Figure()
+                    fig_ph.add_trace(go.Scatter(
+                        x=ano_chart_df["recorded_at"], 
+                        y=ano_chart_df["ph_value"], 
+                        mode='lines+markers', 
+                        name='pH', 
+                        line=dict(color='#22c55e', width=2)
+                ))
+                    fig_ph.add_hrect(y0=PH_ANO_MIN, y1=PH_ANO_MAX, fillcolor="green", opacity=0.1, line_width=0)
+                    fig_ph.update_layout(title="แนวโน้ม pH (10 ครั้งล่าสุด)", height=350)
+                    st.plotly_chart(fig_ph, use_container_width=True)
+                with g2:
+                    fig_temp = go.Figure()
+                    fig_temp.add_trace(go.Scatter(x=ano_chart_df["recorded_at"], y=ano_filtered["temperature"], mode='lines+markers', name='Temp', line=dict(color='#3b82f6', width=2), marker=dict(size=6)))
+                    fig_temp.add_hrect(y0=TEMP_ANO_MIN, y1=TEMP_ANO_MAX, fillcolor="blue", opacity=0.1, line_width=0)
+                    fig_temp.update_layout(title="แนวโน้มอุณหภูมิ (°C)", height=350, margin=dict(t=50, b=20, l=10, r=10))
+                    st.plotly_chart(fig_temp, use_container_width=True)
+                with g3:
+                    fig_den = go.Figure()
+                    fig_den.add_trace(go.Scatter(x=ano_chart_df["recorded_at"], y=ano_filtered["density"], mode='lines+markers', name='Density', line=dict(color='#a855f7', width=2), marker=dict(size=6)))
+                    fig_den.add_hrect(y0=DEN_ANO_MIN, y1=DEN_ANO_MAX, fillcolor="purple", opacity=0.1, line_width=0)
+                    fig_den.update_layout(title="แนวโน้มความหนาแน่น", height=350, margin=dict(t=50, b=20, l=10, r=10))
+                    st.plotly_chart(fig_den, use_container_width=True)
+    
+                with st.expander(f"📋 รายละเอียดข้อมูลบันทึก {selected_ano}"):
+                    log_display = ano_chart_df[["recorded_at", "ph_value", "temperature", "density"]].sort_values("recorded_at", ascending=False)
+                    st.dataframe(log_display.style.format({"ph_value": "{:.2f}", "temperature": "{:.1f}", "density": "{:.3f}"}), use_container_width=True)
+            else:
+                st.warning("ไม่พบข้อมูลบันทึกสำหรับบ่อนี้")
+        else:
+            st.info("ไม่มีข้อมูลในระบบ Anodize")
+    
+        try:
+            st_autorefresh(interval=10000, key="refresh")
+        except:
+            pass
 
 # ================= RECORD PAGE =================
 elif menu == "บันทึกข้อมูลการผลิต":
