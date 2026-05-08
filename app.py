@@ -149,7 +149,7 @@ if menu == "Dashboard":
         tank_map = load_tanks()
         inv_tank_map = {v: k for k, v in tank_map.items()}
         df["tank_name"] = df["tank_id"].map(inv_tank_map)
-
+        latest = df.drop_duplicates("tank_id").copy()
         latest = latest.sort_values("tank_name") 
         if not latest.empty:
             fig = make_subplots(specs=[[{"secondary_y": True}]])
