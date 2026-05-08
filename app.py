@@ -439,7 +439,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
             prods_res = supabase.table("products").select("product_id, product_code, product_name").execute().data
             if prods_res:
                 display_options = {f"{p['product_code']} | {p['product_name']}": p['product_id'] for p in prods_res}
-                jigs_data = supabase.table("jigs").select("jig_id, jig_model_code").execute().data
+                jigs_data = supabase.table("jigs").select("jig_id, jig_model_code, lot_no").execute().data
         
         # --- 🟢 แก้ไขตรงนี้: ดึงสถานะจิ๊กทั้งหมดมาครั้งเดียว 🟢 ---
                 status_all = supabase.table("jig_status").select("jig_id, status_type").execute().data
@@ -459,7 +459,7 @@ elif menu == "บันทึกข้อมูลการผลิต":
                 if not available_jigs:
                     st.warning("❌ ไม่มีจิ๊กที่ใช้งานได้")
                 else:
-                    jig_map = {j['jig_model_code']: j['jig_id'] for j in available_jigs}
+                    jig_map = {f"Jig: {j['jig_model_code']} | Lot: {j.get('lot_no', 'N/A')}": j['jig_id'] for j in available_jigs}
                     color_tanks_all = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
                     
                     if display_options and color_tanks_all:
