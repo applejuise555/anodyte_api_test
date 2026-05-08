@@ -151,10 +151,9 @@ if menu == "Dashboard":
 
     # --- Color Tank Analysis ---
     st.subheader(f"🎨 ข้อมูลบ่อสี ประจำวันที่ {selected_date.strftime('%d/%m/%Y')}")
-    logs = load_color_logs()
     if logs:
-        df = pd.DataFrame(logs)
-        df["recorded_at"] = pd.to_datetime(df["recorded_at"])
+    df = pd.DataFrame(logs)
+    df["recorded_at"] = pd.to_datetime(df["recorded_at"])
         tank_map = load_tanks()
         inv_tank_map = {v: k for k, v in tank_map.items()}
         df["tank_name"] = df["tank_id"].map(inv_tank_map)
@@ -241,10 +240,9 @@ if menu == "Dashboard":
     # --- ปรับปรุงส่วนอโนไดซ์ (Anodize Trend Analysis) ---
     st.markdown("---")
     st.subheader(f"📈 ข้อมูลบ่ออโนไดซ์ ประจำวันที่ {selected_date.strftime('%d/%m/%Y')}")
-    logs_a = load_anodize_logs()
     if logs_a:
-        df_a = pd.DataFrame(logs_a)
-        df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"])
+    df_a = pd.DataFrame(logs_a)
+    df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"])
         tank_map = load_tanks()
         inv_map = {v: k for k, v in tank_map.items()}
         df_a["tank_name"] = df_a["tank_id"].map(inv_map)
