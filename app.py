@@ -82,6 +82,18 @@ def get_status_icon(value, min_val, max_val, warn_margin=0.1):
         return "🟡"
     return "🟢"
 
+def get_quarter_range(year, quarter):
+    # ไตรมาส 1: ม.ค. - มี.ค., 2: เม.ย. - มิ.ย., ...
+    start_month = (quarter - 1) * 3 + 1
+    end_month = start_month + 2
+    # สร้างวันที่เริ่มต้นและสิ้นสุดของไตรมาส
+    start_date = datetime(year, start_month, 1)
+    if end_month == 12:
+        end_date = datetime(year + 1, 1, 1) - timedelta(days=1)
+    else:
+        end_date = datetime(year, end_month + 1, 1) - timedelta(days=1)
+    return start_date, end_date
+
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
 # ================= DASHBOARD (FULL SYSTEM VIEW) =================
