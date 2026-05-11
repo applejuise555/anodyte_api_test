@@ -96,11 +96,11 @@ def get_quarter_range(year, quarter):
         end_date = datetime(year, end_month + 1, 1) - timedelta(days=1)
     return start_date, end_date
 
+# --- แก้ไขฟังก์ชัน render_svg_map เพื่อ Debug ---
 def render_svg_map(svg_file_path):
     with open(svg_file_path, "r", encoding="utf-8") as f:
         svg_content = f.read()
 
-    # JavaScript สำหรับดึง ID เมื่อมีการคลิก
     html_code = f"""
     <div id="svg-container" style="cursor: pointer;">
         {svg_content}
@@ -108,9 +108,9 @@ def render_svg_map(svg_file_path):
     <script>
         const container = document.getElementById('svg-container');
         container.addEventListener('click', function(e) {{
-            const target = e.target.closest('rect, circle, path, g');
+            // พยายามหา ID จากตัวมันเอง หรือกลุ่ม (Group <g>) ที่มันสังกัด
+            const target = e.target.closest('[id]'); 
             if (target && target.id) {{
-                // ส่ง ID กลับไปที่ Streamlit
                 window.parent.postMessage({{
                     type: 'streamlit:setComponentValue',
                     value: target.id
@@ -119,7 +119,13 @@ def render_svg_map(svg_file_path):
         }});
     </script>
     """
-    return components.html(html_code, height=600, scrolling=True)
+    # แสดงค่า ID ที่คลิกล่าสุดออกมาที่หน้าจอ (เพื่อเช็ค)
+    res = components.html(html_code, height=600, scrolling=True)
+    return res
+
+# --- ในส่วนบันทึกข้อมูล ให้เพิ่มบรรทัดนี้เพื่อเช็คค่า ---
+clicked_id = render_svg_map("ผังบ่อplain.svg")
+st.write(f"ID ที่คุณคลิกคือ: {clicked_id}") # <--- เพิ่มบรรทัดนี้เพื่อเช็ค
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
