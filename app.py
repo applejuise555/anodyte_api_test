@@ -98,7 +98,6 @@ def get_quarter_range(year, quarter):
     return start_date, end_date
 
 # --- แก้ไขฟังก์ชัน render_svg_map เพื่อ Debug --
-
 def render_svg_map(svg_file_path):
     with open(svg_file_path, "r", encoding="utf-8") as f:
         svg_content = f.read()
@@ -135,11 +134,10 @@ def render_svg_map(svg_file_path):
             el.onclick = () => {{
                 const clicked = el.id;
 
-                console.log(clicked);
+                console.log("CLICK:", clicked);
 
-                // เก็บลง localStorage
+                // เก็บค่าไว้
                 localStorage.setItem("tank_click", clicked);
-
             }};
         }});
     </script>
@@ -155,6 +153,8 @@ def render_svg_map(svg_file_path):
     """)
 
     return clicked
+
+
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
 # ================= DASHBOARD (FULL SYSTEM VIEW) =================
