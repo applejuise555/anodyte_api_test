@@ -29,3 +29,4 @@ streamlit
 supabase
 streamlit-autorefresh
 plotly
+streamlit-javascript
