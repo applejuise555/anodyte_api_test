@@ -103,33 +103,58 @@ def render_svg_map(svg_file_path):
     with open(svg_file_path, "r", encoding="utf-8") as f:
         svg_content = f.read()
 
-    # ปรับปรุง HTML/JS: เพิ่ม CSS ป้องกันคลิกโดนตัวอักษร และส่งค่าแบบ Real-time
     html_code = f"""
-    <div id="svg-container" style="cursor: pointer;">
+    <html>
+    <body>
         <style>
-            svg text, svg tspan {{ pointer-events: none !important; }} 
-        </style>
-        {svg_content}
-    </div>
-    <script>
-        const container = document.getElementById('svg-container');
-        container.addEventListener('click', function(e) {{
-            const target = e.target.closest('[id]'); 
-            if (target && target.id && target.id !== 'svg-container') {{
-                // เก็บค่าไว้ในหน้าต่างหลัก
-                window.parent.clicked_id = target.id;
-                // บังคับให้ Streamlit รับทราบการเปลี่ยนแปลง (ใช้ร่วมกับ st_javascript)
-                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: target.id}}, '*');
+            svg {{
+                width: 100%;
+                height: auto;
             }}
-        }});
-    </script>
-    """
-    st.components.v1.html(html_code, height=600)
 
-    # ดึงค่ากลับมา (ถ้ายังไม่มีให้เป็น None)
-    # ใช้ JS ตรวจสอบทั้ง window และ window.parent
-    clicked_id = st_javascript("window.parent.clicked_id || null;")
-    return clicked_id
+            svg text,
+            svg tspan {{
+                pointer-events: none !important;
+            }}
+
+            [id] {{
+                cursor: pointer;
+            }}
+
+            [id]:hover {{
+                opacity: 0.7;
+            }}
+        </style>
+
+        {svg_content}
+
+        <script>
+            const elements = document.querySelectorAll('[id]');
+
+            elements.forEach(el => {{
+                el.addEventListener('click', function() {{
+                    const clickedId = this.id;
+
+                    console.log("Clicked:", clickedId);
+
+                    // ส่งค่ากลับ Streamlit
+                    window.parent.postMessage({{
+                        type: "streamlit:setComponentValue",
+                        value: clickedId
+                    }}, "*");
+                }});
+            }});
+        </script>
+    </body>
+    </html>
+    """
+
+    clicked_value = components.html(
+        html_code,
+        height=600
+    )
+
+    return clicked_value
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
 # ================= DASHBOARD (FULL SYSTEM VIEW) =================
