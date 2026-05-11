@@ -97,53 +97,38 @@ def get_quarter_range(year, quarter):
         end_date = datetime(year, end_month + 1, 1) - timedelta(days=1)
     return start_date, end_date
 
-# --- แก้ไขฟังก์ชัน render_svg_map เพื่อ Debug ---
-from streamlit_javascript import st_javascript
+# --- แก้ไขฟังก์ชัน render_svg_map เพื่อ Debug --
 
 def render_svg_map(svg_file_path):
-    # อ่านไฟล์ SVG
     with open(svg_file_path, "r", encoding="utf-8") as f:
         svg_content = f.read()
 
-    # สร้าง HTML + JS
-    # 1. ใช้ pointer-events: none ที่ตัวอักษร (ถ้ามี) เพื่อให้คลิกทะลุไปโดนบ่อ
-    # 2. ใช้ closest('[id]') เพื่อหา ID ที่ใกล้ที่สุดจากจุดที่คลิก
+    # ปรับปรุง HTML/JS: เพิ่ม CSS ป้องกันคลิกโดนตัวอักษร และส่งค่าแบบ Real-time
     html_code = f"""
-    <div id="svg-container" style="cursor: pointer; width: 100%;">
+    <div id="svg-container" style="cursor: pointer;">
         <style>
-            /* สั่งให้ Text ใน SVG ทั้งหมดไม่รับการคลิก เพื่อให้คลิกทะลุไปโดนรูปทรงด้านหลัง */
-            svg text {{
-                pointer-events: none !important;
-                user-select: none;
-            }}
+            svg text, svg tspan {{ pointer-events: none !important; }} 
         </style>
         {svg_content}
     </div>
-    
     <script>
         const container = document.getElementById('svg-container');
         container.addEventListener('click', function(e) {{
-            // วิ่งหา Element ที่มี ID ที่ใกล้ที่สุด (เช่น คลิกโดนเส้นขอบ หรือพื้นที่บ่อ)
             const target = e.target.closest('[id]'); 
-            
             if (target && target.id && target.id !== 'svg-container') {{
-                // เก็บค่าไว้ใน window เพื่อให้ st_javascript ดึงไป
-                window.clicked_id = target.id;
-                
-                // ส่ง Log บอกสถานะ (Optional)
-                console.log("Clicked ID:", target.id);
+                // เก็บค่าไว้ในหน้าต่างหลัก
+                window.parent.clicked_id = target.id;
+                // บังคับให้ Streamlit รับทราบการเปลี่ยนแปลง (ใช้ร่วมกับ st_javascript)
+                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: target.id}}, '*');
             }}
         }});
     </script>
     """
-    
-    # แสดงผล SVG ผ่าน Component ปกติ
     st.components.v1.html(html_code, height=600)
 
-    # ใช้ st_javascript ดึงค่าจาก window.clicked_id กลับมาที่ Python
-    # เราใส่บรรทัดนี้เพื่อให้ Streamlit ตื่นตัวและรับค่าไปใช้ต่อในตัวแปร
-    clicked_id = st_javascript("window.clicked_id;")
-    
+    # ดึงค่ากลับมา (ถ้ายังไม่มีให้เป็น None)
+    # ใช้ JS ตรวจสอบทั้ง window และ window.parent
+    clicked_id = st_javascript("window.parent.clicked_id || null;")
     return clicked_id
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
