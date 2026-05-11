@@ -122,11 +122,12 @@ def render_svg_map(svg_file_path):
 
         [id] {{
             cursor:pointer;
-            transition:0.2s;
         }}
 
         [id]:hover {{
             opacity:0.7;
+            stroke:red;
+            stroke-width:3;
         }}
     </style>
 
@@ -134,24 +135,23 @@ def render_svg_map(svg_file_path):
 
     <script>
 
-        const items = document.querySelectorAll("[id]");
+    const items = document.querySelectorAll("[id]");
 
-        items.forEach(el => {{
+    items.forEach(el => {{
 
-            el.addEventListener("click", function() {{
+        el.addEventListener("click", function() {{
 
-                const tankId = el.id;
+            const tankId = el.id;
 
-                window.parent.postMessage({{
-                    type: "streamlit:setComponentValue",
-                    value: tankId
-                }}, "*");
+            const url = new URL(window.parent.location);
 
-                console.log("CLICK =", tankId);
+            url.searchParams.set("tank", tankId);
 
-            }});
+            window.parent.location.href = url.toString();
 
         }});
+
+    }});
 
     </script>
 
@@ -159,12 +159,11 @@ def render_svg_map(svg_file_path):
     </html>
     """
 
-    clicked = components.html(
-        html_code,
-        height=650
-    )
+    components.html(html_code, height=650)
 
-    return clicked
+    params = st.query_params
+
+    return params.get("tank")
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
