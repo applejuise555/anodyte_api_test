@@ -406,7 +406,7 @@ if menu == "บันทึกข้อมูลการผลิต":
 
     # --- Tab 1: บ่อสี ---
     with tab_main[0]:
-        color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color") [cite: 155]
+        color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color") 
         
         # กำหนดชื่อบ่อจาก ID ที่คลิก (ถ้ามีการคลิก)
         default_tank = None
@@ -420,8 +420,8 @@ if menu == "บันทึกข้อมูลการผลิต":
             index = tank_list.index(default_tank) if default_tank in tank_list else 0
             selected_tank_name = st.selectbox("ยืนยันบ่อสี", tank_list, index=index)
             
-            detected_color = TANK_COLOR_MAP.get(selected_tank_name, "Black") [cite: 110, 156]
-            render_color_bar(detected_color) [cite: 112, 113]
+            detected_color = TANK_COLOR_MAP.get(selected_tank_name, "Black")
+            render_color_bar(detected_color) 
 
             # --- ลบของเก่าออกแล้วใช้ชุดนี้แทน (ลบช่องว่างส่วนเกินออกแล้ว) ---
             with st.form("color_log_form", clear_on_submit=True):
@@ -440,7 +440,7 @@ if menu == "บันทึกข้อมูลการผลิต":
 
     # --- Tab 2: บ่ออโนไดซ์ ---
     with tab_main[1]:
-        ano_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize") [cite: 158, 159]
+        ano_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
         
         # กรณีคลิกบ่ออโนไดซ์ (เช่น AnodizedPPool1)
         default_ano = None
