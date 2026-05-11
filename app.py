@@ -12,6 +12,7 @@ import streamlit.components.v1 as components
 from streamlit_javascript import st_javascript
 from streamlit_js_eval import streamlit_js_eval
 from PIL import Image
+from streamlit_image_coordinates import streamlit_image_coordinates
 
 
 # 1. ตั้งค่า Timezone (UTC +7)
