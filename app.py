@@ -442,7 +442,7 @@ if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูล (Interactive Map)")
     
         # ดึงค่า ID จากการคลิก
-        clicked_id = render_svg_map("ผังบ่อplain.svg")
+    clicked_id = render_svg_map("ผังบ่อplain.svg")
     
     if clicked_id:
         st.session_state["clicked_tank"] = clicked_id
