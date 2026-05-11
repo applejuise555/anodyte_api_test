@@ -100,71 +100,34 @@ def get_quarter_range(year, quarter):
     return start_date, end_date
 
 # --- แก้ไขฟังก์ชัน render_svg_map เพื่อ Debug --
-def render_svg_map(svg_file_path):
+def render_tank_map():
 
-    with open(svg_file_path, "r", encoding="utf-8") as f:
-        svg_content = f.read()
+    img = Image.open("ผังบ่อplain.png")
 
-    html_code = f"""
-    <html>
-    <body>
+    value = streamlit_image_coordinates(
+        img,
+        key="tank_map"
+    )
+    st.write(value)
+    clicked_id = None
 
-    <style>
-        body {{
-            margin:0;
-            overflow:hidden;
-        }}
+    if value:
 
-        svg {{
-            width:100%;
-            height:auto;
-        }}
+        x = value["x"]
+        y = value["y"]
 
-        [id] {{
-            cursor:pointer;
-        }}
+        # ====== ตัวอย่างกำหนดพื้นที่บ่อ ======
 
-        [id]:hover {{
-            opacity:0.7;
-            stroke:red;
-            stroke-width:3;
-        }}
-    </style>
+        if 450 <= x <= 580 and 110 <= y <= 240:
+            clicked_id = "1DarkRed"
 
-    {svg_content}
+        elif 620 <= x <= 760 and 80 <= y <= 250:
+            clicked_id = "7Pink"
 
-    <script>
+        elif 830 <= x <= 960 and 250 <= y <= 420:
+            clicked_id = "11Gold"
 
-    const items = document.querySelectorAll("[id]");
-
-    items.forEach(el => {{
-
-        el.addEventListener("click", function() {{
-
-            const tankId = el.id;
-
-            const url = new URL(window.parent.location);
-
-            url.searchParams.set("tank", tankId);
-
-            window.parent.location.href = url.toString();
-
-        }});
-
-    }});
-
-    </script>
-
-    </body>
-    </html>
-    """
-
-    components.html(html_code, height=650)
-
-    params = st.query_params
-
-    return params.get("tank")
-
+    return clicked_id
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
 # ================= DASHBOARD (FULL SYSTEM VIEW) =================
@@ -443,7 +406,11 @@ if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูล (Interactive Map)")
     
         # ดึงค่า ID จากการคลิก
-    clicked_id = render_svg_map("ผังบ่อplain.svg")
+    clicked_id = render_tank_map()
+    if clicked_id:
+        st.session_state["clicked_tank"] = clicked_id
+
+    clicked_id = st.session_state.get("clicked_tank", None)
 
     st.write("CLICK =", clicked_id)
     tab_main = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig System)"])
