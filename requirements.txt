@@ -29,3 +29,5 @@ streamlit
 supabase
 streamlit-autorefresh
 plotly
+streamlit-image-coordinates
+streamlit-svg-map
