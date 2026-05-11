@@ -101,40 +101,50 @@ def get_quarter_range(year, quarter):
 from streamlit_javascript import st_javascript
 
 def render_svg_map(svg_file_path):
+    # อ่านไฟล์ SVG
     with open(svg_file_path, "r", encoding="utf-8") as f:
         svg_content = f.read()
 
-    # สร้าง HTML/JS สำหรับดักจับการคลิก
-    # เราจะใช้คำสั่ง return ของ st_javascript เพื่อดึงค่าออกมา
-    canvas_html = f"""
-    <div id="svg-container">{svg_content}</div>
+    # สร้าง HTML + JS
+    # 1. ใช้ pointer-events: none ที่ตัวอักษร (ถ้ามี) เพื่อให้คลิกทะลุไปโดนบ่อ
+    # 2. ใช้ closest('[id]') เพื่อหา ID ที่ใกล้ที่สุดจากจุดที่คลิก
+    html_code = f"""
+    <div id="svg-container" style="cursor: pointer; width: 100%;">
+        <style>
+            /* สั่งให้ Text ใน SVG ทั้งหมดไม่รับการคลิก เพื่อให้คลิกทะลุไปโดนรูปทรงด้านหลัง */
+            svg text {{
+                pointer-events: none !important;
+                user-select: none;
+            }}
+        </style>
+        {svg_content}
+    </div>
+    
     <script>
-        // ฟังก์ชันส่งค่ากลับ
-        const getClickedId = () => {{
-            return new Promise((resolve) => {{
-                document.getElementById('svg-container').addEventListener('click', (e) => {{
-                    const target = e.target.closest('[id]');
-                    if (target && target.id && target.id !== 'svg-container') {{
-                        resolve(target.id);
-                    }}
-                }}, {{once: true}}); // ทำงานครั้งเดียวแล้วจบ
-            }});
-        }};
+        const container = document.getElementById('svg-container');
+        container.addEventListener('click', function(e) {{
+            // วิ่งหา Element ที่มี ID ที่ใกล้ที่สุด (เช่น คลิกโดนเส้นขอบ หรือพื้นที่บ่อ)
+            const target = e.target.closest('[id]'); 
+            
+            if (target && target.id && target.id !== 'svg-container') {{
+                // เก็บค่าไว้ใน window เพื่อให้ st_javascript ดึงไป
+                window.clicked_id = target.id;
+                
+                // ส่ง Log บอกสถานะ (Optional)
+                console.log("Clicked ID:", target.id);
+            }}
+        }});
     </script>
     """
     
-    # ใช้ st_javascript เพื่อรัน JS และรับค่ากลับมาที่ Python
-    clicked_id = st_javascript(f"""
-        (function() {{
-            const container = document.getElementById('svg-container');
-            // ส่วนนี้เป็น Logic ในการคืนค่า ID ออกไปที่ Streamlit
-            return window.lastClickedId || null;
-        }})();
-    """)
-    # แสดงค่า ID ที่คลิกล่าสุดออกมาที่หน้าจอ (เพื่อเช็ค)
-    res = components.html(html_code, height=600, scrolling=True)
-    return res
+    # แสดงผล SVG ผ่าน Component ปกติ
+    st.components.v1.html(html_code, height=600)
 
+    # ใช้ st_javascript ดึงค่าจาก window.clicked_id กลับมาที่ Python
+    # เราใส่บรรทัดนี้เพื่อให้ Streamlit ตื่นตัวและรับค่าไปใช้ต่อในตัวแปร
+    clicked_id = st_javascript("window.clicked_id;")
+    
+    return clicked_id
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
 # ================= DASHBOARD (FULL SYSTEM VIEW) =================
