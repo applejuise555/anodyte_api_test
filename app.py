@@ -9,7 +9,6 @@ from plotly.subplots import make_subplots
 import time
 import streamlit as st
 import streamlit.components.v1 as components
-from streamlit_javascript import st_javascript
 
 # 1. ตั้งค่า Timezone (UTC +7)
 ICT = timezone(timedelta(hours=7))
@@ -442,10 +441,15 @@ if menu == "Dashboard":
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูล (Interactive Map)")
     
-    # ดึงค่า ID จากการคลิก
-    clicked_id = render_svg_map("ผังบ่อplain.svg")
+        # ดึงค่า ID จากการคลิก
+        clicked_id = render_svg_map("ผังบ่อplain.svg")
+    
+    if clicked_id:
+        st.session_state["clicked_tank"] = clicked_id
+    
+    clicked_id = st.session_state.get("clicked_tank", None)
+    
     st.write("CLICK =", clicked_id)
-
     tab_main = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig System)"])
 
     with tab_main[0]:
