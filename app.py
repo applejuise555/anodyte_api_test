@@ -414,13 +414,9 @@ if menu == "บันทึกข้อมูลการผลิต":
 
     with tab_main[0]:
         color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
-        
-        # ล้างค่าว่าง (Strip) เพื่อป้องกันการสะกดผิดจาก ID
-        clean_clicked_id = clicked_id.strip() if clicked_id else None
-        
-        # ค้นหาบ่อที่ตรงกัน
-        default_index = 0
         tank_list = list(color_tanks.keys())
+        ค้นหาบ่อที่ตรงกัน
+        default_index = 0
         
         if clean_clicked_id in tank_list:
             default_index = tank_list.index(clean_clicked_id)
