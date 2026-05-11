@@ -9,6 +9,7 @@ from plotly.subplots import make_subplots
 import time
 import streamlit as st
 import streamlit.components.v1 as components
+from streamlit_javascript import st_javascript
 
 # 1. ตั้งค่า Timezone (UTC +7)
 ICT = timezone(timedelta(hours=7))
@@ -97,31 +98,39 @@ def get_quarter_range(year, quarter):
     return start_date, end_date
 
 # --- แก้ไขฟังก์ชัน render_svg_map เพื่อ Debug ---
+from streamlit_javascript import st_javascript
+
 def render_svg_map(svg_file_path):
     with open(svg_file_path, "r", encoding="utf-8") as f:
         svg_content = f.read()
 
-    html_code = f"""
-    <div id="svg-container" style="cursor: pointer;">
-        {svg_content}
-    </div>
+    # สร้าง HTML/JS สำหรับดักจับการคลิก
+    # เราจะใช้คำสั่ง return ของ st_javascript เพื่อดึงค่าออกมา
+    canvas_html = f"""
+    <div id="svg-container">{svg_content}</div>
     <script>
-        const container = document.getElementById('svg-container');
-        container.addEventListener('click', function(e) {{
-            // หา Element ที่มี ID ที่ใกล้ที่สุดจากจุดที่คลิก
-            const target = e.target.closest('[id]'); 
-            
-            // ถ้าเจอ ID และไม่ใช่ตัว container เอง
-            if (target && target.id && target.id !== 'svg-container') {{
-                // ส่งค่ากลับไปที่ Streamlit
-                window.parent.postMessage({{
-                    type: 'streamlit:setComponentValue',
-                    value: target.id
-                }}, '*');
-            }}
-        }});
+        // ฟังก์ชันส่งค่ากลับ
+        const getClickedId = () => {{
+            return new Promise((resolve) => {{
+                document.getElementById('svg-container').addEventListener('click', (e) => {{
+                    const target = e.target.closest('[id]');
+                    if (target && target.id && target.id !== 'svg-container') {{
+                        resolve(target.id);
+                    }}
+                }}, {{once: true}}); // ทำงานครั้งเดียวแล้วจบ
+            }});
+        }};
     </script>
     """
+    
+    # ใช้ st_javascript เพื่อรัน JS และรับค่ากลับมาที่ Python
+    clicked_id = st_javascript(f"""
+        (function() {{
+            const container = document.getElementById('svg-container');
+            // ส่วนนี้เป็น Logic ในการคืนค่า ID ออกไปที่ Streamlit
+            return window.lastClickedId || null;
+        }})();
+    """)
     # แสดงค่า ID ที่คลิกล่าสุดออกมาที่หน้าจอ (เพื่อเช็ค)
     res = components.html(html_code, height=600, scrolling=True)
     return res
