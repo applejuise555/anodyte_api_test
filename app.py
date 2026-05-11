@@ -7,6 +7,8 @@ import plotly.graph_objects as go
 import math
 from plotly.subplots import make_subplots
 import time
+import streamlit as st
+import streamlit.components.v1 as components
 
 # 1. ตั้งค่า Timezone (UTC +7)
 ICT = timezone(timedelta(hours=7))
@@ -93,6 +95,31 @@ def get_quarter_range(year, quarter):
     else:
         end_date = datetime(year, end_month + 1, 1) - timedelta(days=1)
     return start_date, end_date
+
+def render_svg_map(svg_file_path):
+    with open(svg_file_path, "r", encoding="utf-8") as f:
+        svg_content = f.read()
+
+    # JavaScript สำหรับดึง ID เมื่อมีการคลิก
+    html_code = f"""
+    <div id="svg-container" style="cursor: pointer;">
+        {svg_content}
+    </div>
+    <script>
+        const container = document.getElementById('svg-container');
+        container.addEventListener('click', function(e) {{
+            const target = e.target.closest('rect, circle, path, g');
+            if (target && target.id) {{
+                // ส่ง ID กลับไปที่ Streamlit
+                window.parent.postMessage({{
+                    type: 'streamlit:setComponentValue',
+                    value: target.id
+                }}, '*');
+            }}
+        }});
+    </script>
+    """
+    return components.html(html_code, height=600, scrolling=True)
 
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
@@ -368,50 +395,75 @@ if menu == "Dashboard":
             pass
 
 # ================= RECORD PAGE =================
-elif menu == "บันทึกข้อมูลการผลิต":
-    st.title("📝 ระบบบันทึกข้อมูล")
+if menu == "บันทึกข้อมูลการผลิต":
+    st.title("📝 ระบบบันทึกข้อมูล (Interactive Map)")
+    
+    # แสดงผังบ่อที่ด้านบนเพื่อให้ User คลิก
+    st.subheader("📍 คลิกที่บ่อในผังเพื่อเลือกรายการ")
+    clicked_id = render_svg_map("ผังบ่อplain.svg")
+
     tab_main = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig System)"])
 
     # --- Tab 1: บ่อสี ---
     with tab_main[0]:
-        st.header("🎨 บันทึกข้อมูลบ่อสี")
-        color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
+        color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color") [cite: 155]
+        
+        # กำหนดชื่อบ่อจาก ID ที่คลิก (ถ้ามีการคลิก)
+        default_tank = None
+        if clicked_id and clicked_id in color_tanks:
+            default_tank = clicked_id
+            st.success(f"คุณเลือก: **{clicked_id}**")
+
         if color_tanks:
-            selected_tank_name = st.selectbox("เลือกบ่อสี", list(color_tanks.keys()))
-            detected_color = TANK_COLOR_MAP.get(selected_tank_name, "Black")
-            render_color_bar(detected_color)
-            with st.form("color_log_form", clear_on_submit=True): # เพิ่ม clear_on_submit
-                ph = st.number_input("ค่า pH", step=0.1, format="%.2f")
-                temp = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
+            # ใช้ค่าที่คลิกเป็นตัวเลือกเริ่มต้นใน Selectbox
+            tank_list = list(color_tanks.keys())
+            index = tank_list.index(default_tank) if default_tank in tank_list else 0
+            selected_tank_name = st.selectbox("ยืนยันบ่อสี", tank_list, index=index)
+            
+            detected_color = TANK_COLOR_MAP.get(selected_tank_name, "Black") [cite: 110, 156]
+            render_color_bar(detected_color) [cite: 112, 113]
+
+            with st.form("color_log_form", clear_on_submit=True): [cite: 156]
+                ph = st.number_input("ค่า pH", step=0.1, format="%.2f") [cite: 156]
+                temp = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f") [cite: 156]
                 if st.form_submit_button("บันทึกค่า"):
-                    supabase.table("color_tank_logs").insert({
+                    supabase.table("color_tank_logs").insert({ [cite: 157]
                         "tank_id": color_tanks[selected_tank_name], 
                         "ph_value": ph, "temperature": temp, 
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
-                    st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
+                    st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ") [cite: 158]
                     time.sleep(1.5)
-                    st.rerun()    # รีเฟรชหน้าเพื่อเคลียร์ค่า
+                    st.rerun()
 
     # --- Tab 2: บ่ออโนไดซ์ ---
     with tab_main[1]:
-        st.header("🧪 บันทึกข้อมูลบ่ออโนไดซ์")
-        ano_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
+        ano_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize") [cite: 158, 159]
+        
+        # กรณีคลิกบ่ออโนไดซ์ (เช่น AnodizedPPool1)
+        default_ano = None
+        if clicked_id and clicked_id in ano_tanks:
+            default_ano = clicked_id
+            st.success(f"คุณเลือก: **{clicked_id}**")
+
         if ano_tanks:
-            sel_ano = st.selectbox("เลือกบ่ออโนไดซ์", list(ano_tanks.keys()))
-            with st.form("ano_form", clear_on_submit=True): # เพิ่ม clear_on_submit
-                ph_a = st.number_input("ค่า pH", step=0.01, format="%.2f")
-                temp_a = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
-                den_a = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
-                if st.form_submit_button("บันทึกข้อมูลอโนไดซ์"):
-                    supabase.table("anodize_tank_logs").insert({
+            ano_list = list(ano_tanks.keys())
+            idx_ano = ano_list.index(default_ano) if default_ano in ano_list else 0
+            sel_ano = st.selectbox("ยืนยันบ่ออโนไดซ์", ano_list, index=idx_ano)
+            
+            with st.form("ano_form", clear_on_submit=True): [cite: 159]
+                ph_a = st.number_input("ค่า pH", step=0.01, format="%.2f") [cite: 159]
+                temp_a = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f") [cite: 159]
+                den_a = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f") [cite: 159]
+                if st.form_submit_button("บันทึกข้อมูลอโนไดซ์"): [cite: 160]
+                    supabase.table("anodize_tank_logs").insert({ [cite: 160]
                         "tank_id": ano_tanks[sel_ano], "ph_value": ph_a,
                         "temperature": temp_a, "density": den_a,
-                        "recorded_at": datetime.now(ICT).isoformat()
+                        "recorded_at": datetime.now(ICT).isoformat() [cite: 161]
                     }).execute()
-                    st.success("บันทึกข้อมูลอโนไดซ์สำเร็จ")
+                    st.success("บันทึกข้อมูลอโนไดซ์สำเร็จ") [cite: 161]
                     time.sleep(1.5)
-                    st.rerun()    # รีเฟรชหน้าเพื่อเคลียร์ค่า
+                    st.rerun()
 
     # --- Tab หลัก 3: ระบบงานจิ๊ก (Jig System) ---
     with tab_main[2]:
