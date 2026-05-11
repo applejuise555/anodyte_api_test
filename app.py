@@ -104,57 +104,65 @@ def render_svg_map(svg_file_path):
         svg_content = f.read()
 
     html_code = f"""
+    <!DOCTYPE html>
     <html>
     <body>
-        <style>
-            svg {{
-                width: 100%;
-                height: auto;
-            }}
 
-            svg text,
-            svg tspan {{
-                pointer-events: none !important;
-            }}
+    <style>
+        svg {{
+            width: 100%;
+            height: auto;
+        }}
 
-            [id] {{
-                cursor: pointer;
-            }}
+        svg text {{
+            pointer-events: none;
+        }}
 
-            [id]:hover {{
-                opacity: 0.7;
-            }}
-        </style>
+        [id] {{
+            cursor: pointer;
+        }}
 
-        {svg_content}
+        [id]:hover {{
+            opacity: 0.7;
+        }}
+    </style>
 
-        <script>
-            const elements = document.querySelectorAll('[id]');
+    {svg_content}
 
-            elements.forEach(el => {{
-                el.addEventListener('click', function() {{
-                    const clickedId = this.id;
+    <script>
+        const elements = document.querySelectorAll("[id]");
 
-                    console.log("Clicked:", clickedId);
+        elements.forEach(el => {{
+            el.addEventListener("click", function() {{
+                const tankId = this.id;
 
-                    // ส่งค่ากลับ Streamlit
-                    window.parent.postMessage({{
-                        type: "streamlit:setComponentValue",
-                        value: clickedId
-                    }}, "*");
-                }});
+                console.log("CLICK:", tankId);
+
+                // ส่งค่าเข้า localStorage
+                localStorage.setItem("clicked_tank", tankId);
+
+                // แจ้ง Streamlit rerun
+                window.parent.postMessage({{
+                    type: "streamlit:setComponentValue",
+                    value: tankId
+                }}, "*");
             }});
-        </script>
+        }});
+    </script>
+
     </body>
     </html>
     """
 
-    clicked_value = components.html(
-        html_code,
-        height=600
-    )
+    components.html(html_code, height=650)
 
-    return clicked_value
+    clicked = st_javascript("""
+    await (async () => {
+        return localStorage.getItem("clicked_tank");
+    })()
+    """)
+
+    return clicked
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
 # ================= DASHBOARD (FULL SYSTEM VIEW) =================
