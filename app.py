@@ -413,50 +413,50 @@ if menu == "บันทึกข้อมูลการผลิต":
     tab_main = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig System)"])
 
     with tab_main[0]:
-        color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
-        tank_list = list(color_tanks.keys())
-        ค้นหาบ่อที่ตรงกัน
-        default_index = 0
-        
-        if clean_clicked_id in tank_list:
-            default_index = tank_list.index(clean_clicked_id)
-            st.success(f"📍 บ่อที่เลือกจากผัง: **{clean_clicked_id}**")
-        elif clean_clicked_id:
-            st.warning(f"⚠️ คลิกโดน ID '{clean_clicked_id}' แต่ไม่มีในระบบบ่อสี")
+    color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
+    tank_list = list(color_tanks.keys())
 
-        selected_tank_name = st.selectbox("ยืนยันบ่อสี", tank_list, index=default_index)
-        # ... ต่อด้วยส่วนฟอร์มบันทึกข้อมูล ...
-        
-        # กำหนดชื่อบ่อจาก ID ที่คลิก (ถ้ามีการคลิก)
-        default_tank = None
-        if clicked_id and clicked_id in color_tanks:
-            default_tank = clicked_id
-            st.success(f"คุณเลือก: **{clicked_id}**")
+    # 🔥 ทำความสะอาด ID ที่คลิกจาก SVG
+    clean_clicked_id = None
+    if clicked_id:
+        clean_clicked_id = str(clicked_id).strip()
 
-        if color_tanks:
-            # ใช้ค่าที่คลิกเป็นตัวเลือกเริ่มต้นใน Selectbox
-            tank_list = list(color_tanks.keys())
-            index = tank_list.index(default_tank) if default_tank in tank_list else 0
-            selected_tank_name = st.selectbox("ยืนยันบ่อสี", tank_list, index=index)
-            
-            detected_color = TANK_COLOR_MAP.get(selected_tank_name, "Black")
-            render_color_bar(detected_color) 
+    default_index = 0
 
-            # --- ลบของเก่าออกแล้วใช้ชุดนี้แทน (ลบช่องว่างส่วนเกินออกแล้ว) ---
-            with st.form("color_log_form", clear_on_submit=True):
-                ph = st.number_input("ค่า pH", step=0.1, format="%.2f")
-                temp = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
-                if st.form_submit_button("บันทึกค่า"):
-                    supabase.table("color_tank_logs").insert({
-                        "tank_id": color_tanks[selected_tank_name], 
-                        "ph_value": ph, 
-                        "temperature": temp, 
-                        "recorded_at": datetime.now(ICT).isoformat()
-                    }).execute()
-                    st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
-                    time.sleep(1.5)
-                    st.rerun()
+    # 🔥 ถ้าคลิกบ่อจากผังแล้วมีในระบบ
+    if clean_clicked_id in tank_list:
+        default_index = tank_list.index(clean_clicked_id)
+        st.success(f"📍 บ่อที่เลือกจากผัง: {clean_clicked_id}")
 
+    elif clean_clicked_id:
+        st.warning(f"⚠️ คลิกโดน ID '{clean_clicked_id}' แต่ไม่มีในระบบบ่อสี")
+
+    # 🔥 selectbox จะเด้งไปบ่อที่คลิกอัตโนมัติ
+    selected_tank_name = st.selectbox(
+        "ยืนยันบ่อสี",
+        tank_list,
+        index=default_index
+    )
+
+    detected_color = TANK_COLOR_MAP.get(selected_tank_name, "Black")
+    render_color_bar(detected_color)
+
+    # 🔥 ฟอร์มกรอกข้อมูล
+    with st.form("color_log_form", clear_on_submit=True):
+        ph = st.number_input("ค่า pH", step=0.1, format="%.2f")
+        temp = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
+
+        if st.form_submit_button("บันทึกค่า"):
+            supabase.table("color_tank_logs").insert({
+                "tank_id": color_tanks[selected_tank_name],
+                "ph_value": ph,
+                "temperature": temp,
+                "recorded_at": datetime.now(ICT).isoformat()
+            }).execute()
+
+            st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
+            time.sleep(1)
+            st.rerun()
     # --- Tab 2: บ่ออโนไดซ์ ---
     with tab_main[1]:
         ano_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
