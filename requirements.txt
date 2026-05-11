@@ -30,4 +30,4 @@ supabase
 streamlit-autorefresh
 plotly
 streamlit-image-coordinates
-streamlit-svg-map
+streamlit-svg-mapper
