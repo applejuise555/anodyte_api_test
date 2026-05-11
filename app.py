@@ -140,8 +140,6 @@ def render_svg_map(svg_file_path):
                 // เก็บลง localStorage
                 localStorage.setItem("tank_click", clicked);
 
-                // reload หน้า
-                window.parent.location.reload();
             }};
         }});
     </script>
