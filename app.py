@@ -434,7 +434,7 @@ if menu == "บันทึกข้อมูลการผลิต":
     
     # ดึงค่า ID จากการคลิก
     clicked_id = render_svg_map("ผังบ่อplain.svg")
-    st.write("clicked_id =", clicked_id)
+    st.write("CLICK =", clicked_id)
 
     tab_main = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig System)"])
 
