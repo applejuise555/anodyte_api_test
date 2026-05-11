@@ -104,7 +104,6 @@ def render_svg_map(svg_file_path):
         svg_content = f.read()
 
     html_code = f"""
-    <!DOCTYPE html>
     <html>
     <body>
 
@@ -114,10 +113,6 @@ def render_svg_map(svg_file_path):
             height: auto;
         }}
 
-        svg text {{
-            pointer-events: none;
-        }}
-
         [id] {{
             cursor: pointer;
         }}
@@ -125,28 +120,29 @@ def render_svg_map(svg_file_path):
         [id]:hover {{
             opacity: 0.7;
         }}
+
+        svg text {{
+            pointer-events: none;
+        }}
     </style>
 
     {svg_content}
 
     <script>
-        const elements = document.querySelectorAll("[id]");
+        const allItems = document.querySelectorAll("[id]");
 
-        elements.forEach(el => {{
-            el.addEventListener("click", function() {{
-                const tankId = this.id;
+        allItems.forEach(el => {{
+            el.onclick = () => {{
+                const clicked = el.id;
 
-                console.log("CLICK:", tankId);
+                console.log(clicked);
 
-                // ส่งค่าเข้า localStorage
-                localStorage.setItem("clicked_tank", tankId);
+                // เก็บลง localStorage
+                localStorage.setItem("tank_click", clicked);
 
-                // แจ้ง Streamlit rerun
-                window.parent.postMessage({{
-                    type: "streamlit:setComponentValue",
-                    value: tankId
-                }}, "*");
-            }});
+                // reload หน้า
+                window.parent.location.reload();
+            }};
         }});
     </script>
 
@@ -157,9 +153,7 @@ def render_svg_map(svg_file_path):
     components.html(html_code, height=650)
 
     clicked = st_javascript("""
-    await (async () => {
-        return localStorage.getItem("clicked_tank");
-    })()
+    localStorage.getItem("tank_click")
     """)
 
     return clicked
