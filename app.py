@@ -101,8 +101,6 @@ def get_quarter_range(year, quarter):
     return start_date, end_date
 #============================================================================================
 def render_tank_map():
-    # แก้ไข HTML ให้ส่งค่าผ่าน window.parent.location
-    # เพื่อเลี่ยงปัญหา Sandbox ของ st_javascript
     html_code = f"""
     <style>
         .plant-map {{ position:relative; width:1100px; height:720px; background:#fff; border:2px solid #ccc; margin:auto; overflow:hidden; font-family: sans-serif; }}
@@ -117,13 +115,15 @@ def render_tank_map():
 
     <script>
         function clickTank(name) {{
-            // ส่งข้อมูลกลับไปที่ Streamlit ผ่าน query param (วิธีที่เสถียรที่สุดเมื่อ iframe มีปัญหา)
-            const url = new URL(window.location.href);
-            url.searchParams.set('selected_tank', name);
-            window.parent.location.href = url.href;
+            // ส่งข้อความไปที่หน้าหลัก (วิธีนี้ไม่โดน Sandbox Block)
+            window.parent.postMessage({{
+                type: 'streamlit:setComponentValue', // รูปแบบมาตรฐานของ Streamlit
+                value: name
+            }}, '*');
         }}
     </script>
     """
+    # ใช้ components.html ปกติ แต่เราจะใช้ st_javascript ดักรับข้างนอก
     components.html(html_code, height=750)
 #=================================================================================
 @st.dialog("บันทึกข้อมูลบ่อ")
