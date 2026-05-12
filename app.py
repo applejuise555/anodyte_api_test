@@ -283,6 +283,62 @@ def render_tank_map():
             AnodizedPPool1
         </div>
 
+        <!-- DARK TITANIUM -->
+
+        <div class="tank"
+            style="left:310px;top:120px;width:80px;height:40px;background:#666;">
+            13.DarkTitanium
+        </div>
+        
+        <div class="tank"
+            style="left:390px;top:120px;width:80px;height:40px;background:#666;">
+        </div>
+        
+        <!-- ORANGE OIL -->
+        
+        <div class="tank"
+            style="left:625px;top:120px;width:80px;height:40px;background:#dd6600;">
+            18.OrangeOil
+        </div>
+        
+        <div class="tank"
+            style="left:705px;top:120px;width:80px;height:40px;background:#dd6600;">
+        </div>
+        
+        <!-- RO CENTER -->
+        
+        <div class="tank ro"
+            style="left:380px;top:355px;width:85px;height:90px;">
+            RO
+        </div>
+        
+        <div class="tank ro"
+            style="left:625px;top:190px;width:90px;height:125px;">
+            RO
+        </div>
+        
+        <div class="tank ro"
+            style="left:625px;top:320px;width:90px;height:125px;">
+            RO
+        </div>
+        
+        <!-- RO RIGHT -->
+        
+        <div class="tank ro"
+            style="left:850px;top:200px;width:85px;height:110px;">
+            RO
+        </div>
+        
+        <div class="tank ro"
+            style="left:850px;top:312px;width:85px;height:114px;">
+            RO
+        </div>
+        
+        <div class="tank ro"
+            style="left:990px;top:215px;width:85px;height:80px;">
+            RO
+        </div>
+
     </div>
     """
 
