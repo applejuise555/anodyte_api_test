@@ -491,18 +491,14 @@ if menu == "Dashboard":
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
     
-    # ส่วนที่ 1: แผนผังบ่อ (Interactive)
-    st.info("💡 คลิกที่บ่อในผังด้านล่างเพื่อกรอกข้อมูล")
-    
-    # สำคัญ: ต้องมั่นใจว่า render_tank_map() คืนค่าชื่อบ่อออกมา
+    # แสดงผังบ่อและรับค่าคลิก
     clicked_tank = render_tank_map()
     
-    # ถ้ามีการคลิกบ่อ ให้เปิด Popup ทันที
+    # ตรวจสอบค่าที่ส่งกลับมาจาก JS
     if clicked_tank and clicked_tank != 0:
-        # ล้างช่องว่างเผื่อมี (เช่น " RO " -> "RO")
         clean_name = str(clicked_tank).strip()
-        if clean_name != "RO": 
-            record_modal(clean_name) # เรียกใช้ฟังก์ชันที่เรานิยามไว้ในขั้นตอนที่ 1
+        if clean_name != "RO":
+            record_modal(clean_name) # เปิด Dialog ทันที
 
     st.markdown("---")
 
