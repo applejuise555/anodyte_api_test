@@ -101,28 +101,93 @@ def get_quarter_range(year, quarter):
     return start_date, end_date
 #============================================================================================
 def render_tank_map():
-    def t_div(name, top, left, w, h, bg, extra=""):
-        # ใช้ window.parent.postMessage ส่งแค่ String ชื่อบ่อออกไป
+
+    def t_div(name, top, left, w, h, bg, text_color="white"):
         return f"""
-        <div class="tank {extra}" 
-             onclick="window.parent.postMessage('{name}', '*')"
-             style="left:{left}px;top:{top}px;width:{w}px;height:{h}px;background:{bg};cursor:pointer;">
+        <div class="tank"
+            onclick="window.location.href='?tank={name}'"
+            style="
+                left:{left}px;
+                top:{top}px;
+                width:{w}px;
+                height:{h}px;
+                background:{bg};
+                color:{text_color};
+            ">
             {name}
-        </div>"""
+        </div>
+        """
 
     html_code = f"""
     <style>
-        .plant-map {{ position:relative; width:1100px; height:720px; background:#fff; border:2px solid #ccc; margin:auto; overflow:hidden; font-family: sans-serif; }}
-        .tank {{ position:absolute; color:white; font-weight:bold; font-size:12px; border-radius:2px; display:flex; align-items:center; justify-content:center; text-align:center; border:1px solid #444; box-sizing:border-box; transition: 0.1s; }}
-        .tank:hover {{ opacity: 0.8; border: 2px solid yellow !important; }}
+
+    .plant-map {{
+        position:relative;
+        width:1100px;
+        height:720px;
+        background:#f5f5f5;
+        border:2px solid #999;
+        margin:auto;
+        overflow:hidden;
+    }}
+
+    .tank {{
+        position:absolute;
+        border:1px solid #444;
+        border-radius:4px;
+        font-size:11px;
+        font-weight:bold;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        text-align:center;
+        cursor:pointer;
+        transition:0.15s;
+        box-sizing:border-box;
+        font-family:sans-serif;
+    }}
+
+    .tank:hover {{
+        transform:scale(1.05);
+        border:2px solid yellow;
+        z-index:999;
+    }}
+
     </style>
+
     <div class="plant-map">
+
         {t_div("5Black", 10, 10, 70, 70, "#111")}
-        {t_div("2Red", 10, 140, 65, 70, "red")}
-        {t_div("3Violet", 10, 205, 65, 70, "purple")}
-        {t_div("11Gold", 415, 520, 80, 160, "#cc9900")}
+        {t_div("2Red", 10, 145, 65, 70, "red")}
+        {t_div("3Violet", 10, 210, 65, 70, "purple")}
+        {t_div("8Green", 10, 300, 70, 70, "green")}
+        {t_div("17Black", 10, 380, 80, 70, "#222")}
+        {t_div("15Gold", 10, 485, 70, 70, "#D4AF37", "black")}
+        {t_div("9Orange", 10, 545, 70, 70, "orange", "black")}
+        {t_div("10LightBlue", 10, 650, 70, 70, "#87CEFA", "black")}
+        {t_div("6BananaLeafGreen", 10, 715, 70, 70, "#9ACD32", "black")}
+        {t_div("16Blue", 10, 795, 70, 70, "blue")}
+        {t_div("4DarkBlue", 10, 870, 70, 70, "#00008B")}
+
+        {t_div("13DarkTitanium", 85, 340, 120, 40, "#4A4E69")}
+        {t_div("18OrangeOil", 90, 655, 120, 40, "#FF8C00")}
+
+        {t_div("20Black", 220, 270, 120, 45, "#111")}
+        {t_div("1DarkRedB", 265, 250, 150, 45, "#8B0000")}
+        {t_div("7Pink", 240, 420, 120, 80, "pink", "black")}
+
+        {t_div("11Gold", 390, 540, 90, 170, "#D4AF37", "black")}
+
+        {t_div("1DarkRedA", 220, 790, 150, 45, "#8B0000")}
+        {t_div("19Copper", 300, 790, 150, 55, "#B87333")}
+        {t_div("12Titanium", 370, 790, 150, 45, "#808080")}
+        {t_div("14RoseGold", 420, 790, 150, 45, "#B76E79")}
+
+        {t_div("Anodize tank 1", 630, 930, 150, 60, "#00BFFF")}
+
     </div>
     """
+
     components.html(html_code, height=750)
 # --- 4. ฟังก์ชันรับค่า Input (Dialog) - แก้ไข Indent เรียบร้อย ---
 @st.dialog("บันทึกข้อมูลบ่อ")
@@ -173,6 +238,7 @@ def record_modal(tank_name):
                         }).execute()
                         st.success("บันทึกสำเร็จ!")
                         st.session_state.selected_tank = None
+                        st.query_params.clear()
                         time.sleep(1)
                         st.rerun()
                     else:
@@ -460,24 +526,10 @@ if menu == "Dashboard":
 # ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
+    params = st.query_params
 
-    # ใช้ JavaScript ดักฟัง Event Message
-    # ถ้ามีการคลิกใน Iframe มันจะคืนชื่อบ่อกลับมาที่ตัวแปร v
-    v = stjs.st_javascript("""
-        await new Promise(resolve => {
-            const handler = (event) => {
-                if (typeof event.data === 'string') {
-                    window.removeEventListener('message', handler);
-                    resolve(event.data);
-                }
-            };
-            window.addEventListener('message', handler);
-        });
-    """)
-
-    # ตรวจสอบค่าที่ส่งกลับมา (stjs จะคืนค่า 0 ถ้าไม่มีอะไรส่งมา)
-    if v and v != 0:
-        st.session_state.selected_tank = v
+    if "tank" in params:
+        st.session_state.selected_tank = params["tank"]
 
     # ถ้าใน Session มีค่าบ่อที่เลือกไว้ ให้เปิด Modal ค้างไว้เลย
     if st.session_state.get("selected_tank"):
