@@ -102,7 +102,7 @@ def get_quarter_range(year, quarter):
 #============================================================================================
 def render_tank_map():
     def t_div(name, top, left, w, h, bg, extra=""):
-        # ใช้ parent.postMessage ส่งชื่อบ่อออกไปตรงๆ
+        # ใช้ window.parent.postMessage ส่งแค่ String ชื่อบ่อออกไป
         return f"""
         <div class="tank {extra}" 
              onclick="window.parent.postMessage('{name}', '*')"
@@ -113,8 +113,8 @@ def render_tank_map():
     html_code = f"""
     <style>
         .plant-map {{ position:relative; width:1100px; height:720px; background:#fff; border:2px solid #ccc; margin:auto; overflow:hidden; font-family: sans-serif; }}
-        .tank {{ position:absolute; color:white; font-weight:bold; font-size:12px; border-radius:2px; display:flex; align-items:center; justify-content:center; text-align:center; border:1px solid #444; box-sizing:border-box; transition: 0.2s; }}
-        .tank:hover {{ opacity: 0.7; border: 3px solid yellow !important; transform: scale(1.05); z-index: 100; }}
+        .tank {{ position:absolute; color:white; font-weight:bold; font-size:12px; border-radius:2px; display:flex; align-items:center; justify-content:center; text-align:center; border:1px solid #444; box-sizing:border-box; transition: 0.1s; }}
+        .tank:hover {{ opacity: 0.8; border: 2px solid yellow !important; }}
     </style>
     <div class="plant-map">
         {t_div("5Black", 10, 10, 70, 70, "#111")}
@@ -173,7 +173,6 @@ def record_modal(tank_name):
                         }).execute()
                         st.success("บันทึกสำเร็จ!")
                         st.session_state.selected_tank = None
-                        st.query_params.clear()
                         time.sleep(1)
                         st.rerun()
                     else:
@@ -462,29 +461,30 @@ if menu == "Dashboard":
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
 
-    # ใช้ JavaScript ดักฟัง event 'message'
-    # เมื่อมีการคลิกบ่อใน iframe มันจะส่งชื่อบ่อมาที่นี่
-    clicked_name = stjs.st_javascript("""
+    # ใช้ JavaScript ดักฟัง Event Message
+    # ถ้ามีการคลิกใน Iframe มันจะคืนชื่อบ่อกลับมาที่ตัวแปร v
+    v = stjs.st_javascript("""
         await new Promise(resolve => {
-            window.addEventListener('message', (event) => {
+            const handler = (event) => {
                 if (typeof event.data === 'string') {
+                    window.removeEventListener('message', handler);
                     resolve(event.data);
                 }
-            }, { once: true });
+            };
+            window.addEventListener('message', handler);
         });
     """)
 
-    # ถ้ามีค่าส่งมา ให้เก็บใส่ session_state ไว้กันหายตอน Rerun
-    if clicked_name and clicked_name != 0:
-        st.session_state.selected_tank = clicked_name
+    # ตรวจสอบค่าที่ส่งกลับมา (stjs จะคืนค่า 0 ถ้าไม่มีอะไรส่งมา)
+    if v and v != 0:
+        st.session_state.selected_tank = v
 
-    # ตรวจสอบว่าใน session_state มีการเลือกบ่อไว้ไหม ถ้ามีให้เปิด Modal
+    # ถ้าใน Session มีค่าบ่อที่เลือกไว้ ให้เปิด Modal ค้างไว้เลย
     if st.session_state.get("selected_tank"):
         record_modal(st.session_state.selected_tank)
 
-    st.info("💡 คลิกที่ชื่อบ่อในแผนผังเพื่อบันทึกข้อมูล")
+    st.info("💡 คลิกที่ชื่อบ่อเพื่อบันทึกข้อมูล")
     render_tank_map()
-    st.markdown("---")
     
     st.subheader("🛠️ การจัดการจิ๊กและสินค้า")
     sub_prod, sub_jig, sub_log = st.tabs(["📦 1. ลงทะเบียนสินค้า", "🛠️ 2. ลงทะเบียนจิ๊ก", "⚡ 3. บันทึกผลผลิต"])
