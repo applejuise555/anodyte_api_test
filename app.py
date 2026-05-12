@@ -105,10 +105,7 @@ def render_tank_map():
     def t_div(name, top, left, w, h, bg, text_color="white"):
         return f"""
         <div class="tank"
-            onclick="window.parent.postMessage({{
-                type: 'tank_click',
-                tank: '{name}'
-        }}, '*')"
+            onclick="sendTank('{name}')"
             style="
                 left:{left}px;
                 top:{top}px;
@@ -122,6 +119,15 @@ def render_tank_map():
         """
 
     html_code = f"""
+    <script>
+    function sendTank(tankName) {{
+        window.parent.postMessage({{
+            type: "streamlit:setComponentValue",
+            value: tankName
+        }}, "*");
+    }}
+    </script>
+
     <style>
 
     .plant-map {{
@@ -191,7 +197,9 @@ def render_tank_map():
     </div>
     """
 
-    components.html(html_code, height=750)
+    clicked = components.html(html_code, height=750)
+
+    return clicked
 # --- 4. ฟังก์ชันรับค่า Input (Dialog) - แก้ไข Indent เรียบร้อย ---
 @st.dialog("บันทึกข้อมูลบ่อ")
 def record_modal(tank_name):
@@ -530,11 +538,10 @@ if menu == "Dashboard":
 # ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
-    params = st.query_params
+    clicked_tank = render_tank_map()
 
-    if "tank" in params:
-        st.session_state.selected_tank = params["tank"]
-
+    if clicked_tank:
+        st.session_state.selected_tank = clicked_tank
     # ถ้าใน Session มีค่าบ่อที่เลือกไว้ ให้เปิด Modal ค้างไว้เลย
     if st.session_state.get("selected_tank"):
         record_modal(st.session_state.selected_tank)
