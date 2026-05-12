@@ -104,70 +104,43 @@ def render_tank_map():
 
     def t_div(name, top, left, w, h, bg, text_color="white"):
         return f"""
-        <div class="tank"
-            onclick="sendTank(this.innerText)"
+        <button
+            onclick="selectTank('{name}')"
             style="
+                position:absolute;
                 left:{left}px;
                 top:{top}px;
                 width:{w}px;
                 height:{h}px;
                 background:{bg};
                 color:{text_color};
+                border:1px solid #444;
+                border-radius:6px;
+                font-size:11px;
+                font-weight:bold;
+                cursor:pointer;
             ">
             {name}
-        </div>
+        </button>
         """
 
     html_code = f"""
     <script>
-    function sendTank(tankName) {{
-        window.parent.postMessage({{
-            type: "streamlit:setComponentValue",
-            value: tankName
-        }}, "*");
+    function selectTank(tankName) {{
+        const url = new URL(window.parent.location);
+        url.searchParams.set("tank", tankName);
+        window.parent.location.href = url.toString();
     }}
     </script>
 
-    <style>
-
-    .plant-map {{
+    <div style="
         position:relative;
         width:1100px;
         height:720px;
         background:#f5f5f5;
         border:2px solid #999;
         margin:auto;
-        overflow:hidden;
-        pointer-events:auto;
-    }}
-
-    .tank {{
-        position:absolute;
-        z-index:10;
-        user-select:none;
-        border:1px solid #444;
-        border-radius:4px;
-        font-size:11px;
-        font-weight:bold;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        text-align:center;
-        cursor:pointer;
-        transition:0.15s;
-        box-sizing:border-box;
-        font-family:sans-serif;
-    }}
-
-    .tank:hover {{
-        transform:scale(1.05);
-        border:2px solid yellow;
-        z-index:999;
-    }}
-
-    </style>
-
-    <div class="plant-map">
+    ">
 
         {t_div("5Black", 10, 10, 70, 70, "#111")}
         {t_div("2Red", 10, 145, 65, 70, "red")}
@@ -181,8 +154,8 @@ def render_tank_map():
         {t_div("16Blue", 10, 795, 70, 70, "blue")}
         {t_div("4DarkBlue", 10, 870, 70, 70, "#00008B")}
 
-        {t_div("13DarkTitanium", 85, 340, 120, 40, "#4A4E69")}
-        {t_div("18OrangeOil", 90, 655, 120, 40, "#FF8C00")}
+        {t_div("13DarkTitanium", 85, 340, 140, 55, "#4A4E69")}
+        {t_div("18OrangeOil", 90, 655, 140, 55, "#FF8C00")}
 
         {t_div("20Black", 220, 270, 120, 45, "#111")}
         {t_div("1DarkRedB", 265, 250, 150, 45, "#8B0000")}
@@ -201,18 +174,10 @@ def render_tank_map():
     """
 
     components.html(html_code, height=750)
-    
-    clicked = st_javascript("""
-    await new Promise((resolve) => {
-        window.addEventListener("message", (event) => {
-            if (event.data.type === "streamlit:setComponentValue") {
-                resolve(event.data.value);
-            }
-        }, {once:true});
-    })
-    """)
-    
-    return clicked
+
+    query = st.query_params
+
+    return query.get("tank")
 # --- 4. ฟังก์ชันรับค่า Input (Dialog) - แก้ไข Indent เรียบร้อย ---
 @st.dialog("บันทึกข้อมูลบ่อ")
 def record_modal(tank_name):
