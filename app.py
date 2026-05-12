@@ -101,6 +101,14 @@ def get_quarter_range(year, quarter):
     return start_date, end_date
 #============================================================================================
 def render_tank_map():
+    def t_div(name, top, left, w, h, bg, extra=""):
+        return f"""
+        <div class="tank {extra}"
+             onclick="send('{name}')"
+             style="left:{left}px;top:{top}px;width:{w}px;height:{h}px;background:{bg};cursor:pointer;">
+            {name}
+        </div>
+        """
     html = f"""
         <script>
         function sendValue(name) {{
