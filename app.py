@@ -174,17 +174,16 @@ def render_tank_map():
         {t_div("18OrangeOil", 100, 670, 45, 45, "#d35400", "oil")}
     </div>
     """
-    components.html(html, height=750)
+    clicked_tank = components.html(html, height=750)
     return None
     
     clicked_tank = stjs.st_javascript("""
     document.querySelectorAll('.tank').forEach(el => {
-        el.onclick = () => {
-            window.parent.postMessage({
-                isStreamlitMessage: true,
-                type: "streamlit:setComponentValue",
-                value: el.innerText
-            }, "*");
+        onclick="window.parent.postMessage({
+            isStreamlitMessage: true,
+            type: 'streamlit:setComponentValue',
+            value: '{name}'
+        }, '*')"
         }
     });
     """)
