@@ -104,182 +104,150 @@ def render_tank_map():
     st.markdown("""
     <style>
 
-    .map-wrap{
+    .plant-map{
         position:relative;
         width:1100px;
-        height:700px;
+        height:720px;
         background:#e9e9e9;
+        border:2px solid #999;
         margin:auto;
-        border-radius:10px;
+        overflow:hidden;
     }
 
-    .tank-btn button{
-        width:100% !important;
-        height:100% !important;
-        border-radius:0px !important;
-        border:none !important;
-        font-weight:bold !important;
-        font-size:14px !important;
-        color:white !important;
+    .tank{
+        position:absolute;
+        border:none;
+        color:white;
+        font-weight:bold;
+        font-size:16px;
+        cursor:pointer;
+        border-radius:0px;
     }
 
-    div[data-testid="column"]{
-        padding:0 !important;
+    .ro{
+        background:#d7ffff;
+        color:black;
+    }
+
+    .gray{
+        background:#6f6f6f;
+    }
+
+    .vertical{
+        writing-mode:vertical-rl;
+        text-orientation:mixed;
+    }
+
+    iframe{
+        height:0px !important;
     }
 
     </style>
     """, unsafe_allow_html=True)
 
-    clicked = None
+    clicked = st_javascript("""
+    async function(){
 
-    # ===== helper =====
+        function makeTank(id,text,left,top,width,height,color,extra=""){
+            return `
+            <button
+                onclick="window.parent.postMessage(
+                    {type:'streamlit:setComponentValue',value:'${id}'},
+                    '*'
+                )"
+                class="tank ${extra}"
+                style="
+                    left:${left}px;
+                    top:${top}px;
+                    width:${width}px;
+                    height:${height}px;
+                    background:${color};
+                ">
+                ${text}
+            </button>
+            `
+        }
 
-    def tank(name, color, x, y, w=70, h=70, text_color="white"):
+        let html = `
+        <div class="plant-map">
 
-        nonlocal clicked
+            ${makeTank("5Black","5.Black",0,0,80,80,"#111")}
+            ${makeTank("2Red","2.Red",140,0,70,80,"red")}
+            ${makeTank("3Violet","3.Violet",210,0,60,80,"purple")}
+            ${makeTank("8Green","8.Green",295,0,70,80,"green")}
+            ${makeTank("17Black","17.Black",365,0,65,80,"#222")}
 
-        st.markdown(
-            f"""
-            <div style="
-                position:absolute;
-                left:{x}px;
-                top:{y}px;
-                width:{w}px;
-                height:{h}px;
-                z-index:1;
-            ">
-            """,
-            unsafe_allow_html=True
-        )
+            ${makeTank("15Gold","15.Gold",455,0,70,80,"#d4af00")}
+            ${makeTank("9Orange","9.Orange",525,0,65,80,"orange")}
 
-        col = st.columns([1])[0]
+            ${makeTank("10LightBlue","10.Light Blue",620,0,70,80,"cyan")}
+            ${makeTank("6BananaLeafGreen","6.Banana",690,0,70,80,"#7fff00")}
 
-        with col:
-            st.markdown(
-                f"""
-                <style>
-                div[data-testid="stButton"] button[kind="secondary"] {{
-                    background:{color};
-                    color:{text_color};
-                }}
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
+            ${makeTank("16Blue","16.Blue",785,0,70,80,"blue")}
+            ${makeTank("4DarkBlue","4.Dark Blue",855,0,65,80,"darkblue")}
 
-            if st.button(name, key=name):
-                clicked = name
+            ${makeTank("RO1","RO",140,82,130,65,"#d7ffff","ro")}
+            ${makeTank("RO2","RO",455,82,130,65,"#d7ffff","ro")}
+            ${makeTank("RO3","RO",785,82,130,65,"#d7ffff","ro")}
 
-        st.markdown("</div>", unsafe_allow_html=True)
+            ${makeTank("DarkTitanium","DarkTitanium",310,120,80,40,"#7d6666")}
+            ${makeTank("DarkTitanium2","",390,120,80,40,"#7d6666")}
 
-    # ======================================================
-    # TOP
-    # ======================================================
+            ${makeTank("OrangeOil","OrangeOil",625,120,80,40,"#dd6600")}
+            ${makeTank("OrangeOil2","",705,120,80,40,"#dd6600")}
 
-    tank("5Black", "#111111", 0, 0, 80, 80)
+            ${makeTank("Almite","AlmiteSealerLiquid",0,180,60,275,"#777","vertical")}
 
-    tank("2Red", "#ff0000", 140, 0, 65, 80, "black")
-    tank("3Violet", "#800080", 208, 0, 65, 80)
+            ${makeTank("20Black","20.Black",270,200,80,50,"#111")}
+            ${makeTank("20Black2","",350,200,40,50,"#111")}
 
-    tank("8Green", "#008000", 295, 0, 70, 80)
-    tank("17Black", "#111111", 368, 0, 65, 80)
+            ${makeTank("1DarkRedB","1.DarkRed",270,252,80,35,"darkred")}
+            ${makeTank("1DarkRedB2","",350,252,40,35,"darkred")}
 
-    tank("15Gold", "#d4aa00", 456, 0, 70, 80)
-    tank("9Orange", "#ff7a00", 529, 0, 65, 80)
+            ${makeTank("7Pink","7.Pink",380,210,85,130,"magenta","vertical")}
 
-    tank("10LightBlue", "#00e5ff", 620, 0, 65, 80, "black")
-    tank("6BananaLeafGreen", "#7fff00", 688, 0, 80, 80, "black")
+            ${makeTank("RO4","RO",380,355,85,90,"#d7ffff","ro")}
 
-    tank("16Blue", "#0000ff", 785, 0, 65, 80)
-    tank("4DarkBlue", "#00008b", 853, 0, 65, 80)
+            ${makeTank("HotSeal","HotSeal H60",540,190,85,130,"#777")}
+            ${makeTank("11Gold","11.Gold",540,325,85,120,"#d4af00","vertical")}
 
-    # ======================================================
-    # RO
-    # ======================================================
+            ${makeTank("RO5","RO",625,190,90,125,"#d7ffff","ro")}
+            ${makeTank("RO6","RO",625,320,90,125,"#d7ffff","ro")}
 
-    tank("RO1", "#c8f5f7", 140, 82, 133, 65, "black")
+            ${makeTank("1DarkRedA","1.Dark Red",785,200,65,55,"darkred")}
+            ${makeTank("19Copper","19.Copper",785,257,65,55,"#d9a27f")}
+            ${makeTank("12Titanium","12.Titanium",785,314,65,55,"#777")}
+            ${makeTank("14RoseGold","14.Rose Gold",785,371,65,55,"plum")}
 
-    tank("RO2", "#c8f5f7", 456, 82, 138, 65, "black")
+            ${makeTank("RO7","RO",850,200,85,110,"#d7ffff","ro")}
+            ${makeTank("RO8","RO",850,312,85,114,"#d7ffff","ro")}
 
-    tank("RO3", "#c8f5f7", 785, 82, 133, 65, "black")
+            ${makeTank("Sodium1","Sodium Bicarbonate",990,80,85,65,"#ccc")}
+            ${makeTank("Sodium2","Sodium Bicarbonate",990,147,85,65,"#ccc")}
 
-    # ======================================================
-    # MIDDLE
-    # ======================================================
+            ${makeTank("RO9","RO",990,215,85,80,"#d7ffff","ro")}
 
-    tank("13DarkTitanium", "#756060", 308, 150, 60, 60)
+            ${makeTank("Nitric","Nitric Acid68",960,360,110,65,"#b89b00")}
 
-    tank("18OrangeOil", "#d95f00", 625, 150, 60, 60)
+            ${makeTank("Anodize","AnodizedPPool1",890,520,140,190,"#ccc","vertical")}
 
-    # ======================================================
-    # LEFT VERTICAL
-    # ======================================================
+        </div>
+        `
 
-    tank("AlmiteSealerLiquid", "#666666", 0, 255, 60, 275)
+        let root = window.parent.document.querySelector('section.main')
 
-    # ======================================================
-    # CENTER
-    # ======================================================
+        let old = root.querySelector('#factory-map')
 
-    tank("20Black", "#111111", 270, 275, 40, 40)
-    tank("20Black2", "#111111", 312, 275, 40, 40)
+        if(old) old.remove()
 
-    tank("1DarkRedB", "#8b0000", 270, 318, 40, 40)
-    tank("1DarkRedB2", "#8b0000", 312, 318, 40, 40)
+        let div = document.createElement('div')
+        div.id='factory-map'
+        div.innerHTML = html
 
-    tank("7Pink", "#ff00ff", 380, 275, 85, 140)
+        root.prepend(div)
 
-    tank("RO4", "#c8f5f7", 380, 418, 85, 90, "black")
-
-    # ======================================================
-    # HOTSEAL
-    # ======================================================
-
-    tank("HotSealH60", "#777777", 545, 275, 85, 95)
-
-    tank("11Gold", "#d4aa00", 545, 373, 85, 135)
-
-    # ======================================================
-    # CENTER RIGHT RO
-    # ======================================================
-
-    tank("RO5", "#c8f5f7", 633, 275, 85, 115, "black")
-
-    tank("RO6", "#c8f5f7", 633, 392, 85, 116, "black")
-
-    # ======================================================
-    # RIGHT STACK
-    # ======================================================
-
-    tank("1DarkRedA", "#8b0000", 785, 282, 65, 50)
-
-    tank("19Copper", "#e6b899", 785, 335, 65, 50, "black")
-
-    tank("12Titanium", "#7d7d72", 785, 388, 65, 50)
-
-    tank("14RoseGold", "#e7a4e9", 785, 441, 65, 50, "black")
-
-    tank("RO7", "#c8f5f7", 853, 282, 85, 103, "black")
-
-    tank("RO8", "#c8f5f7", 853, 388, 85, 103, "black")
-
-    # ======================================================
-    # RIGHT SIDE
-    # ======================================================
-
-    tank("SodiumBicarbonate1", "#bfbfbf", 990, 80, 85, 65, "black")
-
-    tank("SodiumBicarbonate2", "#bfbfbf", 990, 148, 85, 65, "black")
-
-    tank("RO9", "#c8f5f7", 990, 216, 85, 85, "black")
-
-    tank("NitricAcid68", "#b29200", 995, 415, 80, 70)
-
-    # ======================================================
-    # BOTTOM RIGHT
-    # ======================================================
-
-    tank("AnodizedPPool1", "#cfcfcf", 890, 520, 145, 180, "black")
+    }
+    """)
 
     return clicked
 #=================================================================   
