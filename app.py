@@ -523,13 +523,7 @@ if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูล (Interactive Map)")
     
         # ดึงค่า ID จากการคลิก
-    new_click = render_tank_map()
-
-    if new_click is not None:
-        st.session_state["clicked_tank"] = new_click
-
-    clicked_id = st.session_state.get("clicked_tank")
-    st.write("CLICK =", clicked_id)
+    render_tank_map()
     tab_main = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig System)"])
 
     with tab_main[0]:
