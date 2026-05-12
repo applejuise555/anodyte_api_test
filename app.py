@@ -123,17 +123,17 @@ def render_tank_map():
         .oil {{ border-radius: 50% !important; }}
     </style>
     <div class="plant-map">
-        {t_div("5.Black", 10, 10, 70, 70, "#111")}
-        {t_div("2.Red", 10, 140, 65, 70, "red")}
-        {t_div("3.Violet", 10, 205, 65, 70, "purple")}
-        {t_div("8.Green", 10, 290, 65, 70, "green")}
-        {t_div("17.Black", 10, 355, 65, 70, "#222")}
-        {t_div("15.Gold", 10, 440, 65, 70, "#d4af00")}
-        {t_div("9.Orange", 10, 505, 65, 70, "orange")}
-        {t_div("10.Light Blue", 10, 600, 65, 70, "cyan", "color:black;")}
-        {t_div("6.BananaLeafGreen", 10, 665, 65, 70, "#7fff00", "color:black;")}
-        {t_div("16.Blue", 10, 760, 65, 70, "blue")}
-        {t_div("4.DarkBlue", 10, 825, 65, 70, "darkblue")}
+        {t_div("5Black", 10, 10, 70, 70, "#111")}
+        {t_div("2Red", 10, 140, 65, 70, "red")}
+        {t_div("3Violet", 10, 205, 65, 70, "purple")}
+        {t_div("8Green", 10, 290, 65, 70, "green")}
+        {t_div("17Black", 10, 355, 65, 70, "#222")}
+        {t_div("15Gold", 10, 440, 65, 70, "#d4af00")}
+        {t_div("9Orange", 10, 505, 65, 70, "orange")}
+        {t_div("10Light Blue", 10, 600, 65, 70, "cyan", "color:black;")}
+        {t_div("6BananaLeafGreen", 10, 665, 65, 70, "#7fff00", "color:black;")}
+        {t_div("16Blue", 10, 760, 65, 70, "blue")}
+        {t_div("4DarkBlue", 10, 825, 65, 70, "darkblue")}
 
         {t_div("RO", 85, 140, 130, 70, "", "ro")}
         {t_div("RO", 85, 440, 130, 70, "", "ro")}
@@ -141,29 +141,29 @@ def render_tank_map():
 
         {t_div("AlmiteSealerLiquid", 230, 10, 55, 340, "#777", "vertical")}
 
-        {t_div("20.Black", 245, 260, 75, 45, "#111")}
-        {t_div("1.DarkRedA", 295, 260, 75, 45, "darkred")}
-        {t_div("7.Pink", 245, 360, 80, 160, "magenta", "vertical")}
+        {t_div("20Black", 245, 260, 75, 45, "#111")}
+        {t_div("1DarkRedA", 295, 260, 75, 45, "darkred")}
+        {t_div("7Pink", 245, 360, 80, 160, "magenta", "vertical")}
         {t_div("RO", 415, 360, 80, 155, "", "ro")}
 
         {t_div("HotSealH60", 250, 520, 80, 160, "#666")}
-        {t_div("11.Gold", 415, 520, 80, 160, "#cc9900", "vertical")}
+        {t_div("11Gold", 415, 520, 80, 160, "#cc9900", "vertical")}
         {t_div("RO", 250, 605, 80, 160, "", "ro")}
         {t_div("RO", 415, 605, 80, 160, "", "ro")}
 
-        {t_div("1.DarkRedB", 255, 760, 60, 75, "darkred")}
-        {t_div("19.Copper", 335, 760, 60, 75, "#e9967a")}
-        {t_div("12.Titanium", 415, 760, 60, 75, "#777")}
-        {t_div("14.RoseGold", 495, 760, 60, 75, "plum")}
+        {t_div("1DarkRedB", 255, 760, 60, 75, "darkred")}
+        {t_div("19Copper", 335, 760, 60, 75, "#e9967a")}
+        {t_div("12Titanium", 415, 760, 60, 75, "#777")}
+        {t_div("14RoseGold", 495, 760, 60, 75, "plum")}
         {t_div("RO", 255, 825, 80, 155, "", "ro")}
         {t_div("RO", 415, 825, 80, 155, "", "ro")}
 
         {t_div("AnodizedPPool1", 660, 860, 130, 230, "#ccc", "vertical; color:black;")}
 
-        {t_div("13.DarkTitanium", 100, 305, 45, 45, "#555", "oil")}
-        {t_div("13.DarkTitanium", 100, 360, 45, 45, "#555", "oil")}
-        {t_div("18.OrangeOil", 100, 610, 45, 45, "#d35400", "oil")}
-        {t_div("18.OrangeOil", 100, 670, 45, 45, "#d35400", "oil")}
+        {t_div("13DarkTitanium", 100, 305, 45, 45, "#555", "oil")}
+        {t_div("13DarkTitanium", 100, 360, 45, 45, "#555", "oil")}
+        {t_div("18OrangeOil", 100, 610, 45, 45, "#d35400", "oil")}
+        {t_div("18OrangeOil", 100, 670, 45, 45, "#d35400", "oil")}
     </div>
     """
     components.html(html, height=750)
