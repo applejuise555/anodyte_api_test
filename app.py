@@ -471,10 +471,9 @@ if menu == "บันทึกข้อมูลการผลิต":
 
     # 3. ตรวจสอบการคลิก (เพิ่มเงื่อนไขเช็คค่าว่าง)
     if clicked_name and clicked_name != st.session_state.selected_tank:
+        record_modal(clicked_name)
         # บันทึกลง State เพื่อป้องกันการเรียกซ้ำซ้อน
         st.session_state.selected_tank = clicked_name
-        # บังคับเปิด Modal ทันที
-        record_modal(clicked_name)
     
     # กรณีพิเศษ: ถ้าปิด Modal แล้วต้องการให้คลิกบ่อเดิมซ้ำได้ 
     # ให้เพิ่มปุ่ม Reset หรือใช้ logic เคลียร์ค่าใน record_modal (ทำไว้ให้แล้วในฟังก์ชันเดิม)
