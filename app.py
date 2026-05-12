@@ -11,6 +11,7 @@ import streamlit as st
 from streamlit_javascript import st_javascript
 from streamlit_js_eval import streamlit_js_eval
 import streamlit.components.v1 as components
+import streamlit_javascript as stjs
 
 
 # 1. ตั้งค่า Timezone (UTC +7)
@@ -174,6 +175,18 @@ def render_tank_map():
     </div>
     """
     return components.html(html, height=750)
+    
+    clicked_tank = stjs.st_javascript("""
+    document.querySelectorAll('.tank').forEach(el => {
+        el.onclick = () => {
+            window.parent.postMessage({
+                isStreamlitMessage: true,
+                type: "streamlit:setComponentValue",
+                value: el.innerText
+            }, "*");
+        }
+    });
+    """)
 
     # ดักจับ Event คลิกและส่งกลับ Streamlit
     val = st_javascript("""
