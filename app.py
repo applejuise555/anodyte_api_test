@@ -12,6 +12,8 @@ from streamlit_javascript import st_javascript
 from streamlit_js_eval import streamlit_js_eval
 import streamlit.components.v1 as components
 import streamlit_javascript as stjs
+import plotly.graph_objects as go
+import streamlit as st
 
 
 # 1. ตั้งค่า Timezone (UTC +7)
@@ -101,92 +103,69 @@ def get_quarter_range(year, quarter):
     return start_date, end_date
 #============================================================================================
 def render_tank_map():
-    def t_div(name, top, left, w, h, bg, extra=""):
-        return f"""
-        <div class="tank {extra}"
-             onclick="send('{name}')"
-             style="left:{left}px;top:{top}px;width:{w}px;height:{h}px;background:{bg};cursor:pointer;">
-            {name}
-        </div>
-        """
-    html = f"""
-        <script>
-        function sendValue(name) {{
-            window.parent.postMessage({{
-                isStreamlitMessage: true,
-                type: "streamlit:setComponentValue",
-                value: name
-            }}, "*");
-        }}
-    </script>
-    <style>
-        .plant-map {{ position:relative; width:1100px; height:720px; background:#fff; border:2px solid #ccc; margin:auto; overflow:hidden; font-family: sans-serif; }}
-        .tank {{ position:absolute; color:white; font-weight:bold; font-size:12px; border-radius:2px; display:flex; align-items:center; justify-content:center; text-align:center; border:1px solid #444; box-sizing:border-box; transition: 0.2s; }}
-        .tank:hover {{ opacity: 0.7; border: 2px solid #000; transform: scale(1.02); z-index: 10; }}
-        .vertical {{ writing-mode:vertical-rl; text-orientation:mixed; font-size:16px; }}
-        .ro {{ background:#d7ffff !important; color:black !important; border: 1px solid #afeeee; }}
-        .chemical {{ background:#999 !important; color:black !important; font-size:10px; }}
-        .oil {{ border-radius: 50% !important; }}
-    </style>
-    <div class="plant-map">
-        {t_div("5Black", 10, 10, 70, 70, "#111")}
-        {t_div("2Red", 10, 140, 65, 70, "red")}
-        {t_div("3Violet", 10, 205, 65, 70, "purple")}
-        {t_div("8Green", 10, 290, 65, 70, "green")}
-        {t_div("17Black", 10, 355, 65, 70, "#222")}
-        {t_div("15Gold", 10, 440, 65, 70, "#d4af00")}
-        {t_div("9Orange", 10, 505, 65, 70, "orange")}
-        {t_div("10Light Blue", 10, 600, 65, 70, "cyan", "color:black;")}
-        {t_div("6BananaLeafGreen", 10, 665, 65, 70, "#7fff00", "color:black;")}
-        {t_div("16Blue", 10, 760, 65, 70, "blue")}
-        {t_div("4DarkBlue", 10, 825, 65, 70, "darkblue")}
 
-        {t_div("RO", 85, 140, 130, 70, "", "ro")}
-        {t_div("RO", 85, 440, 130, 70, "", "ro")}
-        {t_div("RO", 85, 760, 130, 70, "", "ro")}
+    tanks = [
+        # name, x, y, color, width, height
+        ("5Black", 10, 10, "#111", 80, 80),
+        ("2Red", 140, 10, "red", 80, 80),
+        ("3Violet", 205, 10, "purple", 80, 80),
+        ("8Green", 290, 10, "green", 80, 80),
+        ("17Black", 355, 10, "#222", 80, 80),
+        ("15Gold", 440, 10, "#d4af00", 80, 80),
+        ("9Orange", 505, 10, "orange", 80, 80),
+        ("10LightBlue", 600, 10, "cyan", 80, 80),
+        ("6BananaLeafGreen", 665, 10, "#7fff00", 80, 80),
+        ("16Blue", 760, 10, "blue", 80, 80),
+        ("4DarkBlue", 825, 10, "darkblue", 80, 80),
 
-        {t_div("AlmiteSealerLiquid", 230, 10, 55, 340, "#777", "vertical")}
+        ("RO", 140, 85, "#ddd", 130, 70),
+        ("RO", 440, 85, "#ddd", 130, 70),
+        ("RO", 760, 85, "#ddd", 130, 70),
 
-        {t_div("20Black", 245, 260, 75, 45, "#111")}
-        {t_div("1DarkRedA", 295, 260, 75, 45, "darkred")}
-        {t_div("7Pink", 245, 360, 80, 160, "magenta", "vertical")}
-        {t_div("RO", 415, 360, 80, 155, "", "ro")}
+        ("13DarkTitanium", 305, 100, "#555", 60, 60),
+        ("18OrangeOil", 610, 100, "#d35400", 60, 60),
+    ]
 
-        {t_div("HotSealH60", 250, 520, 80, 160, "#666")}
-        {t_div("11Gold", 415, 520, 80, 160, "#cc9900", "vertical")}
-        {t_div("RO", 250, 605, 80, 160, "", "ro")}
-        {t_div("RO", 415, 605, 80, 160, "", "ro")}
+    fig = go.Figure()
 
-        {t_div("1DarkRedB", 255, 760, 60, 75, "darkred")}
-        {t_div("19Copper", 335, 760, 60, 75, "#e9967a")}
-        {t_div("12Titanium", 415, 760, 60, 75, "#777")}
-        {t_div("14RoseGold", 495, 760, 60, 75, "plum")}
-        {t_div("RO", 255, 825, 80, 155, "", "ro")}
-        {t_div("RO", 415, 825, 80, 155, "", "ro")}
+    for name, x, y, color, w, h in tanks:
+        fig.add_trace(go.Scatter(
+            x=[x],
+            y=[y],
+            mode="markers+text",
+            marker=dict(
+                size=40,
+                color=color,
+                symbol="square"
+            ),
+            text=[name],
+            textposition="middle center",
+            customdata=[name],
+            hovertemplate=f"{name}<extra></extra>",
+            showlegend=False
+        ))
 
-        {t_div("AnodizedPPool1", 660, 860, 130, 230, "#ccc", "vertical; color:black;")}
+    fig.update_layout(
+        height=750,
+        margin=dict(l=10, r=10, t=10, b=10),
+        clickmode="event+select",
+        xaxis=dict(
+            range=[0, 1000],
+            showgrid=False,
+            zeroline=False,
+            visible=False
+        ),
+        yaxis=dict(
+            range=[0, 800],
+            showgrid=False,
+            zeroline=False,
+            visible=False
+        )
+    )
 
-        {t_div("13DarkTitanium", 100, 305, 45, 45, "#555", "oil")}
-        {t_div("13DarkTitanium", 100, 360, 45, 45, "#555", "oil")}
-        {t_div("18OrangeOil", 100, 610, 45, 45, "#d35400", "oil")}
-        {t_div("18OrangeOil", 100, 670, 45, 45, "#d35400", "oil")}
-    </div>
-    <script>
-    function send(value){{
-        window.parent.postMessage({{
-            isStreamlitMessage: true,
-            type: "streamlit:setComponentValue",
-            value: value
-        }}, "*");
-    }}
-    </script>
+    event = st.plotly_chart(fig, use_container_width=True, key="scada_map", on_select="rerun")
 
-    <style>
-    .plant-map {{ position:relative; width:1100px; height:700px; }}
-    </style>
-    """
-    components.html(html, height=750)
-    return None
+    return event
 
 #=================================================================================
 @st.dialog("บันทึกข้อมูลบ่อ")
@@ -516,16 +495,17 @@ if menu == "Dashboard":
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
     st.info("💡 คลิกที่บ่อในผังด้านล่างเพื่อเปิดฟอร์มกรอกข้อมูล pH และอุณหภูมิ")
-    
-    if "selected_tank" not in st.session_state:
-        st.session_state["selected_tank"] = None
+    # 1. แสดง map ก่อน
+    clicked = render_tank_map()
 
-    render_tank_map()
-    
-    clicked = st.session_state.get("selected_tank")
-    
-    if clicked:
-        record_modal(clicked)
+    # 2. รับค่าที่คลิก
+    if clicked and clicked.selection:
+        tank_name = clicked.selection["points"][0]["customdata"]
+        st.session_state["selected_tank"] = tank_name
+
+    # 3. ถ้ามีค่า → เปิดฟอร์ม
+    if st.session_state.get("selected_tank"):
+        record_modal(st.session_state["selected_tank"])
     st.markdown("---")
     
     st.subheader("🛠️ การจัดการจิ๊กและสินค้า")
