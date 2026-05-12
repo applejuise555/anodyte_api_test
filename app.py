@@ -181,23 +181,24 @@ def render_tank_map():
     """)
     return clicked_name
 
-# --- ส่วน Dialog สำหรับบันทึกข้อมูล ---
-# --- ฟังก์ชัน Popup สำหรับกรอกข้อมูล ---
+# --- ฟังก์ชัน Popup สำหรับกรอกข้อมูล (วางไว้ส่วนบนของไฟล์) ---
 @st.dialog("บันทึกข้อมูลบ่อ")
 def record_modal(tank_name):
     st.subheader(f"📍 บ่อ: {tank_name}")
     
-    # ตรวจสอบประเภทบ่อ
+    # ตรวจสอบว่าเป็นบ่อประเภทไหน (บ่ออโนไดซ์จะมีคำว่า Anodized ในชื่อ)
     is_anodize = "Anodized" in tank_name or "Anodize" in tank_name
     
     if not is_anodize:
-        # ฟอร์มบ่อสี
-        detected_color = TANK_COLOR_MAP.get(tank_name.replace(".", ""), "Black")
-        render_color_bar(detected_color)
-        with st.form("modal_color_form"):
+        # --- ฟอร์มสำหรับบ่อสี ---
+        # ดึงสีจากชื่อบ่อเพื่อแสดงแถบสี (เช่น "2.Red" -> "Red")
+        tank_key = tank_name.split('.')[-1].strip() if '.' in tank_name else tank_name
+        render_color_bar(tank_key) 
+        
+        with st.form("modal_color_form", clear_on_submit=True):
             ph = st.number_input("ค่า pH", step=0.1, format="%.2f", value=5.5)
             temp = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f", value=35.0)
-            if st.form_submit_button("💾 บันทึกข้อมูล"):
+            if st.form_submit_button("💾 บันทึกข้อมูลสี"):
                 color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
                 if tank_name in color_tanks:
                     supabase.table("color_tank_logs").insert({
@@ -206,18 +207,18 @@ def record_modal(tank_name):
                         "temperature": temp,
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
-                    st.success("บันทึกสำเร็จ!")
+                    st.success(f"บันทึก {tank_name} เรียบร้อย!")
                     time.sleep(1)
                     st.rerun()
                 else:
-                    st.error("ไม่พบรหัสบ่อนี้ในฐานข้อมูล")
+                    st.error("ไม่พบชื่อบ่อนี้ในระบบฐานข้อมูล")
     else:
-        # ฟอร์มบ่ออโนไดซ์
-        with st.form("modal_ano_form"):
-            ph_a = st.number_input("ค่า pH", step=0.01, format="%.2f", value=1.2)
+        # --- ฟอร์มสำหรับบ่ออโนไดซ์ ---
+        with st.form("modal_ano_form", clear_on_submit=True):
+            ph_a = st.number_input("ค่า pH", step=0.01, format="%.2f", value=1.20)
             temp_a = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f", value=20.0)
-            den_a = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f", value=1.0)
-            if st.form_submit_button("💾 บันทึกอโนไดซ์"):
+            den_a = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f", value=1.000)
+            if st.form_submit_button("💾 บันทึกข้อมูลอโนไดซ์"):
                 ano_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
                 if tank_name in ano_tanks:
                     supabase.table("anodize_tank_logs").insert({
@@ -227,7 +228,7 @@ def record_modal(tank_name):
                         "density": den_a,
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
-                    st.success("บันทึกสำเร็จ!")
+                    st.success(f"บันทึก {tank_name} เรียบร้อย!")
                     time.sleep(1)
                     st.rerun()
 #=================================================================   
@@ -510,19 +511,24 @@ if menu == "บันทึกข้อมูลการผลิต":
     
     # ส่วนที่ 1: แผนผังบ่อ (Interactive)
     st.info("💡 คลิกที่บ่อในผังด้านล่างเพื่อกรอกข้อมูล")
+    
+    # สำคัญ: ต้องมั่นใจว่า render_tank_map() คืนค่าชื่อบ่อออกมา
     clicked_tank = render_tank_map()
     
     # ถ้ามีการคลิกบ่อ ให้เปิด Popup ทันที
     if clicked_tank and clicked_tank != 0:
-        if clicked_tank != "RO": # ไม่เปิด Popup สำหรับบ่อ RO
-            record_modal(clicked_tank)
+        # ล้างช่องว่างเผื่อมี (เช่น " RO " -> "RO")
+        clean_name = str(clicked_tank).strip()
+        if clean_name != "RO": 
+            record_modal(clean_name) # เรียกใช้ฟังก์ชันที่เรานิยามไว้ในขั้นตอนที่ 1
 
     st.markdown("---")
 
-    # ส่วนที่ 2: ระบบงานจิ๊ก (เหลือไว้เป็น Tab เดียว)
+    # ส่วนที่ 2: ระบบงานจิ๊ก (ต่อจากโค้ดเดิมของคุณ...)
     st.subheader("🛠️ การจัดการจิ๊กและสินค้า")
     sub_prod, sub_jig, sub_log = st.tabs(["📦 1. ลงทะเบียนสินค้า", "🛠️ 2. ลงทะเบียนจิ๊ก", "⚡ 3. บันทึกผลผลิต"])
-
+    
+    # ... โค้ดที่เหลือใน with sub_prod, sub_jig, sub_log ของคุณ ...
     with sub_prod:
         st.subheader("เพิ่มสินค้าใหม่ลงระบบ")
         shape = st.selectbox("📐 เลือกรูปทรง", ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง"], key="shape_sel")
