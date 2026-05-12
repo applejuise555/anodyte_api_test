@@ -102,53 +102,74 @@ def get_quarter_range(year, quarter):
 import streamlit.components.v1 as components
 
 def render_tank_map():
-    # สร้าง HTML สำหรับถังแต่ละใบ โดยใช้ฟังก์ชัน JS เพื่อส่งค่ากลับไปที่ Streamlit
-    def tank_html(name, top, left, width, height, bg, extra_style=""):
-        # แปลงชื่อให้ไม่มีช่องว่างเพื่อใช้เป็น ID
-        safe_name = name.replace(".", "").replace(" ", "")
+    # Helper สำหรับสร้าง HTML Div ของแต่ละบ่อ
+    def t_div(name, top, left, w, h, bg, extra=""):
+        # ใช้ onclick เพื่อส่งชื่อบ่อกลับไปยัง Streamlit
         return f"""
-        <div class="tank {extra_style}" 
+        <div class="tank {extra}" 
              onclick="window.parent.postMessage({{type: 'tank_click', name: '{name}'}}, '*')"
-             style="left:{left}px;top:{top}px;width:{width}px;height:{height}px;background:{bg};cursor:pointer;">
+             style="left:{left}px;top:{top}px;width:{w}px;height:{h}px;background:{bg};cursor:pointer;">
             {name}
-        </div>
-        """
+        </div>"""
 
-    html_code = f"""
+    html = f"""
     <style>
-        .plant-map {{ position:relative; width:1100px; height:720px; background:#e9e9e9; border:2px solid #999; margin:auto; overflow:hidden; font-family:Arial; }}
-        .tank {{ position:absolute; color:white; font-weight:bold; font-size:14px; border-radius:4px; padding:4px; text-align:center; border:1px solid #555; box-sizing:border-box; transition: 0.3s; }}
-        .tank:hover {{ opacity: 0.8; transform: scale(1.02); border: 2px solid yellow; }}
-        .vertical {{ writing-mode:vertical-rl; text-orientation:mixed; }}
-        .ro {{ background:#d7ffff !important; color:black !important; }}
+        .plant-map {{ position:relative; width:1100px; height:720px; background:#fff; border:2px solid #ccc; margin:auto; overflow:hidden; font-family: sans-serif; }}
+        .tank {{ position:absolute; color:white; font-weight:bold; font-size:12px; border-radius:2px; display:flex; align-items:center; justify-content:center; text-align:center; border:1px solid #444; box-sizing:border-box; transition: 0.2s; }}
+        .tank:hover {{ opacity: 0.7; border: 2px solid #000; transform: scale(1.02); z-index: 10; }}
+        .vertical {{ writing-mode:vertical-rl; text-orientation:mixed; font-size:16px; }}
+        .ro {{ background:#d7ffff !important; color:black !important; border: 1px solid #afeeee; }}
+        .chemical {{ background:#999 !important; color:black !important; font-size:10px; }}
+        .oil {{ border-radius: 50% !important; }}
     </style>
-
     <div class="plant-map">
-        {tank_html("5.Black", 0, 0, 80, 80, "#111")}
-        {tank_html("2.Red", 0, 140, 70, 80, "red")}
-        {tank_html("3.Violet", 0, 210, 60, 80, "purple")}
-        {tank_html("8.Green", 0, 295, 70, 80, "green")}
-        {tank_html("17.Black", 0, 365, 65, 80, "#222")}
-        {tank_html("15.Gold", 0, 455, 70, 80, "#d4af00")}
-        {tank_html("9.Orange", 0, 525, 65, 80, "orange")}
-        {tank_html("10.Light Blue", 0, 620, 70, 80, "cyan", "color:black;")}
-        {tank_html("6.Banana", 0, 690, 70, 80, "#7fff00", "color:black;")}
-        {tank_html("16.Blue", 0, 785, 70, 80, "blue")}
-        {tank_html("4.Dark Blue", 0, 855, 65, 80, "darkblue")}
-        
-        {tank_html("11.Gold", 325, 540, 85, 120, "#d4af00", "vertical")}
-        {tank_html("1.DarkRed", 252, 270, 80, 35, "darkred")}
-        {tank_html("13.DarkTitanium", 120, 310, 80, 40, "#666")}
-        {tank_html("AnodizedPPool1", 520, 890, 140, 190, "#ccc", "vertical; color:black;")}
-        </div>
+        {t_div("5.Black", 10, 10, 70, 70, "#111")}
+        {t_div("2.Red", 10, 140, 65, 70, "red")}
+        {t_div("3.Violet", 10, 205, 65, 70, "purple")}
+        {t_div("8.Green", 10, 290, 65, 70, "green")}
+        {t_div("17.Black", 10, 355, 65, 70, "#222")}
+        {t_div("15.Gold", 10, 440, 65, 70, "#d4af00")}
+        {t_div("9.Orange", 10, 505, 65, 70, "orange")}
+        {t_div("10.Light Blue", 10, 600, 65, 70, "cyan", "color:black;")}
+        {t_div("6.BananaLeafGreen", 10, 665, 65, 70, "#7fff00", "color:black;")}
+        {t_div("16.Blue", 10, 760, 65, 70, "blue")}
+        {t_div("4.DarkBlue", 10, 825, 65, 70, "darkblue")}
 
-    <script>
-        // ไม่ต้องทำอะไรเพิ่ม ระบบจะใช้ postMessage ส่งค่าไปที่ Streamlit
-    </script>
+        {t_div("RO", 85, 140, 130, 70, "", "ro")}
+        {t_div("RO", 85, 440, 130, 70, "", "ro")}
+        {t_div("RO", 85, 760, 130, 70, "", "ro")}
+
+        {t_div("AlmiteSealerLiquid", 230, 10, 55, 340, "#777", "vertical")}
+
+        {t_div("20.Black", 245, 260, 75, 45, "#111")}
+        {t_div("1.DarkRedA", 295, 260, 75, 45, "darkred")}
+        {t_div("7.Pink", 245, 360, 80, 160, "magenta", "vertical")}
+        {t_div("RO", 415, 360, 80, 155, "", "ro")}
+
+        {t_div("HotSealH60", 250, 520, 80, 160, "#666")}
+        {t_div("11.Gold", 415, 520, 80, 160, "#cc9900", "vertical")}
+        {t_div("RO", 250, 605, 80, 160, "", "ro")}
+        {t_div("RO", 415, 605, 80, 160, "", "ro")}
+
+        {t_div("1.DarkRedB", 255, 760, 60, 75, "darkred")}
+        {t_div("19.Copper", 335, 760, 60, 75, "#e9967a")}
+        {t_div("12.Titanium", 415, 760, 60, 75, "#777")}
+        {t_div("14.RoseGold", 495, 760, 60, 75, "plum")}
+        {t_div("RO", 255, 825, 80, 155, "", "ro")}
+        {t_div("RO", 415, 825, 80, 155, "", "ro")}
+
+        {t_div("AnodizedPPool1", 660, 860, 130, 230, "#ccc", "vertical; color:black;")}
+
+        {t_div("13.DarkTitanium", 100, 305, 45, 45, "#555", "oil")}
+        {t_div("13.DarkTitanium", 100, 360, 45, 45, "#555", "oil")}
+        {t_div("18.OrangeOil", 100, 610, 45, 45, "#d35400", "oil")}
+        {t_div("18.OrangeOil", 100, 670, 45, 45, "#d35400", "oil")}
+    </div>
     """
-    
-    # ใช้ Component เพื่อดักจับข้อมูลการคลิก
-    clicked_tank = st_javascript("""
+    components.html(html, height=750)
+
+    # ดักจับ Event คลิกและส่งกลับ Streamlit
+    clicked_name = st_javascript("""
         window.addEventListener('message', function(event) {
             if (event.data.type === 'tank_click') {
                 window.parent.postMessage({
@@ -158,27 +179,25 @@ def render_tank_map():
             }
         }, false);
     """)
-    
-    components.html(html_code, height=750)
-    return clicked_tank
+    return clicked_name
 
 # --- ส่วน Dialog สำหรับบันทึกข้อมูล ---
+# --- ฟังก์ชัน Popup สำหรับกรอกข้อมูล ---
 @st.dialog("บันทึกข้อมูลบ่อ")
 def record_modal(tank_name):
-    st.write(f"กำลังบันทึกข้อมูลสำหรับ: **{tank_name}**")
+    st.subheader(f"📍 บ่อ: {tank_name}")
     
-    # ตรวจสอบว่าเป็นบ่อประเภทไหน
+    # ตรวจสอบประเภทบ่อ
     is_anodize = "Anodized" in tank_name or "Anodize" in tank_name
     
     if not is_anodize:
-        # Form บ่อสี
-        detected_color = TANK_COLOR_MAP.get(tank_name.replace(" ", ""), "Black")
+        # ฟอร์มบ่อสี
+        detected_color = TANK_COLOR_MAP.get(tank_name.replace(".", ""), "Black")
         render_color_bar(detected_color)
-        
         with st.form("modal_color_form"):
-            ph = st.number_input("ค่า pH", step=0.1, format="%.2f")
-            temp = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
-            if st.form_submit_button("บันทึก"):
+            ph = st.number_input("ค่า pH", step=0.1, format="%.2f", value=5.5)
+            temp = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f", value=35.0)
+            if st.form_submit_button("💾 บันทึกข้อมูล"):
                 color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
                 if tank_name in color_tanks:
                     supabase.table("color_tank_logs").insert({
@@ -193,12 +212,12 @@ def record_modal(tank_name):
                 else:
                     st.error("ไม่พบรหัสบ่อนี้ในฐานข้อมูล")
     else:
-        # Form บ่ออโนไดซ์
+        # ฟอร์มบ่ออโนไดซ์
         with st.form("modal_ano_form"):
-            ph_a = st.number_input("ค่า pH", step=0.01, format="%.2f")
-            temp_a = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
-            den_a = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
-            if st.form_submit_button("บันทึกอโนไดซ์"):
+            ph_a = st.number_input("ค่า pH", step=0.01, format="%.2f", value=1.2)
+            temp_a = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f", value=20.0)
+            den_a = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f", value=1.0)
+            if st.form_submit_button("💾 บันทึกอโนไดซ์"):
                 ano_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
                 if tank_name in ano_tanks:
                     supabase.table("anodize_tank_logs").insert({
