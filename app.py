@@ -101,59 +101,30 @@ def get_quarter_range(year, quarter):
     return start_date, end_date
 #============================================================================================
 def render_tank_map():
-    # Helper สำหรับสร้างแต่ละบ่อ
-    def t_div(name, top, left, w, h, bg, extra=""):
-        return f"""
-        <div class="tank {extra}" 
-             onclick="window.parent.postMessage({{type: 'tank_click', name: '{name}'}}, '*')"
-             style="left:{left}px;top:{top}px;width:{w}px;height:{h}px;background:{bg};cursor:pointer;">
-            {name}
-        </div>"""
-
-    # HTML และ CSS ผังบ่อ
+    # แก้ไข HTML ให้ส่งค่าผ่าน window.parent.location
+    # เพื่อเลี่ยงปัญหา Sandbox ของ st_javascript
     html_code = f"""
     <style>
         .plant-map {{ position:relative; width:1100px; height:720px; background:#fff; border:2px solid #ccc; margin:auto; overflow:hidden; font-family: sans-serif; }}
-        .tank {{ position:absolute; color:white; font-weight:bold; font-size:12px; border-radius:2px; display:flex; align-items:center; justify-content:center; text-align:center; border:1px solid #444; box-sizing:border-box; transition: 0.2s; }}
+        .tank {{ position:absolute; color:white; font-weight:bold; font-size:12px; border-radius:2px; display:flex; align-items:center; justify-content:center; text-align:center; border:1px solid #444; box-sizing:border-box; transition: 0.2s; cursor:pointer; }}
         .tank:hover {{ opacity: 0.7; border: 3px solid yellow !important; transform: scale(1.05); z-index: 100; }}
-        .vertical {{ writing-mode:vertical-rl; text-orientation:mixed; font-size:16px; }}
-        .ro {{ background:#d7ffff !important; color:black !important; }}
     </style>
     <div class="plant-map">
-        {t_div("5Black", 10, 10, 70, 70, "#111")}
-        {t_div("2Red", 10, 140, 65, 70, "red")}
-        {t_div("3Violet", 10, 205, 65, 70, "purple")}
-        {t_div("8Green", 10, 290, 65, 70, "green")}
-        {t_div("17Black", 10, 355, 65, 70, "#222")}
-        {t_div("15Gold", 10, 440, 65, 70, "#d4af00")}
-        {t_div("9Orange", 10, 505, 65, 70, "orange")}
-        {t_div("10LightBlue", 10, 600, 65, 70, "cyan", "color:black;")}
-        {t_div("6BananaLeafGreen", 10, 665, 65, 70, "#7fff00", "color:black;")}
-        {t_div("16Blue", 10, 760, 65, 70, "blue")}
-        {t_div("4DarkBlue", 10, 825, 65, 70, "darkblue")}
-        {t_div("20Black", 245, 260, 75, 45, "#111")}
-        {t_div("1DarkRedA", 295, 260, 75, 45, "darkred")}
-        {t_div("7Pink", 245, 360, 80, 160, "magenta", "vertical")}
-        {t_div("HotSealH60", 250, 520, 80, 160, "#666")}
-        {t_div("11Gold", 415, 520, 80, 160, "#cc9900", "vertical")}
-        {t_div("AnodizedPPool1", 660, 860, 130, 230, "#ccc", "vertical; color:black;")}
-    </div>
+        <div class="tank" style="left:10px;top:10px;width:70px;height:70px;background:#111;" onclick="clickTank('5Black')">5Black</div>
+        <div class="tank" style="left:140px;top:10px;width:65px;height:70px;background:red;" onclick="clickTank('2Red')">2Red</div>
+        <div class="tank" style="left:205px;top:10px;width:65px;height:70px;background:purple;" onclick="clickTank('3Violet')">3Violet</div>
+        </div>
+
+    <script>
+        function clickTank(name) {{
+            // ส่งข้อมูลกลับไปที่ Streamlit ผ่าน query param (วิธีที่เสถียรที่สุดเมื่อ iframe มีปัญหา)
+            const url = new URL(window.location.href);
+            url.searchParams.set('selected_tank', name);
+            window.parent.location.href = url.href;
+        }}
+    </script>
     """
     components.html(html_code, height=750)
-
-    # --- ส่วนที่เกิด Error อยู่ตรงนี้ (จัดย่อหน้าใหม่ให้ตรงกัน) ---
-    js_key = st.session_state.get('js_key', 0)
-    clicked_name = st_javascript("""
-        new Promise((resolve) => {
-            window.addEventListener('message', function(event) {
-                if (event.data.type === 'tank_click') {
-                    resolve(event.data.name);
-                }
-            }, { once: true });
-        });
-    """, key=f"tank_clicker_{js_key}")
-    
-    return clicked_name
 #=================================================================================
 @st.dialog("บันทึกข้อมูลบ่อ")
 def record_modal(tank_name):
@@ -267,7 +238,8 @@ def record_modal(tank_name):
                 st.success("บันทึกข้อมูลสำเร็จ!")
                 # เพิ่มค่า js_key เพื่อล้างค่าคลิกเก่าใน JavaScript
                 st.session_state.js_key += 1
-                time.sleep(0.5)
+                st.query_params.clear()
+                time.sleep(1)
                 st.rerun() # สั่ง rerun เฉพาะเมื่อบันทึกสำเร็จ
                 
             except Exception as e:
@@ -549,19 +521,20 @@ if menu == "Dashboard":
 # ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
-    st.info("💡 คลิกที่ชื่อบ่อในแผนผังด้านล่างเพื่อบันทึกข้อมูล")
     
-    if "js_key" not in st.session_state:
-        st.session_state.js_key = 0
+    # 1. แสดงแผนผัง
+    render_tank_map()
 
-    # เรียกใช้แผนผัง
-    clicked_name = render_tank_map()
+    # 2. อ่านค่าจาก URL (ถ้ามีการคลิก URL จะเปลี่ยน)
+    query_params = st.query_params
+    clicked_name = query_params.get("selected_tank")
 
-    # ตรวจสอบการคลิก
-    # ถ้า st_javascript คืนค่ากลับมา (ไม่เป็น None / 0 / False) ให้เปิด Modal
     if clicked_name:
-        # เรียก Modal ทันที
-       record_modal(clicked_name)
+        # ล้างค่าใน URL ทันทีเพื่อไม่ให้ Modal เด้งค้างหลังปิด
+        # st.query_params.clear() 
+        
+        # เปิดฟอร์ม
+        record_modal(clicked_name)
     st.markdown("---")
     
     st.subheader("🛠️ การจัดการจิ๊กและสินค้า")
