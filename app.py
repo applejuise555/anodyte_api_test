@@ -472,7 +472,7 @@ if menu == "บันทึกข้อมูลการผลิต":
 
     # ===== INIT STATE =====
     if "selected_tank" not in st.session_state:
-    st.session_state["selected_tank"] = None
+        st.session_state["selected_tank"] = None
 
     clicked = render_tank_map()
     
