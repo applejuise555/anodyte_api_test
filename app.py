@@ -101,15 +101,14 @@ def get_quarter_range(year, quarter):
     return start_date, end_date
 #============================================================================================
 def render_tank_map():
-    # Helper สำหรับสร้าง HTML Div ของแต่ละบ่อ
     def t_div(name, top, left, w, h, bg, extra=""):
-        # ใช้ onclick เพื่อส่งชื่อบ่อกลับไปยัง Streamlit
         return f"""
-        <div class="tank {extra}" 
-             onclick="window.parent.postMessage({{type: 'tank_click', name: '{name}'}}, '*')"
+        <div class="tank {extra}"
+             onclick="window.streamlit_js_eval.setItem('selected_tank', '{name}')"
              style="left:{left}px;top:{top}px;width:{w}px;height:{h}px;background:{bg};cursor:pointer;">
             {name}
-        </div>"""
+        </div>
+        """
 
     html = f"""
         <script>
@@ -175,7 +174,6 @@ def render_tank_map():
     </div>
     """
     clicked_tank = components.html(html, height=750)
-    return None
     
     clicked_tank = stjs.st_javascript("""
     document.querySelectorAll('.tank').forEach(el => {
@@ -221,6 +219,7 @@ def record_modal(tank_name):
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
                     st.success("บันทึกสำเร็จ!")
+                    st.session_state["selected_tank"] = None
                     time.sleep(1)
                     st.rerun()
                 else:
@@ -240,6 +239,7 @@ def record_modal(tank_name):
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
                     st.success("บันทึกสำเร็จ!")
+                    st.session_state["selected_tank"] = None
                     time.sleep(1)
                     st.rerun()
 #=================================================================   
