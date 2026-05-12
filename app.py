@@ -179,8 +179,8 @@ def record_modal(tank_name):
 
     # เพิ่มปุ่ม "ยกเลิก" แยกออกมา (ถ้าต้องการ)
     if st.button("❌ ปิดหน้าต่าง"):
-        st.query_params.clear()
-        st.rerun()
+       st.query_params.clear()
+       st.rerun()
 #=================================================================   
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
