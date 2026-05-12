@@ -101,57 +101,80 @@ def get_quarter_range(year, quarter):
     return start_date, end_date
 #============================================================================================
 def render_tank_map():
-    def t_div(name, top, left, w, h, bg, extra=""):
-        return f"""
-        <div class="tank {extra}" 
-             onclick="window.parent.postMessage({{type: 'tank_click', name: '{name}'}}, '*')"
-             style="left:{left}px;top:{top}px;width:{w}px;height:{h}px;background:{bg};cursor:pointer;">
-            {name}
-        </div>"""
+    # สร้างพื้นที่สำหรับวางผัง
+    st.markdown("""
+        <style>
+        .map-container {
+            position: relative;
+            width: 1100px;
+            height: 720px;
+            background-color: #f0f2f6;
+            border-radius: 10px;
+            border: 2px solid #ccc;
+            margin-bottom: 20px;
+        }
+        /* ตกแต่งปุ่มให้ดูเหมือนบ่อ */
+        .stButton>button.tank-btn {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.1); /* โปร่งแสงแต่คลิกได้ */
+            border: 1px solid rgba(0,0,0,0.2);
+            color: white;
+            font-weight: bold;
+            font-size: 11px;
+            transition: 0.3s;
+            z-index: 10;
+        }
+        .stButton>button.tank-btn:hover {
+            background-color: rgba(255, 255, 0, 0.4) !important;
+            border: 2px solid yellow !important;
+            transform: scale(1.05);
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-    html = f"""
-    <style>
-        .plant-map {{ position:relative; width:1100px; height:720px; background:#fff; border:2px solid #ccc; margin:auto; overflow:hidden; }}
-        .tank {{ position:absolute; color:white; font-weight:bold; font-size:12px; border-radius:2px; display:flex; align-items:center; justify-content:center; text-align:center; border:1px solid #444; box-sizing:border-box; transition: 0.2s; }}
-        .tank:hover {{ opacity: 0.7; border: 2.5px solid yellow; transform: scale(1.02); z-index: 100; }}
-        .vertical {{ writing-mode:vertical-rl; text-orientation:mixed; font-size:16px; }}
-        .ro {{ background:#d7ffff !important; color:black !important; }}
-    </style>
-    <div class="plant-map">
-        {t_div("5Black", 10, 10, 70, 70, "#111")}
-        {t_div("2Red", 10, 140, 65, 70, "red")}
-        {t_div("3Violet", 10, 205, 65, 70, "purple")}
-        {t_div("8Green", 10, 290, 65, 70, "green")}
-        {t_div("17Black", 10, 355, 65, 70, "#222")}
-        {t_div("15Gold", 10, 440, 65, 70, "#d4af00")}
-        {t_div("9Orange", 10, 505, 65, 70, "orange")}
-        {t_div("10LightBlue", 10, 600, 65, 70, "cyan", "color:black;")}
-        {t_div("6BananaLeafGreen", 10, 665, 65, 70, "#7fff00", "color:black;")}
-        {t_div("16Blue", 10, 760, 65, 70, "blue")}
-        {t_div("4DarkBlue", 10, 825, 65, 70, "darkblue")}
-        {t_div("20Black", 245, 260, 75, 45, "#111")}
-        {t_div("1DarkRedA", 295, 260, 75, 45, "darkred")}
-        {t_div("7Pink", 245, 360, 80, 160, "magenta", "vertical")}
-        {t_div("HotSealH60", 250, 520, 80, 160, "#666")}
-        {t_div("11Gold", 415, 520, 80, 160, "#cc9900", "vertical")}
-        {t_div("AnodizedPPool1", 660, 860, 130, 230, "#ccc", "vertical; color:black;")}
-    </div>
-    """
-    components.html(html, height=750)
+    # สร้าง Container หลัก
+    with st.container():
+        # ใส่รูปภาพผังบ่อเป็นพื้นหลัง (ถ้ามี URL รูปให้ใส่ตรงนี้)
+        # st.image("your_map_image_url", width=1100) 
+        
+        # วางปุ่มทับตำแหน่งต่างๆ (อ้างอิงพิกัดจากที่คุณเคยมี)
+        col_m = st.container()
+        with col_m:
+            # ฟังก์ชันช่วยวางปุ่ม
+            def place_tank(name, top, left, w, h, color):
+                # ใช้ empty container เพื่อทำ absolute positioning
+                st.markdown(f"""
+                    <style>
+                    div[data-testid="stMarkdownContainer"] + div.stButton > button[key="{name}"] {{
+                        position: absolute; top: {top}px; left: {left}px; width: {w}px; height: {h}px; 
+                        background-color: {color}; border-radius: 4px;
+                    }}
+                    </style>
+                """, unsafe_allow_html=True)
+                if st.button(name, key=name):
+                    return name
+                return None
 
-    # รับค่าจาก JS และใช้ Promise เพื่อรอการคลิก
-    clicked_name = st_javascript("""
-        new Promise((resolve) => {
-            window.addEventListener('message', function(event) {
-                if (event.data.type === 'tank_click') {
-                    resolve(event.data.name);
-                }
-            }, { once: true });
-        });
-    """, key="tank_selector") # ต้องมี key เพื่อกันค่าหาย
-    
-    return clicked_name
+            # วางบ่อต่างๆ และดักค่าการกด
+            clicked = None
+            
+            # แถวบน
+            res = place_tank("5Black", 10, 10, 70, 70, "#111"); clicked = res if res else clicked
+            res = place_tank("2Red", 10, 140, 65, 70, "red"); clicked = res if res else clicked
+            res = place_tank("3Violet", 10, 205, 65, 70, "purple"); clicked = res if res else clicked
+            res = place_tank("8Green", 10, 290, 65, 70, "green"); clicked = res if res else clicked
+            res = place_tank("17Black", 10, 355, 65, 70, "#222"); clicked = res if res else clicked
+            res = place_tank("15Gold", 10, 440, 65, 70, "#d4af00"); clicked = res if res else clicked
+            res = place_tank("9Orange", 10, 505, 65, 70, "orange"); clicked = res if res else clicked
+            res = place_tank("10LightBlue", 10, 600, 65, 70, "cyan"); clicked = res if res else clicked
+            res = place_tank("6BananaLeafGreen", 10, 665, 65, 70, "#7fff00"); clicked = res if res else clicked
+            res = place_tank("16Blue", 10, 760, 65, 70, "blue"); clicked = res if res else clicked
+            res = place_tank("4DarkBlue", 10, 825, 65, 70, "darkblue"); clicked = res if res else clicked
+            
+            # แถวอื่นๆ (ตัวอย่างบ่ออโนไดซ์)
+            res = place_tank("AnodizedPPool1", 660, 860, 130, 230, "#ccc"); clicked = res if res else clicked
 
+            return clicked
 #=================================================================================
 @st.dialog("บันทึกข้อมูลบ่อ")
 def record_modal(tank_name):
