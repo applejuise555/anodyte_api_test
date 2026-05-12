@@ -174,7 +174,8 @@ def render_tank_map():
         {t_div("18OrangeOil", 100, 670, 45, 45, "#d35400", "oil")}
     </div>
     """
-    return components.html(html, height=750)
+    components.html(html, height=750)
+    return None
     
     clicked_tank = stjs.st_javascript("""
     document.querySelectorAll('.tank').forEach(el => {
@@ -521,12 +522,12 @@ if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
     st.info("💡 คลิกที่บ่อในผังด้านล่างเพื่อเปิดฟอร์มกรอกข้อมูล pH และอุณหภูมิ")
 
-    clicked_tank = render_tank_map()
+    render_tank_map()
+
+    clicked_tank = st.session_state.get("selected_tank")
 
     if clicked_tank:
-        st.session_state["selected_tank"] = clicked_tank
         record_modal(clicked_tank)
-
     st.markdown("---")
     
     st.subheader("🛠️ การจัดการจิ๊กและสินค้า")
