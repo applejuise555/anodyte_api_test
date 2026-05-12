@@ -157,9 +157,9 @@ def record_modal(tank_name):
                         }).execute()
                         
                         st.success("บันทึกบ่อสีสำเร็จ!")
-                        st.session_state['js_key'] = st.session_state.get('js_key', 0) + 1
-                        time.sleep(1)
-                        st.rerun()
+                        st.query_params.clear() 
+                        time.sleep(0.5)
+                        st.rerun() # รันใหม่เพื่อล้างค่าทิ้งหลังจากบันทึกเสร็จเท่านั้น
                     except Exception as e:
                         st.error(f"เกิดข้อผิดพลาด: {e}")
                 else:
