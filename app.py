@@ -104,23 +104,27 @@ def render_tank_map():
     st.markdown("""
     <style>
 
-    .map-container{
+    .map-wrap{
         position:relative;
         width:1100px;
         height:700px;
-        background-image:url("https://i.imgur.com/yourmap.png");
-        background-size:contain;
-        background-repeat:no-repeat;
-        border:2px solid #999;
+        background:#e9e9e9;
+        margin:auto;
+        border-radius:10px;
     }
 
-    div.stButton > button{
-        width:100%;
-        height:100%;
-        border-radius:10px;
-        font-size:12px;
-        font-weight:bold;
-        opacity:0.85;
+    .tank-btn button{
+        width:100% !important;
+        height:100% !important;
+        border-radius:0px !important;
+        border:none !important;
+        font-weight:bold !important;
+        font-size:14px !important;
+        color:white !important;
+    }
+
+    div[data-testid="column"]{
+        padding:0 !important;
     }
 
     </style>
@@ -128,121 +132,154 @@ def render_tank_map():
 
     clicked = None
 
-    # ===== TOP ROW =====
+    # ===== helper =====
 
-    c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11 = st.columns(11)
+    def tank(name, color, x, y, w=70, h=70, text_color="white"):
 
-    with c1:
-        if st.button("5Black"):
-            clicked = "5Black"
+        nonlocal clicked
 
-    with c2:
-        if st.button("2Red"):
-            clicked = "2Red"
+        st.markdown(
+            f"""
+            <div style="
+                position:absolute;
+                left:{x}px;
+                top:{y}px;
+                width:{w}px;
+                height:{h}px;
+                z-index:1;
+            ">
+            """,
+            unsafe_allow_html=True
+        )
 
-    with c3:
-        if st.button("3Violet"):
-            clicked = "3Violet"
+        col = st.columns([1])[0]
 
-    with c4:
-        if st.button("8Green"):
-            clicked = "8Green"
+        with col:
+            st.markdown(
+                f"""
+                <style>
+                div[data-testid="stButton"] button[kind="secondary"] {{
+                    background:{color};
+                    color:{text_color};
+                }}
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
 
-    with c5:
-        if st.button("17Black"):
-            clicked = "17Black"
+            if st.button(name, key=name):
+                clicked = name
 
-    with c6:
-        if st.button("15Gold"):
-            clicked = "15Gold"
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    with c7:
-        if st.button("9Orange"):
-            clicked = "9Orange"
+    # ======================================================
+    # TOP
+    # ======================================================
 
-    with c8:
-        if st.button("10LightBlue"):
-            clicked = "10LightBlue"
+    tank("5Black", "#111111", 0, 0, 80, 80)
 
-    with c9:
-        if st.button("6BananaLeafGreen"):
-            clicked = "6BananaLeafGreen"
+    tank("2Red", "#ff0000", 140, 0, 65, 80, "black")
+    tank("3Violet", "#800080", 208, 0, 65, 80)
 
-    with c10:
-        if st.button("16Blue"):
-            clicked = "16Blue"
+    tank("8Green", "#008000", 295, 0, 70, 80)
+    tank("17Black", "#111111", 368, 0, 65, 80)
 
-    with c11:
-        if st.button("4DarkBlue"):
-            clicked = "4DarkBlue"
+    tank("15Gold", "#d4aa00", 456, 0, 70, 80)
+    tank("9Orange", "#ff7a00", 529, 0, 65, 80)
 
-    st.write("")
+    tank("10LightBlue", "#00e5ff", 620, 0, 65, 80, "black")
+    tank("6BananaLeafGreen", "#7fff00", 688, 0, 80, 80, "black")
 
-    # ===== MID =====
+    tank("16Blue", "#0000ff", 785, 0, 65, 80)
+    tank("4DarkBlue", "#00008b", 853, 0, 65, 80)
 
-    m1,m2,m3,m4,m5,m6,m7,m8 = st.columns(8)
+    # ======================================================
+    # RO
+    # ======================================================
 
-    with m3:
-        if st.button("13DarkTitanium"):
-            clicked = "13DarkTitanium"
+    tank("RO1", "#c8f5f7", 140, 82, 133, 65, "black")
 
-    with m6:
-        if st.button("18OrangeOil"):
-            clicked = "18OrangeOil"
+    tank("RO2", "#c8f5f7", 456, 82, 138, 65, "black")
 
-    st.write("")
-    st.write("")
-    st.write("")
+    tank("RO3", "#c8f5f7", 785, 82, 133, 65, "black")
 
-    # ===== BOTTOM =====
+    # ======================================================
+    # MIDDLE
+    # ======================================================
 
-    b1,b2,b3,b4,b5,b6,b7,b8 = st.columns(8)
+    tank("13DarkTitanium", "#756060", 308, 150, 60, 60)
 
-    with b2:
-        if st.button("20Black"):
-            clicked = "20Black"
+    tank("18OrangeOil", "#d95f00", 625, 150, 60, 60)
 
-    with b3:
-        if st.button("1DarkRedB"):
-            clicked = "1DarkRedB"
+    # ======================================================
+    # LEFT VERTICAL
+    # ======================================================
 
-    with b4:
-        if st.button("7Pink"):
-            clicked = "7Pink"
+    tank("AlmiteSealerLiquid", "#666666", 0, 255, 60, 275)
 
-    with b5:
-        if st.button("11Gold"):
-            clicked = "11Gold"
+    # ======================================================
+    # CENTER
+    # ======================================================
 
-    with b6:
-        if st.button("1DarkRedA"):
-            clicked = "1DarkRedA"
+    tank("20Black", "#111111", 270, 275, 40, 40)
+    tank("20Black2", "#111111", 312, 275, 40, 40)
 
-    with b7:
-        if st.button("19Copper"):
-            clicked = "19Copper"
+    tank("1DarkRedB", "#8b0000", 270, 318, 40, 40)
+    tank("1DarkRedB2", "#8b0000", 312, 318, 40, 40)
 
-    with b8:
-        if st.button("12Titanium"):
-            clicked = "12Titanium"
+    tank("7Pink", "#ff00ff", 380, 275, 85, 140)
 
-    st.write("")
+    tank("RO4", "#c8f5f7", 380, 418, 85, 90, "black")
 
-    x1,x2,x3,x4,x5,x6,x7,x8 = st.columns(8)
+    # ======================================================
+    # HOTSEAL
+    # ======================================================
 
-    with x8:
-        if st.button("14RoseGold"):
-            clicked = "14RoseGold"
+    tank("HotSealH60", "#777777", 545, 275, 85, 95)
 
-    st.write("")
-    st.write("")
-    st.write("")
+    tank("11Gold", "#d4aa00", 545, 373, 85, 135)
 
-    a1,a2,a3,a4,a5,a6,a7,a8,a9,a10 = st.columns(10)
+    # ======================================================
+    # CENTER RIGHT RO
+    # ======================================================
 
-    with a10:
-        if st.button("Anodize tank 1"):
-            clicked = "Anodize tank 1"
+    tank("RO5", "#c8f5f7", 633, 275, 85, 115, "black")
+
+    tank("RO6", "#c8f5f7", 633, 392, 85, 116, "black")
+
+    # ======================================================
+    # RIGHT STACK
+    # ======================================================
+
+    tank("1DarkRedA", "#8b0000", 785, 282, 65, 50)
+
+    tank("19Copper", "#e6b899", 785, 335, 65, 50, "black")
+
+    tank("12Titanium", "#7d7d72", 785, 388, 65, 50)
+
+    tank("14RoseGold", "#e7a4e9", 785, 441, 65, 50, "black")
+
+    tank("RO7", "#c8f5f7", 853, 282, 85, 103, "black")
+
+    tank("RO8", "#c8f5f7", 853, 388, 85, 103, "black")
+
+    # ======================================================
+    # RIGHT SIDE
+    # ======================================================
+
+    tank("SodiumBicarbonate1", "#bfbfbf", 990, 80, 85, 65, "black")
+
+    tank("SodiumBicarbonate2", "#bfbfbf", 990, 148, 85, 65, "black")
+
+    tank("RO9", "#c8f5f7", 990, 216, 85, 85, "black")
+
+    tank("NitricAcid68", "#b29200", 995, 415, 80, 70)
+
+    # ======================================================
+    # BOTTOM RIGHT
+    # ======================================================
+
+    tank("AnodizedPPool1", "#cfcfcf", 890, 520, 145, 180, "black")
 
     return clicked
 #=================================================================   
