@@ -8,7 +8,6 @@ import math
 from plotly.subplots import make_subplots
 import time
 import streamlit as st
-import streamlit.components.v1 as components
 from streamlit_javascript import st_javascript
 from streamlit_js_eval import streamlit_js_eval
 
@@ -102,169 +101,132 @@ def get_quarter_range(year, quarter):
 
 def render_tank_map():
 
-    svg_html = """
-    <html>
-
-    <body style="margin:0; padding:0;">
-
-    <svg
-        viewBox="0 0 1100 800"
-        width="100%"
-        height="800"
-        xmlns="http://www.w3.org/2000/svg"
-    >
-
+    st.markdown("""
     <style>
 
-    .tank{
-        fill: rgba(0, 100, 255, 0.20);
-        stroke: #222;
-        stroke-width: 2;
-        cursor: pointer;
-        transition: 0.2s;
-    }
-
-    .tank:hover{
-        fill: rgba(0,255,0,0.45);
-    }
-
-    .label{
-        font-size:14px;
-        font-family:Arial;
-        fill:black;
-        pointer-events:none;
+    div.stButton > button {
+        width: 100%;
+        height: 70px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: bold;
+        border: 2px solid #333;
     }
 
     </style>
+    """, unsafe_allow_html=True)
 
-    <!-- ===== TOP ROW ===== -->
+    # ===== TOP ROW =====
+    c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11 = st.columns(11)
 
-    <!-- 5Black -->
-    <rect
-        class="tank"
-        x="20"
-        y="30"
-        width="80"
-        height="50"
-        onclick="sendTank('5Black')"
-    />
+    with c1:
+        if st.button("5Black"):
+            return "5Black"
 
-    <text class="label" x="28" y="60">
-        5Black
-    </text>
+    with c2:
+        if st.button("2Red"):
+            return "2Red"
 
-    <!-- 2Red -->
-    <rect
-        class="tank"
-        x="140"
-        y="30"
-        width="80"
-        height="50"
-        onclick="sendTank('2Red')"
-    />
+    with c3:
+        if st.button("3Violet"):
+            return "3Violet"
 
-    <text class="label" x="155" y="60">
-        2Red
-    </text>
+    with c4:
+        if st.button("8Green"):
+            return "8Green"
 
-    <!-- 3Violet -->
-    <rect
-        class="tank"
-        x="240"
-        y="30"
-        width="80"
-        height="50"
-        onclick="sendTank('3Violet')"
-    />
+    with c5:
+        if st.button("17Black"):
+            return "17Black"
 
-    <text class="label" x="248" y="60">
-        3Violet
-    </text>
+    with c6:
+        if st.button("15Gold"):
+            return "15Gold"
 
-    <!-- 8Green -->
-    <rect
-        class="tank"
-        x="340"
-        y="30"
-        width="80"
-        height="50"
-        onclick="sendTank('8Green')"
-    />
+    with c7:
+        if st.button("9Orange"):
+            return "9Orange"
 
-    <text class="label" x="350" y="60">
-        8Green
-    </text>
+    with c8:
+        if st.button("10LightBlue"):
+            return "10LightBlue"
 
-    <!-- ===== MIDDLE ===== -->
+    with c9:
+        if st.button("6BananaLeafGreen"):
+            return "6BananaLeafGreen"
 
-    <!-- 13DarkTitanium -->
-    <rect
-        class="tank"
-        x="360"
-        y="110"
-        width="120"
-        height="60"
-        onclick="sendTank('13DarkTitanium')"
-    />
+    with c10:
+        if st.button("16Blue"):
+            return "16Blue"
 
-    <text class="label" x="365" y="145">
-        13DarkTitanium
-    </text>
+    with c11:
+        if st.button("4DarkBlue"):
+            return "4DarkBlue"
 
-    <!-- ===== BOTTOM ===== -->
+    st.write("")
 
-    <!-- 20Black -->
-    <rect
-        class="tank"
-        x="250"
-        y="260"
-        width="120"
-        height="60"
-        onclick="sendTank('20Black')"
-    />
+    # ===== MIDDLE =====
+    m1,m2,m3,m4,m5,m6,m7,m8 = st.columns(8)
 
-    <text class="label" x="270" y="295">
-        20Black
-    </text>
+    with m3:
+        if st.button("13DarkTitanium"):
+            return "13DarkTitanium"
 
-    <!-- ===== ANODIZE ===== -->
+    with m6:
+        if st.button("18OrangeOil"):
+            return "18OrangeOil"
 
-    <rect
-        class="tank"
-        x="900"
-        y="620"
-        width="150"
-        height="80"
-        onclick="sendTank('Anodize tank 1')"
-    />
+    st.write("")
 
-    <text class="label" x="920" y="665">
-        Anodize tank 1
-    </text>
+    # ===== BOTTOM =====
+    b1,b2,b3,b4,b5,b6,b7,b8 = st.columns(8)
 
-    <script>
+    with b2:
+        if st.button("20Black"):
+            return "20Black"
 
-    function sendTank(tank){
+    with b3:
+        if st.button("1DarkRedB"):
+            return "1DarkRedB"
 
-        window.parent.postMessage({
-            type: "streamlit:setComponentValue",
-            value: tank
-        }, "*");
+    with b4:
+        if st.button("7Pink"):
+            return "7Pink"
 
-    }
+    with b5:
+        if st.button("11Gold"):
+            return "11Gold"
 
-    </script>
+    with b6:
+        if st.button("1DarkRedA"):
+            return "1DarkRedA"
 
-    </svg>
+    with b7:
+        if st.button("19Copper"):
+            return "19Copper"
 
-    </body>
-    </html>
-    """
+    with b8:
+        if st.button("12Titanium"):
+            return "12Titanium"
 
-    return components.html(
-        svg_html,
-        height=850
-    )
+    # ===== LAST ROW =====
+    x1,x2,x3,x4,x5,x6,x7,x8 = st.columns(8)
+
+    with x8:
+        if st.button("14RoseGold"):
+            return "14RoseGold"
+
+    st.write("")
+    st.write("")
+
+    # ===== ANODIZE =====
+    a1,a2,a3,a4,a5,a6,a7,a8,a9,a10 = st.columns(10)
+
+    with a10:
+        if st.button("Anodize tank 1"):
+            return "Anodize tank 1"
+
+    return None
 #=================================================================   
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
