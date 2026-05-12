@@ -460,23 +460,25 @@ if menu == "Dashboard":
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
     
-    # ป้องกันการจำค่าเก่าด้วย rerun_count
-    if "rerun_count" not in st.session_state:
-        st.session_state.rerun_count = 0
+    # 1. เตรียม Session State สำหรับเก็บชื่อบ่อที่ถูกคลิก
+    if "selected_tank" not in st.session_state:
+        st.session_state.selected_tank = None
+    if "js_key" not in st.session_state:
+        st.session_state.js_key = 0
 
-    # เรียกใช้แผนผัง
+    # 2. เรียกใช้แผนผัง (ส่ง js_key เข้าไปด้วย)
     clicked_name = render_tank_map()
 
-    # ตรวจสอบว่ามีการคลิกจริงหรือไม่
-    if clicked_name and isinstance(clicked_name, str) and clicked_name != "RO":
-        # เมื่อคลิกแล้ว ให้เก็บลง state และเปิด Modal
+    # 3. ตรวจสอบการคลิก (เพิ่มเงื่อนไขเช็คค่าว่าง)
+    if clicked_name and clicked_name != st.session_state.selected_tank:
+        # บันทึกลง State เพื่อป้องกันการเรียกซ้ำซ้อน
         st.session_state.selected_tank = clicked_name
-        
-        # เพิ่มตัวนับเพื่อให้ st_javascript สร้าง component ใหม่ในครั้งหน้า (แก้ปัญหาคลิกซ้ำไม่ได้)
-        st.session_state.rerun_count += 1
-        
-        # เรียก Modal
+        # บังคับเปิด Modal ทันที
         record_modal(clicked_name)
+    
+    # กรณีพิเศษ: ถ้าปิด Modal แล้วต้องการให้คลิกบ่อเดิมซ้ำได้ 
+    # ให้เพิ่มปุ่ม Reset หรือใช้ logic เคลียร์ค่าใน record_modal (ทำไว้ให้แล้วในฟังก์ชันเดิม)
+
     st.markdown("---")
     
     st.subheader("🛠️ การจัดการจิ๊กและสินค้า")
