@@ -101,15 +101,6 @@ def get_quarter_range(year, quarter):
     return start_date, end_date
 #============================================================================================
 def render_tank_map():
-    def t_div(name, top, left, w, h, bg, extra=""):
-        return f"""
-        <div class="tank {extra}"
-             onclick="Streamlit.setComponentValue('{name}')"
-             style="left:{left}px;top:{top}px;width:{w}px;height:{h}px;background:{bg};cursor:pointer;">
-            {name}
-        </div>
-        """
-
     html = f"""
         <script>
         function sendValue(name) {{
@@ -173,12 +164,14 @@ def render_tank_map():
         {t_div("18OrangeOil", 100, 670, 45, 45, "#d35400", "oil")}
     </div>
     """
-    clicked = components.html(html, height=750)
+    components.html(html, height=750)
 
-    return clicked
 #=================================================================================
 @st.dialog("บันทึกข้อมูลบ่อ")
 def record_modal(tank_name):
+    if not isinstance(tank_name, str):
+        st.error("❌ tank_name ไม่ถูกต้อง")
+        return
     st.write(f"### 📍 กำลังบันทึก: {tank_name}")
     
     # แยกประเภทบ่อ
