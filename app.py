@@ -105,65 +105,33 @@ def get_quarter_range(year, quarter):
 def render_tank_map():
 
     tanks = [
-        # name, x, y, color, width, height
-        ("5Black", 10, 10, "#111", 80, 80),
-        ("2Red", 140, 10, "red", 80, 80),
-        ("3Violet", 205, 10, "purple", 80, 80),
-        ("8Green", 290, 10, "green", 80, 80),
-        ("17Black", 355, 10, "#222", 80, 80),
-        ("15Gold", 440, 10, "#d4af00", 80, 80),
-        ("9Orange", 505, 10, "orange", 80, 80),
-        ("10LightBlue", 600, 10, "cyan", 80, 80),
-        ("6BananaLeafGreen", 665, 10, "#7fff00", 80, 80),
-        ("16Blue", 760, 10, "blue", 80, 80),
-        ("4DarkBlue", 825, 10, "darkblue", 80, 80),
-
-        ("RO", 140, 85, "#ddd", 130, 70),
-        ("RO", 440, 85, "#ddd", 130, 70),
-        ("RO", 760, 85, "#ddd", 130, 70),
-
-        ("13DarkTitanium", 305, 100, "#555", 60, 60),
-        ("18OrangeOil", 610, 100, "#d35400", 60, 60),
+        ("5Black", 10, 10, "red"),
+        ("2Red", 140, 10, "blue"),
+        ("3Violet", 260, 10, "green"),
     ]
 
     fig = go.Figure()
 
-    for name, x, y, color, w, h in tanks:
+    for name, x, y, color in tanks:
         fig.add_trace(go.Scatter(
             x=[x],
             y=[y],
             mode="markers+text",
-            marker=dict(
-                size=40,
-                color=color,
-                symbol="square"
-            ),
+            marker=dict(size=60, color=color, symbol="square"),
             text=[name],
             textposition="middle center",
             customdata=[name],
-            hovertemplate=f"{name}<extra></extra>",
-            showlegend=False
+            name=name
         ))
 
     fig.update_layout(
-        height=750,
-        margin=dict(l=10, r=10, t=10, b=10),
+        height=700,
         clickmode="event+select",
-        xaxis=dict(
-            range=[0, 1000],
-            showgrid=False,
-            zeroline=False,
-            visible=False
-        ),
-        yaxis=dict(
-            range=[0, 800],
-            showgrid=False,
-            zeroline=False,
-            visible=False
-        )
+        xaxis=dict(visible=False, range=[0, 1000]),
+        yaxis=dict(visible=False, range=[0, 800])
     )
 
-    event = st.plotly_chart(fig, use_container_width=True, key="scada_map", on_select="rerun")
+    event = st.plotly_chart(fig, use_container_width=True, key="scada")
 
     return event
 
@@ -494,17 +462,28 @@ if menu == "Dashboard":
 # ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
-    st.info("💡 คลิกที่บ่อในผังด้านล่างเพื่อเปิดฟอร์มกรอกข้อมูล pH และอุณหภูมิ")
-    clicked = render_tank_map()
+    st.info("💡 คลิกที่บ่อในผังด้านล่างเพื่อเปิดฟอร์มกรอกข้อมูล")
 
-    if clicked and clicked.selection:
-        points = clicked.selection.get("points", [])
-    
-        if len(points) > 0:
-            tank_name = points[0].get("customdata")
-    
-            if tank_name:
-                st.session_state["selected_tank"] = tank_name
+    # ===== INIT STATE =====
+    if "selected_tank" not in st.session_state:
+        st.session_state["selected_tank"] = None
+
+    # ===== RENDER MAP =====
+    event = render_tank_map()
+
+    # ===== HANDLE CLICK =====
+    if event:
+        try:
+            selected = event["selection"]["points"][0]["customdata"]
+            if selected:
+                st.session_state["selected_tank"] = selected
+        except:
+            pass
+
+    # ===== SHOW MODAL =====
+    if st.session_state["selected_tank"]:
+        record_modal(st.session_state["selected_tank"])
+
     st.markdown("---")
     
     st.subheader("🛠️ การจัดการจิ๊กและสินค้า")
