@@ -612,7 +612,7 @@ if menu == "บันทึกข้อมูลการผลิต":
             sel_ano = st.selectbox(
                 "ยืนยันบ่ออโนไดซ์",
                 ano_list,
-                index=idx_ano,
+                index=0,
                 key="ano_select"
             )
             
