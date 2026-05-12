@@ -574,20 +574,6 @@ if menu == "บันทึกข้อมูลการผลิต":
     
         tank_list = list(color_tanks.keys())
     
-        clean_clicked_id = None
-        if clicked_id:
-            clean_clicked_id = str(clicked_id).strip()
-    
-        default_index = 0
-    
-        if clean_clicked_id in tank_list:
-            st.session_state["color_select"] = clean_clicked_id
-            default_index = tank_list.index(clean_clicked_id)
-            st.success(f"📍 บ่อที่เลือกจากผัง: {clean_clicked_id}")
-        
-        elif clean_clicked_id:
-            st.warning(f"⚠️ ไม่พบบ่อ {clean_clicked_id}")
-    
         selected_tank_name = st.selectbox(
             "ยืนยันบ่อสี",
             tank_list,
@@ -620,13 +606,9 @@ if menu == "บันทึกข้อมูลการผลิต":
         
         # กรณีคลิกบ่ออโนไดซ์ (เช่น AnodizedPPool1)
         default_ano = None
-        if clicked_id and clicked_id in ano_tanks:
-            default_ano = clicked_id
-            st.success(f"คุณเลือก: **{clicked_id}**")
 
         if ano_tanks:
             ano_list = list(ano_tanks.keys())
-            idx_ano = ano_list.index(default_ano) if default_ano in ano_list else 0
             sel_ano = st.selectbox(
                 "ยืนยันบ่ออโนไดซ์",
                 ano_list,
