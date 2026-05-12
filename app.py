@@ -105,7 +105,7 @@ def render_tank_map():
     def t_div(name, top, left, w, h, bg, text_color="white"):
         return f"""
         <div class="tank"
-            onclick="window.location.href='?tank={name}'"
+            onclick="parent.window.location.search='tank={name}'"
             style="
                 left:{left}px;
                 top:{top}px;
@@ -247,6 +247,7 @@ def record_modal(tank_name):
                     st.error(f"Error: {e}")
 
     if st.button("❌ ปิดหน้าต่าง"):
+        st.session_state.selected_tank = None
         st.query_params.clear()
         st.rerun()
 #=================================================================   
