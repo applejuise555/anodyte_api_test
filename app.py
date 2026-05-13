@@ -351,31 +351,70 @@ def show_data_editor():
     edit_mode = st.radio("เลือกสิ่งที่ต้องการแก้ไข", ["📦 ข้อมูลสินค้า (Products)", "📜 ประวัติงานจิ๊ก (Jig Logs)"], horizontal=True)
 
     if edit_mode == "📦 ข้อมูลสินค้า (Products)":
-        st.subheader("แก้ไขข้อมูลสินค้า")
+        st.subheader("แก้ไขข้อมูลสินค้าแบบละเอียด")
         res = supabase.table("products").select("*").execute()
         if res.data:
-            # ปรับตรงนี้: แสดง รหัส | ชื่อ ใน Selectbox
+            # แสดง รหัส | ชื่อ ใน Selectbox
             prod_options = {f"{p['product_code']} | {p['product_name']}": p for p in res.data}
             selected_p_label = st.selectbox("เลือกสินค้าที่ต้องการแก้ไข", list(prod_options.keys()))
             p_data = prod_options[selected_p_label]
             
-            with st.form("edit_product_form"):
+            with st.form("edit_product_form_v2"):
                 col1, col2 = st.columns(2)
                 new_code = col1.text_input("รหัสสินค้า", value=p_data['product_code'])
                 new_name = col1.text_input("ชื่อสินค้า", value=p_data['product_name'])
-                new_vol = col2.number_input("ปริมาตรต่อหน่วย (mm³)", value=float(p_data['unit_volume'] or 0), format="%.2f")
-                new_finish = col2.text_input("พื้นผิว (Surface)", value=p_data.get('surface_finish', '-'))
                 
-                if st.form_submit_button("💾 บันทึกการเปลี่ยนแปลงสินค้า"):
+                # --- ส่วนแก้ไขรูปทรง ---
+                current_shape = p_data.get('shape', 'สี่เหลี่ยม')
+                shapes = ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง"]
+                new_shape = col2.selectbox("เปลี่ยนรูปทรง", shapes, index=shapes.index(current_shape) if current_shape in shapes else 0)
+                new_finish = col2.text_input("พื้นผิว (Surface)", value=p_data.get('surface_finish', '-'))
+
+                st.divider()
+                st.write(f"📏 **แก้ไขสัดส่วนชิ้นงาน (คำนวณตามทรง: {new_shape})**")
+                
+                c_a, c_b, c_c = st.columns(3)
+                h = c_a.number_input("ความสูง/ยาว (H) [mm]", min_value=0.0, value=float(p_data.get('height', 0)))
+                
+                # ตัวแปรสำหรับคำนวณ
+                u_vol, w, t, od, id_inner = 0.0, 0.0, 0.0, 0.0, 0.0
+
+                if new_shape == "สี่เหลี่ยม":
+                    w = c_b.number_input("กว้าง [mm]", min_value=0.0, value=float(p_data.get('width', 0)))
+                    t = c_c.number_input("หนา [mm]", min_value=0.0, value=float(p_data.get('thickness', 0)))
+                    u_vol = h * w * t
+                elif new_shape == "ทรงกระบอกทึบ":
+                    od = c_b.number_input("เส้นผ่านศูนย์กลาง (OD) [mm]", min_value=0.0, value=float(p_data.get('outer_diameter', 0)))
+                    u_vol = math.pi * ((od/2)**2) * h
+                elif new_shape == "ทรงกระบอกกลวง":
+                    od = c_b.number_input("OD [mm]", min_value=0.0, value=float(p_data.get('outer_diameter', 0)))
+                    t_wall = c_c.number_input("ความหนาเนื้อ [mm]", min_value=0.0, value=float(p_data.get('thickness', 0)))
+                    id_inner = max(0.0, od - (2 * t_wall))
+                    u_vol = math.pi * ((od/2)**2 - (id_inner/2)**2) * h
+                    t = t_wall # เก็บค่าความหนาลง field thickness
+
+                st.info(f"💡 ปริมาตรใหม่ที่คำนวณได้: **{u_vol:,.2f} mm³**")
+                
+                if st.form_submit_button("💾 บันทึกการเปลี่ยนแปลงสินค้าและรูปทรง"):
                     try:
                         supabase.table("products").update({
-                            "product_code": new_code, "product_name": new_name,
-                            "unit_volume": new_vol, "surface_finish": new_finish
+                            "product_code": new_code,
+                            "product_name": new_name,
+                            "shape": new_shape,
+                            "unit_volume": u_vol,
+                            "height": h,
+                            "width": w,
+                            "thickness": t,
+                            "outer_diameter": od,
+                            "inner_diameter": id_inner,
+                            "surface_finish": new_finish
                         }).eq("product_id", p_data['product_id']).execute()
-                        st.success("✅ อัปเดตข้อมูลสินค้าสำเร็จ!")
+                        
+                        st.success("✅ อัปเดตข้อมูลสินค้าและปริมาตรเรียบร้อย!")
+                        time.sleep(1)
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        st.error(f"เกิดข้อผิดพลาด: {e}")
         else:
             st.info("ไม่มีข้อมูลสินค้าในระบบ")
 
