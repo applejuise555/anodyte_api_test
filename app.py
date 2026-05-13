@@ -104,8 +104,8 @@ def render_tank_map():
 
     def t_div(name, top, left, w, h, bg, text_color="white"):
         return f"""
-        <a href="?tank={name}" style="text-decoration:none;">
-            <div class="tank"
+        <div class="tank"
+            onclick="window.parent.location.search='?tank={name}'"
                 style="
                     left:{left}px;
                     top:{top}px;
@@ -116,7 +116,6 @@ def render_tank_map():
                 ">
                 {name}
             </div>
-        </a>
         """
 
     html_code = f"""
