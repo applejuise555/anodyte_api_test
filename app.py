@@ -8,10 +8,7 @@ import math
 from plotly.subplots import make_subplots
 import time
 import streamlit as st
-from streamlit_javascript import st_javascript
-from streamlit_js_eval import streamlit_js_eval
 import streamlit.components.v1 as components
-import streamlit_javascript as stjs
 
 
 # 1. ตั้งค่า Timezone (UTC +7)
@@ -100,34 +97,12 @@ def get_quarter_range(year, quarter):
         end_date = datetime(year, end_month + 1, 1) - timedelta(days=1)
     return start_date, end_date
 #============================================================================================
-def tank_button(name, color, key):
-
-    button_style = f"""
-    <style>
-    div[data-testid="stButton"] button[kind="secondary"]#{key} {{
-        background:{color};
-        color:white;
-        height:70px;
-        border-radius:8px;
-        border:2px solid #444;
-        font-weight:bold;
-        font-size:13px;
-    }}
-    </style>
-    """
-
-    st.markdown(button_style, unsafe_allow_html=True)
-
-    if st.button(name, key=key, use_container_width=True):
-        st.session_state.selected_tank = name
-        st.rerun()
-
 def render_tank_map():
 
-    tank_html = """
+    st.markdown("""
     <style>
 
-    .plant-map{
+    .map-wrap{
         position:relative;
         width:1100px;
         height:720px;
@@ -136,7 +111,7 @@ def render_tank_map():
         margin:auto;
     }
 
-    .tank{
+    .tank-label{
         position:absolute;
         border:2px solid #333;
         border-radius:6px;
@@ -148,65 +123,74 @@ def render_tank_map():
         justify-content:center;
         text-align:center;
         box-sizing:border-box;
-        cursor:pointer;
-        transition:0.15s;
         font-family:sans-serif;
-    }
-
-    .tank:hover{
-        transform:scale(1.05);
-        border:3px solid yellow;
-        z-index:999;
+        pointer-events:none;
     }
 
     </style>
+    """, unsafe_allow_html=True)
 
-    <script>
-    function selectTank(tankName){
-        window.parent.postMessage({
-            type: "tank_click",
-            tank: tankName
-        }, "*");
-    }
-    </script>
+    # พื้นหลังผัง
+    map_container = st.container()
 
-    <div class="plant-map">
+    with map_container:
 
-        <div class="tank"
-            onclick="selectTank('5Black')"
-            style="
-            left:10px; top:10px;
-            width:70px; height:70px;
-            background:#111;">
-            5Black
+        st.markdown("""
+        <div class="map-wrap">
+
+            <div class="tank-label"
+                style="
+                left:10px;
+                top:10px;
+                width:70px;
+                height:70px;
+                background:#111;">
+                5Black
+            </div>
+
+            <div class="tank-label"
+                style="
+                left:145px;
+                top:10px;
+                width:65px;
+                height:70px;
+                background:red;">
+                2Red
+            </div>
+
+            <div class="tank-label"
+                style="
+                left:210px;
+                top:10px;
+                width:65px;
+                height:70px;
+                background:purple;">
+                3Violet
+            </div>
+
         </div>
+        """, unsafe_allow_html=True)
 
-        <div class="tank"
-            onclick="selectTank('2Red')"
-            style="
-            left:145px; top:10px;
-            width:65px; height:70px;
-            background:red;">
-            2Red
-        </div>
+        # ปุ่มโปร่งใสซ้อนตำแหน่ง
+        c1,c2,c3,c4,c5,c6,c7,c8 = st.columns([1,1,1,1,1,1,1,1])
 
-        <div class="tank"
-            onclick="selectTank('3Violet')"
-            style="
-            left:210px; top:10px;
-            width:65px; height:70px;
-            background:purple;">
-            3Violet
-        </div>
+        with c1:
+            st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
+            if st.button(" ", key="tank_5"):
+                st.session_state.selected_tank = "5Black"
+                st.rerun()
 
-    </div>
-    """
+        with c2:
+            st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
+            if st.button(" ", key="tank_2"):
+                st.session_state.selected_tank = "2Red"
+                st.rerun()
 
-    components.html(tank_html, height=740)
-    clicked_tank = st.query_params.get("tank", None)
-
-    if clicked_tank:
-        st.session_state.selected_tank = clicked_tank
+        with c3:
+            st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
+            if st.button(" ", key="tank_3"):
+                st.session_state.selected_tank = "3Violet"
+                st.rerun()
    
 # --- 4. ฟังก์ชันรับค่า Input (Dialog) - แก้ไข Indent เรียบร้อย ---
 @st.dialog("บันทึกข้อมูลบ่อ")
@@ -552,12 +536,6 @@ if menu == "Dashboard":
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
     render_tank_map()
-
-    tank = st.query_params.get("tank")
-    
-    if tank is not None:
-        st.session_state.selected_tank = str(tank)
-    
     if st.session_state.get("selected_tank"):
         record_modal(st.session_state.selected_tank)
 #*************************************************************************
