@@ -536,9 +536,10 @@ if menu == "บันทึกข้อมูลการผลิต":
             st.warning("ไม่พบข้อมูลบ่ออโนไดซ์ในระบบ")
 
     # --- Tab หลัก 3: ระบบงานจิ๊ก (Jig System) ---
-    with tab_main[2]:
+    with tab_main[2]: # ตอนนี้ Index 2 มีตัวตนแล้ว
+        st.subheader("ระบบงานจิ๊ก (Jig System)")
         sub_prod, sub_jig, sub_log = st.tabs(["📦 1. ลงทะเบียนสินค้า", "🛠️ 2. ลงทะเบียนจิ๊ก", "⚡ 3. บันทึกผลผลิต"])
-
+        
         with sub_prod:
             st.subheader("เพิ่มสินค้าใหม่ลงระบบ")
             shape = st.selectbox("📐 เลือกรูปทรง", ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง"], key="shape_sel")
