@@ -105,21 +105,20 @@ def render_tank_map():
     def t_div(name, top, left, w, h, bg, text_color="white"):
         return f"""
         <div class="tank"
-            onclick="window.parent.location.search='?tank={name}'"
-                style="
-                    left:{left}px;
-                    top:{top}px;
-                    width:{w}px;
-                    height:{h}px;
-                    background:{bg};
-                    color:{text_color};
-                ">
-                {name}
-            </div>
+            onclick="sendTank('{name}')"
+            style="
+                left:{left}px;
+                top:{top}px;
+                width:{w}px;
+                height:{h}px;
+                background:{bg};
+                color:{text_color};
+            ">
+            {name}
+        </div>
         """
 
     html_code = f"""
-
     <style>
 
     .plant-map {{
@@ -155,6 +154,14 @@ def render_tank_map():
     }}
 
     </style>
+
+    <script>
+    function sendTank(name) {{
+        const url = new URL(window.parent.location);
+        url.searchParams.set("tank", name);
+        window.parent.location.href = url.toString();
+    }}
+    </script>
 
     <div class="plant-map">
 
@@ -218,7 +225,7 @@ def record_modal(tank_name):
                             "recorded_at": datetime.now(ICT).isoformat()
                         }).execute()
                         st.success("บันทึกสำเร็จ!")
-                        st.query_params.clear() # ปิดหน้าต่างโดยล้าง URL
+                        st.session_state.selected_tank = None
                         time.sleep(1)
                         st.rerun()
                     else:
@@ -243,7 +250,6 @@ def record_modal(tank_name):
                             "recorded_at": datetime.now(ICT).isoformat()
                         }).execute()
                         st.success("บันทึกสำเร็จ!")
-                        st.query_params.clear()
                         st.session_state.selected_tank = None
                         time.sleep(1)
                         st.rerun()
