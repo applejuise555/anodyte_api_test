@@ -136,6 +136,11 @@ def render_tank_map():
         margin:auto;
     }
     
+    .tank-link{
+        text-decoration:none;
+        color:inherit;
+    }
+    
     .tank{
         position:absolute;
         border:2px solid #333;
@@ -165,114 +170,37 @@ def render_tank_map():
     
     </style>
     
-    <script>
-    function selectTank(name){
-        const url = new URL(window.parent.location.href);
-        url.searchParams.set("tank", name);
-        window.parent.location.href = url.toString();
-    }
-    </script>
-    
     <div class="plant-map">
     
+    <a class="tank-link" href="?tank=5Black">
     <div class="tank"
-        onclick="selectTank('5Black')"
         style="
         left:10px; top:10px;
         width:70px; height:70px;
         background:#111;">
         5Black
     </div>
+    </a>
     
+    <a class="tank-link" href="?tank=2Red">
     <div class="tank"
-        onclick="selectTank('2Red')"
         style="
         left:145px; top:10px;
         width:65px; height:70px;
         background:red;">
         2Red
     </div>
+    </a>
     
+    <a class="tank-link" href="?tank=3Violet">
     <div class="tank"
-        onclick="selectTank('3Violet')"
         style="
         left:210px; top:10px;
         width:65px; height:70px;
         background:purple;">
         3Violet
     </div>
-    
-    <div class="tank"
-        onclick="selectTank('8Green')"
-        style="
-        left:300px; top:10px;
-        width:70px; height:70px;
-        background:green;">
-        8Green
-    </div>
-    
-    <div class="tank"
-        onclick="selectTank('17Black')"
-        style="
-        left:380px; top:10px;
-        width:80px; height:70px;
-        background:#222;">
-        17Black
-    </div>
-    
-    <div class="tank blacktxt"
-        onclick="selectTank('15Gold')"
-        style="
-        left:485px; top:10px;
-        width:70px; height:70px;
-        background:#D4AF37;">
-        15Gold
-    </div>
-    
-    <div class="tank blacktxt"
-        onclick="selectTank('9Orange')"
-        style="
-        left:545px; top:10px;
-        width:70px; height:70px;
-        background:orange;">
-        9Orange
-    </div>
-    
-    <div class="tank blacktxt"
-        onclick="selectTank('10LightBlue')"
-        style="
-        left:650px; top:10px;
-        width:70px; height:70px;
-        background:#87CEFA;">
-        10LightBlue
-    </div>
-    
-    <div class="tank blacktxt"
-        onclick="selectTank('6BananaLeafGreen')"
-        style="
-        left:715px; top:10px;
-        width:70px; height:70px;
-        background:#9ACD32;">
-        6BananaLeafGreen
-    </div>
-    
-    <div class="tank"
-        onclick="selectTank('16Blue')"
-        style="
-        left:795px; top:10px;
-        width:70px; height:70px;
-        background:blue;">
-        16Blue
-    </div>
-    
-    <div class="tank"
-        onclick="selectTank('4DarkBlue')"
-        style="
-        left:870px; top:10px;
-        width:70px; height:70px;
-        background:#00008B;">
-        4DarkBlue
-    </div>
+    </a>
     
     </div>
     """
