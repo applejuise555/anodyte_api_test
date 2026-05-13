@@ -156,9 +156,6 @@ def render_tank_map():
     }
 
     </style>
-    """, unsafe_allow_html=True)
-
-    tank_html = """
 
     <div class="map-wrap">
 
@@ -239,8 +236,85 @@ def render_tank_map():
             4DarkBlue
         </div>
 
+        <div class="tank" style="
+            left:340px; top:85px;
+            width:120px; height:40px;
+            background:#4A4E69;">
+            13DarkTitanium
+        </div>
+
+        <div class="tank blacktxt" style="
+            left:655px; top:90px;
+            width:120px; height:40px;
+            background:#FF8C00;">
+            18OrangeOil
+        </div>
+
+        <div class="tank" style="
+            left:270px; top:220px;
+            width:120px; height:45px;
+            background:#111;">
+            20Black
+        </div>
+
+        <div class="tank" style="
+            left:250px; top:265px;
+            width:150px; height:45px;
+            background:#8B0000;">
+            1DarkRedB
+        </div>
+
+        <div class="tank blacktxt" style="
+            left:420px; top:240px;
+            width:120px; height:80px;
+            background:pink;">
+            7Pink
+        </div>
+
+        <div class="tank blacktxt" style="
+            left:540px; top:390px;
+            width:90px; height:170px;
+            background:#D4AF37;">
+            11Gold
+        </div>
+
+        <div class="tank" style="
+            left:790px; top:220px;
+            width:150px; height:45px;
+            background:#8B0000;">
+            1DarkRedA
+        </div>
+
+        <div class="tank blacktxt" style="
+            left:790px; top:300px;
+            width:150px; height:55px;
+            background:#B87333;">
+            19Copper
+        </div>
+
+        <div class="tank blacktxt" style="
+            left:790px; top:370px;
+            width:150px; height:45px;
+            background:#808080;">
+            12Titanium
+        </div>
+
+        <div class="tank blacktxt" style="
+            left:790px; top:420px;
+            width:150px; height:45px;
+            background:#B76E79;">
+            14RoseGold
+        </div>
+
+        <div class="tank blacktxt" style="
+            left:930px; top:630px;
+            width:150px; height:60px;
+            background:#00BFFF;">
+            Anodize tank 1
+        </div>
+
     </div>
-    """
+    """, unsafe_allow_html=True)
 
     st.markdown(tank_html, unsafe_allow_html=True)
 
