@@ -344,7 +344,7 @@ def render_tank_map():
 
     components.html(html, height=750, scrolling=False)
 
-# ================= 3. EDIT DATA (โหมดช่องกรอกข้อมูล) =================
+# ================= 3. EDIT DATA (เพิ่มระบบคัดกรองวันที่) =================
 def show_data_editor():
     st.title("🛠️ จัดการและแก้ไขข้อมูลย้อนหลัง")
     
@@ -352,13 +352,10 @@ def show_data_editor():
 
     if edit_mode == "📦 ข้อมูลสินค้า (Products)":
         st.subheader("แก้ไขข้อมูลสินค้า")
-        # 1. ดึงรายชื่อสินค้ามาให้เลือก
-        prods_res = supabase.table("products").select("*").execute()
-        if prods_res.data:
-            prod_options = {f"{p['product_code']} | {p['product_name']}": p for p in prods_res.data}
+        res = supabase.table("products").select("*").execute()
+        if res.data:
+            prod_options = {f"{p['product_code']} | {p['product_name']}": p for p in res.data}
             selected_p_label = st.selectbox("เลือกสินค้าที่ต้องการแก้ไข", list(prod_options.keys()))
-            
-            # 2. ดึงข้อมูลตัวที่เลือกมาใส่ใน Form
             p_data = prod_options[selected_p_label]
             
             with st.form("edit_product_form"):
@@ -368,48 +365,65 @@ def show_data_editor():
                 new_vol = col2.number_input("ปริมาตรต่อหน่วย (mm³)", value=float(p_data['unit_volume'] or 0), format="%.2f")
                 new_finish = col2.text_input("พื้นผิว (Surface)", value=p_data.get('surface_finish', '-'))
                 
-                st.warning("⚠️ การแก้ไขรหัสสินค้าอาจส่งผลต่อรายงานย้อนหลัง")
                 if st.form_submit_button("💾 บันทึกการเปลี่ยนแปลงสินค้า"):
-                    try:
-                        supabase.table("products").update({
-                            "product_code": new_code,
-                            "product_name": new_name,
-                            "unit_volume": new_vol,
-                            "surface_finish": new_finish
-                        }).eq("product_id", p_data['product_id']).execute()
-                        st.success("✅ อัปเดตข้อมูลสินค้าสำเร็จ!")
-                        time.sleep(1)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                    supabase.table("products").update({
+                        "product_code": new_code, "product_name": new_name,
+                        "unit_volume": new_vol, "surface_finish": new_finish
+                    }).eq("product_id", p_data['product_id']).execute()
+                    st.success("✅ อัปเดตข้อมูลสินค้าสำเร็จ!")
+                    st.rerun()
         else:
             st.info("ไม่มีข้อมูลสินค้าในระบบ")
 
     elif edit_mode == "📜 ประวัติงานจิ๊ก (Jig Logs)":
         st.subheader("แก้ไขประวัติการบันทึกงาน")
-        # 1. ดึง Log ล่าสุด (เช่น 100 รายการ) มาให้เลือก
-        logs_res = supabase.table("jig_usage_log").select("*, products(product_code), jigs(jig_model_code)").order("recorded_date", desc=True).limit(100).execute()
+        
+        # --- เพิ่มส่วนคัดกรองวันที่ ---
+        col_filter1, col_filter2 = st.columns([1, 2])
+        filter_date = col_filter1.date_input("📅 เลือกวันที่ต้องการหา", datetime.now(ICT))
+        
+        # ดึงข้อมูลเฉพาะวันที่เลือก (เปรียบเทียบช่วงเวลา 00:00 - 23:59)
+        start_date = filter_date.strftime("%Y-%m-%d 00:00:00")
+        end_date = filter_date.strftime("%Y-%m-%d 23:59:59")
+        
+        logs_res = supabase.table("jig_usage_log")\
+            .select("*, products(product_code, product_name, unit_volume), jigs(jig_model_code)")\
+            .gte("recorded_date", start_date)\
+            .lte("recorded_date", end_date)\
+            .order("recorded_date", desc=True).execute()
         
         if logs_res.data:
             log_options = {
-                f"วันที่: {l['recorded_date'][:16]} | จิ๊ก: {l['jigs']['jig_model_code']} | สินค้า: {l['products']['product_code']}": l 
+                f"🕒 {l['recorded_date'][11:16]}น. | จิ๊ก: {l['jigs']['jig_model_code']} | สินค้า: {l['products']['product_code']}": l 
                 for l in logs_res.data
             }
-            selected_log_label = st.selectbox("เลือกรายการบันทึกที่ต้องการแก้ไข", list(log_options.keys()))
-            
-            # 2. ดึงข้อมูล Log ตัวที่เลือกมาใส่ใน Form
+            selected_log_label = st.selectbox(f"พบ {len(log_options)} รายการในวันที่เลือก", list(log_options.keys()))
             l_data = log_options[selected_log_label]
             
-            with st.form("edit_log_form"):
+            # --- ฟอร์มแก้ไขข้อมูล ---
+            with st.form("edit_log_form_v2"):
+                st.info(f"แก้ไขรายการของ: {l_data['products']['product_name']} (จิ๊ก {l_data['jigs']['jig_model_code']})")
                 c1, c2 = st.columns(2)
-                new_pcs = c1.number_input("จำนวนชิ้นงานรวม (Pieces)", value=int(l_data['total_pieces'] or 0), min_value=0)
-                # คำนวณปริมาตรรวมใหม่อัตโนมัติถ้าแก้จำนวน
-                p_vol = supabase.table("products").select("unit_volume").eq("product_id", l_data['product_id']).single().execute().data['unit_volume']
-                new_total_vol = new_pcs * p_vol
                 
-                new_color = c2.selectbox("แก้ไขสีที่ใช้", sorted(set(TANK_COLOR_MAP.values())), index=0)
+                # ดึงจำนวนเดิมมาโชว์
+                current_pcs = int(l_data['total_pieces'] or 0)
+                new_pcs = c1.number_input("จำนวนชิ้นงานรวม (Pieces)", value=current_pcs, min_value=0)
                 
-                st.info(f"💡 ปริมาตรรวมใหม่จะถูกคำนวณเป็น: {new_total_vol:,.2f} mm³")
+                # รายการสีจาก MAP
+                color_list = sorted(list(set(TANK_COLOR_MAP.values())))
+                current_color = l_data.get('color', color_list[0])
+                try:
+                    color_idx = color_list.index(current_color)
+                except:
+                    color_idx = 0
+                    
+                new_color = c2.selectbox("แก้ไขสีที่ใช้", color_list, index=color_idx)
+                
+                # คำนวณปริมาตรใหม่ตามจำนวนชิ้นที่แก้
+                unit_vol = l_data['products']['unit_volume'] or 0
+                new_total_vol = new_pcs * unit_vol
+                
+                st.write(f"📊 ปริมาตรรวมจะเปลี่ยนเป็น: **{new_total_vol:,.2f} mm³**")
                 
                 if st.form_submit_button("💾 ยืนยันการแก้ไขข้อมูล"):
                     try:
@@ -418,13 +432,13 @@ def show_data_editor():
                             "total_volume": new_total_vol,
                             "color": new_color
                         }).eq("log_id", l_data['log_id']).execute()
-                        st.success("✅ แก้ไขประวัติการผลิตสำเร็จ!")
+                        st.success("✅ แก้ไขข้อมูลเรียบร้อย!")
                         time.sleep(1)
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        st.error(f"เกิดข้อผิดพลาด: {e}")
         else:
-            st.info("ยังไม่มีประวัติการผลิตในระบบ")
+            st.warning(f"❌ ไม่พบประวัติการบันทึกในวันที่ {filter_date}")
 #=================================================================   
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต", "🛠️ จัดการและแก้ไขข้อมูล"])
 
