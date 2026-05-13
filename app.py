@@ -124,13 +124,8 @@ def tank_button(name, color, key):
 
 def render_tank_map():
 
-    html_code = """
+    tank_html = """
     <style>
-
-    body{
-        margin:0;
-        overflow:hidden;
-    }
 
     .plant-map{
         position:relative;
@@ -170,57 +165,47 @@ def render_tank_map():
 
     </style>
 
-    <div class="plant-map">
-
-        <div class="tank"
-            onclick="sendTank('5Black')"
-            style="
-            left:10px; top:10px;
-            width:70px; height:70px;
-            background:#111;">
-            5Black
-        </div>
-
-        <div class="tank"
-            onclick="sendTank('2Red')"
-            style="
-            left:145px; top:10px;
-            width:65px; height:70px;
-            background:red;">
-            2Red
-        </div>
-
-        <div class="tank"
-            onclick="sendTank('3Violet')"
-            style="
-            left:210px; top:10px;
-            width:65px; height:70px;
-            background:purple;">
-            3Violet
-        </div>
-
-    </div>
-
     <script>
-    function sendTank(tank){
-
-        window.parent.postMessage({
-            type: "streamlit:setComponentValue",
-            value: tank
-        }, "*");
-
+    function selectTank(tankName){
+        const url = new URL(window.parent.location.href);
+        url.searchParams.set("tank", tankName);
+        window.parent.location.href = url.toString();
     }
     </script>
+
+    <div class="plant-map">
+
+    <div class="tank"
+        onclick="selectTank('5Black')"
+        style="
+        left:10px; top:10px;
+        width:70px; height:70px;
+        background:#111;">
+        5Black
+    </div>
+
+    <div class="tank"
+        onclick="selectTank('2Red')"
+        style="
+        left:145px; top:10px;
+        width:65px; height:70px;
+        background:red;">
+        2Red
+    </div>
+
+    <div class="tank"
+        onclick="selectTank('3Violet')"
+        style="
+        left:210px; top:10px;
+        width:65px; height:70px;
+        background:purple;">
+        3Violet
+    </div>
+
+    </div>
     """
 
-    selected = components.html(
-        html_code,
-        height=740,
-    )
-
-    if selected:
-        st.session_state.selected_tank = selected
-        record_modal(selected)
+    components.html(tank_html, height=740)
    
 # --- 4. ฟังก์ชันรับค่า Input (Dialog) - แก้ไข Indent เรียบร้อย ---
 @st.dialog("บันทึกข้อมูลบ่อ")
@@ -564,6 +549,14 @@ if menu == "Dashboard":
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
     render_tank_map()      
+    params = st.query_params
+    
+    if "tank" in params:
+        st.session_state.selected_tank = params["tank"]
+    
+    if st.session_state.get("selected_tank"):
+        record_modal(st.session_state.selected_tank)
+#*************************************************************************
     st.subheader("🛠️ การจัดการจิ๊กและสินค้า")
     sub_prod, sub_jig, sub_log = st.tabs(["📦 1. ลงทะเบียนสินค้า", "🛠️ 2. ลงทะเบียนจิ๊ก", "⚡ 3. บันทึกผลผลิต"])
     with sub_prod:
