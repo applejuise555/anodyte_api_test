@@ -315,9 +315,6 @@ def render_tank_map():
 
     </div>
     """, unsafe_allow_html=True)
-
-    st.markdown(tank_html, unsafe_allow_html=True)
-
     st.markdown("### เลือกบ่อ")
 
     tank_list = [
