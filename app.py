@@ -99,10 +99,10 @@ def get_quarter_range(year, quarter):
 #============================================================================================
 def render_tank_map():
 
-    st.markdown("""
+    html_map = """
     <style>
 
-    .map-wrap{
+    .plant-map{
         position:relative;
         width:1100px;
         height:720px;
@@ -111,7 +111,7 @@ def render_tank_map():
         margin:auto;
     }
 
-    .tank-label{
+    .tank{
         position:absolute;
         border:2px solid #333;
         border-radius:6px;
@@ -124,73 +124,65 @@ def render_tank_map():
         text-align:center;
         box-sizing:border-box;
         font-family:sans-serif;
-        pointer-events:none;
     }
 
     </style>
-    """, unsafe_allow_html=True)
 
-    # พื้นหลังผัง
-    map_container = st.container()
+    <div class="plant-map">
 
-    with map_container:
-
-        st.markdown("""
-        <div class="map-wrap">
-
-            <div class="tank-label"
-                style="
-                left:10px;
-                top:10px;
-                width:70px;
-                height:70px;
-                background:#111;">
-                5Black
-            </div>
-
-            <div class="tank-label"
-                style="
-                left:145px;
-                top:10px;
-                width:65px;
-                height:70px;
-                background:red;">
-                2Red
-            </div>
-
-            <div class="tank-label"
-                style="
-                left:210px;
-                top:10px;
-                width:65px;
-                height:70px;
-                background:purple;">
-                3Violet
-            </div>
-
+        <div class="tank"
+            style="
+            left:10px;
+            top:10px;
+            width:70px;
+            height:70px;
+            background:#111;">
+            5Black
         </div>
-        """, unsafe_allow_html=True)
 
-        # ปุ่มโปร่งใสซ้อนตำแหน่ง
-        c1,c2,c3,c4,c5,c6,c7,c8 = st.columns([1,1,1,1,1,1,1,1])
+        <div class="tank"
+            style="
+            left:145px;
+            top:10px;
+            width:65px;
+            height:70px;
+            background:red;">
+            2Red
+        </div>
 
-        with c1:
-            st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
-            if st.button(" ", key="tank_5"):
-                st.session_state.selected_tank = "5Black"
-                st.rerun()
+        <div class="tank"
+            style="
+            left:210px;
+            top:10px;
+            width:65px;
+            height:70px;
+            background:purple;">
+            3Violet
+        </div>
 
-        with c2:
-            st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
-            if st.button(" ", key="tank_2"):
-                st.session_state.selected_tank = "2Red"
-                st.rerun()
+    </div>
+    """
 
-        with c3:
-            st.markdown("<div style='height:15px'></div>", unsafe_allow_html=True)
-            if st.button(" ", key="tank_3"):
-                st.session_state.selected_tank = "3Violet"
-                st.rerun()
+    components.html(html_map, height=740)
+
+    st.markdown("### เลือกบ่อ")
+
+    col1,col2,col3 = st.columns(3)
+
+    with col1:
+        if st.button("5Black", use_container_width=True):
+            st.session_state.selected_tank = "5Black"
+            st.rerun()
+
+    with col2:
+        if st.button("2Red", use_container_width=True):
+            st.session_state.selected_tank = "2Red"
+            st.rerun()
+
+    with col3:
+        if st.button("3Violet", use_container_width=True):
+            st.session_state.selected_tank = "3Violet"
+            st.rerun()
    
 # --- 4. ฟังก์ชันรับค่า Input (Dialog) - แก้ไข Indent เรียบร้อย ---
 @st.dialog("บันทึกข้อมูลบ่อ")
