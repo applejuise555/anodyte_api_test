@@ -343,8 +343,55 @@ def render_tank_map():
     """
 
     components.html(html, height=750, scrolling=False)
+
+# ================= 3. EDIT DATA (เมนูใหม่ที่คุณต้องการ) =================
+def show_data_editor():
+    st.title("🛠️ จัดการและแก้ไขข้อมูลย้อนหลัง")
+    edit_mode = st.radio("เลือกสิ่งที่ต้องการแก้ไข", ["สินค้า (Products)", "ประวัติการผลิต (Jig Logs)"], horizontal=True)
+
+    if edit_mode == "สินค้า (Products)":
+        st.subheader("📦 แก้ไขข้อมูลสินค้า")
+        res = supabase.table("products").select("*").execute()
+        if res.data:
+            df_prod = pd.DataFrame(res.data)
+            # ใช้ st.data_editor เพื่อให้แก้ข้อมูลบนตารางได้เลย
+            edited_df = st.data_editor(df_prod, key="prod_editor", num_rows="dynamic")
+            
+            if st.button("บันทึกการเปลี่ยนแปลงสินค้า"):
+                for index, row in edited_df.iterrows():
+                    # สำหรับแถวที่มีอยู่แล้วให้ Update
+                    if 'product_id' in row and not pd.isna(row['product_id']):
+                        supabase.table("products").update({
+                            "product_code": row["product_code"],
+                            "product_name": row["product_name"],
+                            "unit_volume": row["unit_volume"]
+                        }).eq("product_id", row["product_id"]).execute()
+                st.success("อัปเดตข้อมูลสินค้าสำเร็จ!")
+                st.rerun()
+
+    elif edit_mode == "ประวัติการผลิต (Jig Logs)":
+        st.subheader("📜 แก้ไขประวัติการบันทึกงานในจิ๊ก")
+        # ดึง Log ล่าสุดมาแสดง
+        logs_res = supabase.table("jig_usage_log").select("*, products(product_code), jigs(jig_model_code)").order("recorded_date", desc=True).limit(50).execute()
+        if logs_res.data:
+            df_logs = pd.DataFrame(logs_res.data)
+            # ปรับแต่งการแสดงผลให้น่าอ่าน
+            df_display = df_logs[['log_id', 'recorded_date', 'total_pieces', 'total_volume', 'color']]
+            
+            st.write("เลือกรายการที่ต้องการแก้ไข (แสดง 50 รายการล่าสุด)")
+            edited_logs = st.data_editor(df_display, key="log_editor")
+
+            if st.button("ยืนยันการแก้ไข Log"):
+                for idx, row in edited_logs.iterrows():
+                    supabase.table("jig_usage_log").update({
+                        "total_pieces": row["total_pieces"],
+                        "total_volume": row["total_volume"],
+                        "color": row["color"]
+                    }).eq("log_id", row["log_id"]).execute()
+                st.success("แก้ไขประวัติการผลิตสำเร็จ!")
+                st.rerun()
 #=================================================================   
-menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
+menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต", "🛠️ จัดการและแก้ไขข้อมูล"])
 
 # ================= DASHBOARD (FULL SYSTEM VIEW) =================
 if menu == "Dashboard":
@@ -903,3 +950,6 @@ if menu == "บันทึกข้อมูลการผลิต":
                                     st.success("งานเสร็จสิ้น")
                                     time.sleep(1)
                                     st.rerun()
+
+elif menu == "🛠️ จัดการและแก้ไขข้อมูล":
+    show_data_editor()
