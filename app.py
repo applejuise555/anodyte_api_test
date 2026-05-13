@@ -489,89 +489,49 @@ if menu == "Dashboard":
 
 # ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
-    st.title("📝 ระบบบันทึกข้อมูล (Interactive Map)")
+    st.title("📝 ระบบบันทึกข้อมูล")
     
-    # 1. อ่านค่าจาก URL (ถ้ามีการคลิกมา)
-    query_params = st.query_params
-    clicked_tank = query_params.get("selected_tank", None)
+    # 1. รับค่าจาก URL
+    q_params = st.query_params
+    clicked_tank = q_params.get("selected_tank", None)
     
+    # 2. แสดงแผนผัง (เรียกแค่ครั้งเดียว)
     render_tank_map()
     
-    tab_main = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig System)"])
+    # 3. สร้าง Tab
+    tab_main = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)"])
 
     with tab_main[0]:
         color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
         tank_list = list(color_tanks.keys())
         
-        # 2. หา Index ของบ่อที่ถูกคลิกเพื่อให้ Selectbox เลือกบ่อให้อัตโนมัติ
+        # ค้นหา index
         default_idx = 0
         if clicked_tank in tank_list:
             default_idx = tank_list.index(clicked_tank)
             
-        selected_tank_name = st.selectbox("ยืนยันบ่อสี", tank_list, index=default_idx, key="color_select")
-        # ... ส่วนฟอร์มเดิม ...
-    
-        selected_tank_name = st.selectbox(
-            "ยืนยันบ่อสี",
-            tank_list,
-            index=0,
-            key="color_select"
+        # ตรวจสอบว่า KEY "color_select_main" ต้องไม่มีที่อื่นในหน้านี้
+        st.selectbox(
+            "ยืนยันบ่อสี", 
+            tank_list, 
+            index=default_idx, 
+            key="color_select_unique_1"  # เปลี่ยนชื่อ key ให้เจาะจง
         )
-    
-        detected_color = TANK_COLOR_MAP.get(selected_tank_name, "Black")
-        render_color_bar(detected_color)
-    
-        # 🔥 ฟอร์มกรอกข้อมูล
-        with st.form("color_log_form", clear_on_submit=True):
-            ph = st.number_input("ค่า pH", step=0.1, format="%.2f")
-            temp = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
-    
-            if st.form_submit_button("บันทึกค่า"):
-                supabase.table("color_tank_logs").insert({
-                    "tank_id": color_tanks[selected_tank_name],
-                    "ph_value": ph,
-                    "temperature": temp,
-                    "recorded_at": datetime.now(ICT).isoformat()
-                }).execute()
-    
-                st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
-                time.sleep(1)
-                st.rerun()
-    # --- Tab 2: บ่ออโนไดซ์ ---
+
     with tab_main[1]:
         ano_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
+        ano_list = list(ano_tanks.keys())
         
-        # กรณีคลิกบ่ออโนไดซ์ (เช่น AnodizedPPool1)
-        default_ano = None
-
-        if ano_tanks:
-            ano_list = list(ano_tanks.keys())
-            sel_ano = st.selectbox(
-                "ยืนยันบ่ออโนไดซ์",
-                ano_list,
-                index=0,
-                key="ano_select"
-            )
+        default_idx_ano = 0
+        if clicked_tank in ano_list:
+            default_idx_ano = ano_list.index(clicked_tank)
             
-            with st.form("ano_form", clear_on_submit=True):
-                ph_a = st.number_input("ค่า pH", step=0.01, format="%.2f")
-                temp_a = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
-                den_a = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
-                
-                if st.form_submit_button("บันทึกข้อมูลอโนไดซ์"):
-                    try:
-                        supabase.table("anodize_tank_logs").insert({
-                            "tank_id": ano_tanks[sel_ano], 
-                            "ph_value": ph_a,
-                            "temperature": temp_a, 
-                            "density": den_a,
-                            "recorded_at": datetime.now(ICT).isoformat()
-                        }).execute()
-                        st.success("✅ บันทึกข้อมูลอโนไดซ์สำเร็จ")
-                        time.sleep(1.5)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"เกิดข้อผิดพลาด: {e}")
+        st.selectbox(
+            "ยืนยันบ่ออโนไดซ์", 
+            ano_list, 
+            index=default_idx_ano, 
+            key="ano_select_unique_1"  # เปลี่ยนชื่อ key ให้เจาะจงไม่ให้ซ้ำกับด้านบน
+        )
 
     # --- Tab หลัก 3: ระบบงานจิ๊ก (Jig System) ---
     with tab_main[2]:
