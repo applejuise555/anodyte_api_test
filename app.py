@@ -124,9 +124,14 @@ def tank_button(name, color, key):
 
 def render_tank_map():
 
-    tank_html = """
+    html_code = """
     <style>
-    
+
+    body{
+        margin:0;
+        overflow:hidden;
+    }
+
     .plant-map{
         position:relative;
         width:1100px;
@@ -135,12 +140,7 @@ def render_tank_map():
         border:2px solid #999;
         margin:auto;
     }
-    
-    .tank-link{
-        text-decoration:none;
-        color:inherit;
-    }
-    
+
     .tank{
         position:absolute;
         border:2px solid #333;
@@ -157,54 +157,70 @@ def render_tank_map():
         transition:0.15s;
         font-family:sans-serif;
     }
-    
+
     .tank:hover{
         transform:scale(1.05);
         border:3px solid yellow;
         z-index:999;
     }
-    
+
     .blacktxt{
         color:black;
     }
-    
+
     </style>
-    
+
     <div class="plant-map">
-    
-    <a class="tank-link" href="?tank=5Black">
-    <div class="tank"
-        style="
-        left:10px; top:10px;
-        width:70px; height:70px;
-        background:#111;">
-        5Black
+
+        <div class="tank"
+            onclick="sendTank('5Black')"
+            style="
+            left:10px; top:10px;
+            width:70px; height:70px;
+            background:#111;">
+            5Black
+        </div>
+
+        <div class="tank"
+            onclick="sendTank('2Red')"
+            style="
+            left:145px; top:10px;
+            width:65px; height:70px;
+            background:red;">
+            2Red
+        </div>
+
+        <div class="tank"
+            onclick="sendTank('3Violet')"
+            style="
+            left:210px; top:10px;
+            width:65px; height:70px;
+            background:purple;">
+            3Violet
+        </div>
+
     </div>
-    </a>
-    
-    <a class="tank-link" href="?tank=2Red">
-    <div class="tank"
-        style="
-        left:145px; top:10px;
-        width:65px; height:70px;
-        background:red;">
-        2Red
-    </div>
-    </a>
-    
-    <a class="tank-link" href="?tank=3Violet">
-    <div class="tank"
-        style="
-        left:210px; top:10px;
-        width:65px; height:70px;
-        background:purple;">
-        3Violet
-    </div>
-    </a>
-    
-    </div>
+
+    <script>
+    function sendTank(tank){
+
+        window.parent.postMessage({
+            type: "streamlit:setComponentValue",
+            value: tank
+        }, "*");
+
+    }
+    </script>
     """
-    st.markdown(tank_html, unsafe_allow_html=True)
+
+    selected = components.html(
+        html_code,
+        height=740,
+    )
+
+    if selected:
+        st.session_state.selected_tank = selected
+        record_modal(selected)
    
 # --- 4. ฟังก์ชันรับค่า Input (Dialog) - แก้ไข Indent เรียบร้อย ---
 @st.dialog("บันทึกข้อมูลบ่อ")
@@ -547,16 +563,7 @@ if menu == "Dashboard":
 # ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
-    render_tank_map()
-
-    params = st.query_params
-
-    if "tank" in params:
-        st.session_state.selected_tank = params["tank"]
-    st.info("💡 คลิกที่ชื่อบ่อเพื่อบันทึกข้อมูล")
-    if st.session_state.get("selected_tank"):
-        record_modal(st.session_state.selected_tank)
-        
+    render_tank_map()      
     st.subheader("🛠️ การจัดการจิ๊กและสินค้า")
     sub_prod, sub_jig, sub_log = st.tabs(["📦 1. ลงทะเบียนสินค้า", "🛠️ 2. ลงทะเบียนจิ๊ก", "⚡ 3. บันทึกผลผลิต"])
     with sub_prod:
