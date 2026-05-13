@@ -100,103 +100,135 @@ def get_quarter_range(year, quarter):
         end_date = datetime(year, end_month + 1, 1) - timedelta(days=1)
     return start_date, end_date
 #============================================================================================
+def tank_button(name, color, key):
+    st.markdown(
+        f"""
+        <div style="
+            background:{color};
+            height:65px;
+            border-radius:8px;
+            border:2px solid #444;
+            margin-bottom:4px;
+        "></div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    if st.button(name, key=key, use_container_width=True):
+        st.session_state.selected_tank = name
+        st.rerun()
+
+
 def render_tank_map():
 
-    def t_div(name, top, left, w, h, bg, text_color="white"):
-        return f"""
-        <div class="tank"
-            onclick="selectTank('{name}')"
-            style="
-                left:{left}px;
-                top:{top}px;
-                width:{w}px;
-                height:{h}px;
-                background:{bg};
-                color:{text_color};
-            ">
-            {name}
-        </div>
-        """
+    st.markdown("## 🏭 ผังบ่อโรงงาน")
 
-    html_code = f"""
+    st.markdown("""
     <style>
-
-    .plant-map {{
-        position:relative;
-        width:1100px;
-        height:720px;
-        background:#f5f5f5;
-        border:2px solid #999;
-        margin:auto;
-        overflow:hidden;
-    }}
-
-    .tank {{
-        position:absolute;
-        border:1px solid #444;
-        border-radius:4px;
-        font-size:11px;
-        font-weight:bold;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        text-align:center;
-        cursor:pointer;
-        transition:0.15s;
-        box-sizing:border-box;
-        font-family:sans-serif;
-    }}
-
-    .tank:hover {{
-        transform:scale(1.05);
-        border:2px solid yellow;
-        z-index:999;
-    }}
-
+    div[data-testid="column"] {
+        padding: 2px !important;
+    }
     </style>
+    """, unsafe_allow_html=True)
 
-    <script>
-    function selectTank(name) {{
-        const currentUrl = new URL(window.parent.location.href);
-        currentUrl.searchParams.set("tank", name);
-        window.parent.location.href = currentUrl.toString();
-    }}
-    </script>
+    # ================= ROW 1 =================
+    cols = st.columns(14)
 
-    <div class="plant-map">
+    with cols[0]:
+        tank_button("5Black", "#111", "5Black")
 
-        {t_div("5Black", 10, 10, 70, 70, "#111")}
-        {t_div("2Red", 10, 145, 65, 70, "red")}
-        {t_div("3Violet", 10, 210, 65, 70, "purple")}
-        {t_div("8Green", 10, 300, 70, 70, "green")}
-        {t_div("17Black", 10, 380, 80, 70, "#222")}
-        {t_div("15Gold", 10, 485, 70, 70, "#D4AF37", "black")}
-        {t_div("9Orange", 10, 545, 70, 70, "orange", "black")}
-        {t_div("10LightBlue", 10, 650, 70, 70, "#87CEFA", "black")}
-        {t_div("6BananaLeafGreen", 10, 715, 70, 70, "#9ACD32", "black")}
-        {t_div("16Blue", 10, 795, 70, 70, "blue")}
-        {t_div("4DarkBlue", 10, 870, 70, 70, "#00008B")}
+    with cols[2]:
+        tank_button("2Red", "red", "2Red")
 
-        {t_div("13DarkTitanium", 85, 340, 120, 40, "#4A4E69")}
-        {t_div("18OrangeOil", 90, 655, 120, 40, "#FF8C00")}
+    with cols[3]:
+        tank_button("3Violet", "purple", "3Violet")
 
-        {t_div("20Black", 220, 270, 120, 45, "#111")}
-        {t_div("1DarkRedB", 265, 250, 150, 45, "#8B0000")}
-        {t_div("7Pink", 240, 420, 120, 80, "pink", "black")}
+    with cols[5]:
+        tank_button("8Green", "green", "8Green")
 
-        {t_div("11Gold", 390, 540, 90, 170, "#D4AF37", "black")}
+    with cols[6]:
+        tank_button("17Black", "#222", "17Black")
 
-        {t_div("1DarkRedA", 220, 790, 150, 45, "#8B0000")}
-        {t_div("19Copper", 300, 790, 150, 55, "#B87333")}
-        {t_div("12Titanium", 370, 790, 150, 45, "#808080")}
-        {t_div("14RoseGold", 420, 790, 150, 45, "#B76E79")}
+    with cols[8]:
+        tank_button("15Gold", "#D4AF37", "15Gold")
 
-        {t_div("Anodize tank 1", 630, 930, 150, 60, "#00BFFF")}
+    with cols[9]:
+        tank_button("9Orange", "orange", "9Orange")
 
-    </div>
-    """
+    with cols[10]:
+        tank_button("10LightBlue", "#87CEFA", "10LightBlue")
 
-    components.html(html_code, height=750, scrolling=False)
+    with cols[11]:
+        tank_button("6BananaLeafGreen", "#9ACD32", "6BananaLeafGreen")
+
+    with cols[12]:
+        tank_button("16Blue", "blue", "16Blue")
+
+    with cols[13]:
+        tank_button("4DarkBlue", "#00008B", "4DarkBlue")
+
+    # ================= ROW 2 =================
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+
+    cols2 = st.columns(14)
+
+    with cols2[5]:
+        tank_button("13DarkTitanium", "#4A4E69", "13DarkTitanium")
+
+    with cols2[9]:
+        tank_button("18OrangeOil", "#FF8C00", "18OrangeOil")
+
+    # ================= ROW 3 =================
+    st.markdown("<div style='height:40px'></div>", unsafe_allow_html=True)
+
+    cols3 = st.columns(14)
+
+    with cols3[4]:
+        tank_button("20Black", "#111", "20Black")
+
+    with cols3[6]:
+        tank_button("7Pink", "pink", "7Pink")
+
+    with cols3[11]:
+        tank_button("1DarkRedA", "#8B0000", "1DarkRedA")
+
+    # ================= ROW 4 =================
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+
+    cols4 = st.columns(14)
+
+    with cols4[4]:
+        tank_button("1DarkRedB", "#8B0000", "1DarkRedB")
+
+    with cols4[11]:
+        tank_button("19Copper", "#B87333", "19Copper")
+
+    # ================= ROW 5 =================
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+
+    cols5 = st.columns(14)
+
+    with cols5[8]:
+        tank_button("11Gold", "#D4AF37", "11Gold")
+
+    with cols5[11]:
+        tank_button("12Titanium", "#808080", "12Titanium")
+
+    # ================= ROW 6 =================
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+
+    cols6 = st.columns(14)
+
+    with cols6[11]:
+        tank_button("14RoseGold", "#B76E79", "14RoseGold")
+
+    # ================= ROW 7 =================
+    st.markdown("<div style='height:40px'></div>", unsafe_allow_html=True)
+
+    cols7 = st.columns(14)
+
+    with cols7[12]:
+        tank_button("Anodize tank 1", "#00BFFF", "Anodize tank 1")
 # --- 4. ฟังก์ชันรับค่า Input (Dialog) - แก้ไข Indent เรียบร้อย ---
 @st.dialog("บันทึกข้อมูลบ่อ")
 def record_modal(tank_name):
