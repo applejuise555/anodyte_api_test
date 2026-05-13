@@ -159,53 +159,54 @@ def render_tank_map():
         z-index:999;
     }
 
-    .blacktxt{
-        color:black;
-    }
-
     </style>
 
     <script>
     function selectTank(tankName){
-        const url = new URL(window.parent.location.href);
-        url.searchParams.set("tank", tankName);
-        window.parent.location.href = url.toString();
+        window.parent.postMessage({
+            type: "tank_click",
+            tank: tankName
+        }, "*");
     }
     </script>
 
     <div class="plant-map">
 
-    <div class="tank"
-        onclick="selectTank('5Black')"
-        style="
-        left:10px; top:10px;
-        width:70px; height:70px;
-        background:#111;">
-        5Black
-    </div>
+        <div class="tank"
+            onclick="selectTank('5Black')"
+            style="
+            left:10px; top:10px;
+            width:70px; height:70px;
+            background:#111;">
+            5Black
+        </div>
 
-    <div class="tank"
-        onclick="selectTank('2Red')"
-        style="
-        left:145px; top:10px;
-        width:65px; height:70px;
-        background:red;">
-        2Red
-    </div>
+        <div class="tank"
+            onclick="selectTank('2Red')"
+            style="
+            left:145px; top:10px;
+            width:65px; height:70px;
+            background:red;">
+            2Red
+        </div>
 
-    <div class="tank"
-        onclick="selectTank('3Violet')"
-        style="
-        left:210px; top:10px;
-        width:65px; height:70px;
-        background:purple;">
-        3Violet
-    </div>
+        <div class="tank"
+            onclick="selectTank('3Violet')"
+            style="
+            left:210px; top:10px;
+            width:65px; height:70px;
+            background:purple;">
+            3Violet
+        </div>
 
     </div>
     """
 
     components.html(tank_html, height=740)
+    clicked_tank = st.query_params.get("tank", None)
+
+    if clicked_tank:
+        st.session_state.selected_tank = clicked_tank
    
 # --- 4. ฟังก์ชันรับค่า Input (Dialog) - แก้ไข Indent เรียบร้อย ---
 @st.dialog("บันทึกข้อมูลบ่อ")
@@ -550,11 +551,12 @@ if menu == "Dashboard":
 # ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
-    render_tank_map()      
-    params = st.query_params
+    render_tank_map()
+
+    tank = st.query_params.get("tank")
     
-    if "tank" in params:
-        st.session_state.selected_tank = params["tank"]
+    if tank is not None:
+        st.session_state.selected_tank = str(tank)
     
     if st.session_state.get("selected_tank"):
         record_modal(st.session_state.selected_tank)
