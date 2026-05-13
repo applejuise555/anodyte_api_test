@@ -432,23 +432,20 @@ if menu == "Dashboard":
 
 # ================= RECORD PAGE =================
 # ================= RECORD PAGE =================
+# ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูล (Interactive Map)")
     
-    # 1. รับค่าจาก URL (Query Parameters)
+    # 1. ดึงค่าจาก URL
     query_params = st.query_params
     clicked_tank = query_params.get("selected_tank", None)
     
-    # 2. แสดงแผนผัง
+    # 2. แสดงผังบ่อ (ต้องใช้ฟังก์ชัน render_tank_map ที่มี <a> tag ตามที่แนะนำก่อนหน้า)
     render_tank_map()
-
-    # 3. ตรวจสอบว่าบ่อที่คลิกมาคือประเภทไหน เพื่อเลือก Tab เริ่มต้น
-    # ถ้าคำว่า Anodized อยู่ในชื่อบ่อ ให้เปิด Tab อโนไดซ์ (index 1)
-    default_tab_index = 0
-    if clicked_tank and "Anodized" in clicked_tank:
-        default_tab_index = 1
     
-    # สร้าง Tab โดยมีการระบุค่า default index
+    # 3. สร้าง Tab ให้ครบ 3 Tabs (ป้องกัน IndexError)
+    # หมายเหตุ: Streamlit Tabs ปกติจะไม่อนุญาตให้เปลี่ยนหน้าผ่านโค้ดได้โดยตรง 
+    # แต่เราจะใช้ Logic ในการ Set Default Value ใน Selectbox แทน
     tab_main = st.tabs(["🎨 บ่อสี (Color Bath)", "⚡ บ่ออโนไดซ์ (Anodize)", "📦 งานจิ๊ก (Jig System)"])
 
     # --- Tab 1: บ่อสี ---
@@ -456,18 +453,16 @@ if menu == "บันทึกข้อมูลการผลิต":
         color_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Color")
         tank_list = list(color_tanks.keys())
         
-        # ค้นหา index ของบ่อที่คลิกมาจาก Map
-        try:
-            start_idx = tank_list.index(clicked_tank) if clicked_tank in tank_list else 0
-        except:
-            start_idx = 0
-
-        # ใช้ key ที่ระบุเฉพาะเจาะจงเพื่อแก้ Duplicate Key Error
+        # หา Index ของบ่อที่คลิกมา
+        start_idx = 0
+        if clicked_tank in tank_list:
+            start_idx = tank_list.index(clicked_tank)
+            
         selected_tank_name = st.selectbox(
             "ยืนยันบ่อสี",
             tank_list,
             index=start_idx,
-            key="selectbox_color_entry_unique"
+            key="selectbox_color_entry_unique" # เปลี่ยน Key ไม่ให้ซ้ำ
         )
     
         detected_color = TANK_COLOR_MAP.get(selected_tank_name, "Black")
@@ -486,7 +481,7 @@ if menu == "บันทึกข้อมูลการผลิต":
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
                     st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
-                    st.query_params.clear() # ล้างค่าใน URL หลังบันทึก
+                    st.query_params.clear() 
                     time.sleep(1)
                     st.rerun()
                 except Exception as e:
@@ -495,21 +490,19 @@ if menu == "บันทึกข้อมูลการผลิต":
     # --- Tab 2: บ่ออโนไดซ์ ---
     with tab_main[1]:
         ano_tanks = get_options("tanks", "tank_id", "tank_name", "tank_type", "Anodize")
-        
         if ano_tanks:
             ano_list = list(ano_tanks.keys())
             
-            # ค้นหา index สำหรับบ่ออโนไดซ์
-            try:
-                start_idx_ano = ano_list.index(clicked_tank) if clicked_tank in ano_list else 0
-            except:
-                start_idx_ano = 0
+            # ตรวจสอบบ่อที่คลิกมา (เช่น AnodizedPPool1)
+            start_idx_ano = 0
+            if clicked_tank in ano_list:
+                start_idx_ano = ano_list.index(clicked_tank)
 
             sel_ano = st.selectbox(
                 "ยืนยันบ่ออโนไดซ์",
                 ano_list,
                 index=start_idx_ano,
-                key="selectbox_ano_entry_unique"
+                key="selectbox_ano_entry_unique" # เปลี่ยน Key ไม่ให้ซ้ำ
             )
             
             with st.form("ano_form_new", clear_on_submit=True):
@@ -527,18 +520,20 @@ if menu == "บันทึกข้อมูลการผลิต":
                             "recorded_at": datetime.now(ICT).isoformat()
                         }).execute()
                         st.success("✅ บันทึกข้อมูลอโนไดซ์สำเร็จ")
-                        st.query_params.clear() # ล้างค่าใน URL หลังบันทึก
+                        st.query_params.clear()
                         time.sleep(1)
                         st.rerun()
                     except Exception as e:
                         st.error(f"เกิดข้อผิดพลาด: {e}")
         else:
-            st.warning("ไม่พบข้อมูลบ่ออโนไดซ์ในระบบ")
+            st.info("💡 กรุณาเลือกบ่ออโนไดซ์จากผังหรือเลือกในรายการ")
 
-    # --- Tab หลัก 3: ระบบงานจิ๊ก (Jig System) ---
-    with tab_main[2]: # ตอนนี้ Index 2 มีตัวตนแล้ว
-        st.subheader("ระบบงานจิ๊ก (Jig System)")
+    # --- Tab 3: ระบบงานจิ๊ก (ที่เคย Error บรรทัดนี้จะหายไป) ---
+    with tab_main[2]:
+        st.subheader("📦 ระบบจัดการงานจิ๊ก")
         sub_prod, sub_jig, sub_log = st.tabs(["📦 1. ลงทะเบียนสินค้า", "🛠️ 2. ลงทะเบียนจิ๊ก", "⚡ 3. บันทึกผลผลิต"])
+        
+        # ใส่โค้ดเดิมของคุณในแต่ละ sub_tab ต่อได้เลยครับ...
         
         with sub_prod:
             st.subheader("เพิ่มสินค้าใหม่ลงระบบ")
