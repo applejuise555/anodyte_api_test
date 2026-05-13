@@ -199,27 +199,9 @@ def render_tank_map():
 
     if clicked:
         st.session_state.selected_tank = clicked
-    
-    return st.session_state.get("selected_tank")
+        st.session_state.dialog_open = True
+        st.rerun()
 
-
-    # ===== 5Black =====
-    st.markdown('<div class="tank-btn tank-5black">', unsafe_allow_html=True)
-    if st.button("5Black", key="tank_5black"):
-        record_modal("5Black")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # ===== 2Red =====
-    st.markdown('<div class="tank-btn tank-2red">', unsafe_allow_html=True)
-    if st.button("2Red", key="tank_2red"):
-        record_modal("2Red")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # ===== 3Violet =====
-    st.markdown('<div class="tank-btn tank-3violet">', unsafe_allow_html=True)
-    if st.button("3Violet", key="tank_3violet"):
-        record_modal("3Violet")
-    st.markdown('</div>', unsafe_allow_html=True)
 # --- 4. ฟังก์ชันรับค่า Input (Dialog) - แก้ไข Indent เรียบร้อย ---
 @st.dialog("บันทึกข้อมูลบ่อ")
 def record_modal(tank_name):
@@ -576,6 +558,7 @@ if menu == "Dashboard":
 if menu == "บันทึกข้อมูลการผลิต":
 
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
+    render_tank_map()
     query_params = st.query_params
     if "tank" in query_params and not st.session_state.dialog_open:
         st.session_state.selected_tank = query_params["tank"]
