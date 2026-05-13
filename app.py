@@ -111,81 +111,70 @@ def render_tank_map():
         border:2px solid #999;
     }
 
-    .tank-box{
+    div.stButton > button{
         position:absolute;
         border:2px solid #333;
         border-radius:8px;
         color:white;
         font-weight:bold;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-size:12px;
-        pointer-events:none;
-    }
-
-    div.stButton > button{
-        height:70px;
-        opacity:0;
+        font-size:14px;
+        cursor:pointer;
     }
 
     </style>
     """, unsafe_allow_html=True)
 
-    # พื้นหลังผัง
+    st.markdown('<div class="map-wrap">', unsafe_allow_html=True)
+
+    # ===== 5Black =====
     st.markdown("""
-    <div class="map-wrap">
-
-        <div class="tank-box"
-            style="
-            left:10px;
-            top:10px;
-            width:70px;
-            height:70px;
-            background:black;">
-            5Black
-        </div>
-
-        <div class="tank-box"
-            style="
-            left:145px;
-            top:10px;
-            width:65px;
-            height:70px;
-            background:red;">
-            2Red
-        </div>
-
-        <div class="tank-box"
-            style="
-            left:210px;
-            top:10px;
-            width:65px;
-            height:70px;
-            background:purple;">
-            3Violet
-        </div>
-
-    </div>
+    <style>
+    div[data-testid="stButton"]:nth-of-type(1) button{
+        left:10px;
+        top:10px;
+        width:70px;
+        height:70px;
+        background:black;
+    }
+    </style>
     """, unsafe_allow_html=True)
 
-    # ปุ่มจริง
-    c1,c2,c3 = st.columns([1,1,1])
+    if st.button("5Black"):
+        record_modal("5Black")
 
-    with c1:
-        if st.button("5Black"):
-            st.session_state.selected_tank = "5Black"
-            record_modal("5Black")
+    # ===== 2Red =====
+    st.markdown("""
+    <style>
+    div[data-testid="stButton"]:nth-of-type(2) button{
+        left:145px;
+        top:10px;
+        width:65px;
+        height:70px;
+        background:red;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-    with c2:
-        if st.button("2Red"):
-            st.session_state.selected_tank = "2Red"
-            record_modal("2Red")
+    if st.button("2Red"):
+        record_modal("2Red")
 
-    with c3:
-        if st.button("3Violet"):
-            st.session_state.selected_tank = "3Violet"
-            record_modal("3Violet")
+    # ===== 3Violet =====
+    st.markdown("""
+    <style>
+    div[data-testid="stButton"]:nth-of-type(3) button{
+        left:210px;
+        top:10px;
+        width:65px;
+        height:70px;
+        background:purple;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    if st.button("3Violet"):
+        record_modal("3Violet")
+
+    st.markdown("</div>", unsafe_allow_html=True)
    
 # --- 4. ฟังก์ชันรับค่า Input (Dialog) - แก้ไข Indent เรียบร้อย ---
 @st.dialog("บันทึกข้อมูลบ่อ")
@@ -531,8 +520,6 @@ if menu == "Dashboard":
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
     render_tank_map()
-    if st.session_state.get("selected_tank"):
-        record_modal(st.session_state.selected_tank)
 #*************************************************************************
     st.subheader("🛠️ การจัดการจิ๊กและสินค้า")
     sub_prod, sub_jig, sub_log = st.tabs(["📦 1. ลงทะเบียนสินค้า", "🛠️ 2. ลงทะเบียนจิ๊ก", "⚡ 3. บันทึกผลผลิต"])
