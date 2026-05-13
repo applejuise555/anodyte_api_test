@@ -431,6 +431,7 @@ if menu == "Dashboard":
             pass
 
 # ================= RECORD PAGE =================
+# ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูล (Interactive Map)")
     
