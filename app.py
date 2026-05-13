@@ -278,6 +278,7 @@ def record_modal(tank_name):
                         }).execute()
                         st.success("บันทึกสำเร็จ!")
                         st.session_state.selected_tank = None
+                        st.session_state.dialog_open = False
                         st.query_params.clear()
                         time.sleep(1)
                         st.rerun()
@@ -288,6 +289,8 @@ def record_modal(tank_name):
 
     if st.button("❌ ปิดหน้าต่าง"):
         st.session_state.selected_tank = None
+        st.session_state.dialog_open = False
+        st.query_params.clear()
         st.rerun()
 #=================================================================   
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
@@ -567,11 +570,13 @@ if menu == "Dashboard":
 if menu == "บันทึกข้อมูลการผลิต":
 
     st.title("📝 ระบบบันทึกข้อมูลการผลิต")
-    if st.session_state.get("selected_tank"):
-        record_modal(st.session_state.selected_tank)
-        render_tank_map()
+        query_params = st.query_params
+    if "tank" in query_params and not st.session_state.dialog_open:
+        st.session_state.selected_tank = query_params["tank"]
+        st.session_state.dialog_open = True
+        st.rerun()
     
-    if st.session_state.get("selected_tank"):
+    if st.session_state.dialog_open and st.session_state.selected_tank:
         record_modal(st.session_state.selected_tank)
 #*************************************************************************
     st.subheader("🛠️ การจัดการจิ๊กและสินค้า")
