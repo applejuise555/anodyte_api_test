@@ -344,7 +344,7 @@ def render_tank_map():
 
     components.html(html, height=750, scrolling=False)
 
-# ================= 3. EDIT DATA (เพิ่มระบบคัดกรองวันที่) =================
+# ================= 3. EDIT DATA (แก้ไขแบบละเอียด: สินค้า, สี, แถว, เศษ) =================
 def show_data_editor():
     st.title("🛠️ จัดการและแก้ไขข้อมูลย้อนหลัง")
     
@@ -372,73 +372,93 @@ def show_data_editor():
                     }).eq("product_id", p_data['product_id']).execute()
                     st.success("✅ อัปเดตข้อมูลสินค้าสำเร็จ!")
                     st.rerun()
-        else:
-            st.info("ไม่มีข้อมูลสินค้าในระบบ")
 
     elif edit_mode == "📜 ประวัติงานจิ๊ก (Jig Logs)":
-        st.subheader("แก้ไขประวัติการบันทึกงาน")
+        st.subheader("แก้ไขประวัติการบันทึกงานแบบละเอียด")
         
-        # --- เพิ่มส่วนคัดกรองวันที่ ---
-        col_filter1, col_filter2 = st.columns([1, 2])
-        filter_date = col_filter1.date_input("📅 เลือกวันที่ต้องการหา", datetime.now(ICT))
+        # 1. คัดกรองวันที่
+        col_f1, col_f2 = st.columns([1, 2])
+        filter_date = col_f1.date_input("📅 เลือกวันที่", datetime.now(ICT))
         
-        # ดึงข้อมูลเฉพาะวันที่เลือก (เปรียบเทียบช่วงเวลา 00:00 - 23:59)
-        start_date = filter_date.strftime("%Y-%m-%d 00:00:00")
-        end_date = filter_date.strftime("%Y-%m-%d 23:59:59")
+        start_dt = filter_date.strftime("%Y-%m-%d 00:00:00")
+        end_dt = filter_date.strftime("%Y-%m-%d 23:59:59")
         
         logs_res = supabase.table("jig_usage_log")\
-            .select("*, products(product_code, product_name, unit_volume), jigs(jig_model_code)")\
-            .gte("recorded_date", start_date)\
-            .lte("recorded_date", end_date)\
+            .select("*, products(*), jigs(jig_model_code)")\
+            .gte("recorded_date", start_dt)\
+            .lte("recorded_date", end_dt)\
             .order("recorded_date", desc=True).execute()
         
         if logs_res.data:
             log_options = {
-                f"🕒 {l['recorded_date'][11:16]}น. | จิ๊ก: {l['jigs']['jig_model_code']} | สินค้า: {l['products']['product_code']}": l 
+                f"🕒 {l['recorded_date'][11:16]}น. | จิ๊ก: {l['jigs']['jig_model_code']} | สินค้าเดิม: {l['products']['product_code']}": l 
                 for l in logs_res.data
             }
-            selected_log_label = st.selectbox(f"พบ {len(log_options)} รายการในวันที่เลือก", list(log_options.keys()))
+            selected_log_label = st.selectbox(f"รายการวันที่ {filter_date}", list(log_options.keys()))
             l_data = log_options[selected_log_label]
             
-            # --- ฟอร์มแก้ไขข้อมูล ---
-            with st.form("edit_log_form_v2"):
-                st.info(f"แก้ไขรายการของ: {l_data['products']['product_name']} (จิ๊ก {l_data['jigs']['jig_model_code']})")
+            # 2. ฟอร์มแก้ไขแบบละเอียด
+            with st.form("edit_log_detailed_form"):
+                st.markdown(f"### 📝 แก้ไขข้อมูลจิ๊ก: `{l_data['jigs']['jig_model_code']}`")
+                
+                # --- ส่วนที่ 1: สินค้าและสี ---
                 c1, c2 = st.columns(2)
+                # ดึงรายการสินค้าทั้งหมดเผื่อกรณีต้องการเปลี่ยนชนิดสินค้าใน Log นั้น
+                all_prods = supabase.table("products").select("product_id, product_code").execute().data
+                prod_list = {p['product_code']: p['product_id'] for p in all_prods}
+                current_p_code = l_data['products']['product_code']
                 
-                # ดึงจำนวนเดิมมาโชว์
-                current_pcs = int(l_data['total_pieces'] or 0)
-                new_pcs = c1.number_input("จำนวนชิ้นงานรวม (Pieces)", value=current_pcs, min_value=0)
+                new_p_code = c1.selectbox("เปลี่ยนสินค้า", list(prod_list.keys()), 
+                                          index=list(prod_list.keys()).index(current_p_code))
                 
-                # รายการสีจาก MAP
                 color_list = sorted(list(set(TANK_COLOR_MAP.values())))
                 current_color = l_data.get('color', color_list[0])
-                try:
-                    color_idx = color_list.index(current_color)
-                except:
-                    color_idx = 0
-                    
-                new_color = c2.selectbox("แก้ไขสีที่ใช้", color_list, index=color_idx)
+                new_color = c2.selectbox("เปลี่ยนสี", color_list, 
+                                         index=color_list.index(current_color) if current_color in color_list else 0)
                 
-                # คำนวณปริมาตรใหม่ตามจำนวนชิ้นที่แก้
-                unit_vol = l_data['products']['unit_volume'] or 0
-                new_total_vol = new_pcs * unit_vol
+                st.divider()
                 
-                st.write(f"📊 ปริมาตรรวมจะเปลี่ยนเป็น: **{new_total_vol:,.2f} mm³**")
+                # --- ส่วนที่ 2: จำนวนชิ้นงาน (แยกส่วน) ---
+                col_a, col_b, col_c = st.columns(3)
+                # ดึงค่าเดิมจาก DB (ถ้าไม่มีให้เป็น 0)
+                old_pcs_per_row = int(l_data.get('pcs_per_row', 0))
+                old_rows = int(l_data.get('rows_filled', 0))
+                old_partial = int(l_data.get('partial_pieces', 0))
                 
-                if st.form_submit_button("💾 ยืนยันการแก้ไขข้อมูล"):
+                new_pcs_per_row = col_a.number_input("จำนวนต่อแถว", min_value=0, value=old_pcs_per_row)
+                new_rows = col_b.number_input("จำนวนแถวที่เต็ม", min_value=0, value=old_rows)
+                new_partial = col_c.number_input("เศษ (ชิ้น)", min_value=0, value=old_partial)
+                
+                # คำนวณยอดรวมใหม่
+                new_total_pcs = (new_rows * new_pcs_per_row) + new_partial
+                
+                # ดึงค่า unit_volume ของสินค้าที่เลือกใหม่
+                selected_prod_info = supabase.table("products").select("unit_volume").eq("product_id", prod_list[new_p_code]).single().execute().data
+                u_vol = selected_prod_info['unit_volume'] or 0
+                new_total_vol = new_total_pcs * u_vol
+                
+                # แสดงผลการคำนวณแบบ Real-time
+                st.info(f"📊 **สรุปยอดใหม่:** จำนวนรวม **{new_total_pcs}** ชิ้น | ปริมาตรรวม **{new_total_vol:,.2f}** mm³")
+                
+                if st.form_submit_button("💾 ยืนยันการแก้ไขข้อมูลทั้งหมด"):
                     try:
                         supabase.table("jig_usage_log").update({
-                            "total_pieces": new_pcs,
-                            "total_volume": new_total_vol,
-                            "color": new_color
+                            "product_id": prod_list[new_p_code],
+                            "color": new_color,
+                            "pcs_per_row": new_pcs_per_row,
+                            "rows_filled": new_rows,
+                            "partial_pieces": new_partial,
+                            "total_pieces": new_total_pcs,
+                            "total_volume": new_total_vol
                         }).eq("log_id", l_data['log_id']).execute()
-                        st.success("✅ แก้ไขข้อมูลเรียบร้อย!")
+                        
+                        st.success("✅ แก้ไขข้อมูลเรียบร้อยแล้ว!")
                         time.sleep(1)
                         st.rerun()
                     except Exception as e:
                         st.error(f"เกิดข้อผิดพลาด: {e}")
         else:
-            st.warning(f"❌ ไม่พบประวัติการบันทึกในวันที่ {filter_date}")
+            st.warning(f"❌ ไม่พบประวัติในวันที่ {filter_date}")
 #=================================================================   
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต", "🛠️ จัดการและแก้ไขข้อมูล"])
 
