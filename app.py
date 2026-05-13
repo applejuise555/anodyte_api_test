@@ -236,6 +236,7 @@ def record_modal(tank_name):
                         }).execute()
                         st.success("บันทึกสำเร็จ!")
                         st.session_state.selected_tank = None
+                        st.query_params.clear()
                         time.sleep(1)
                         st.rerun()
                     else:
@@ -261,6 +262,7 @@ def record_modal(tank_name):
                         }).execute()
                         st.success("บันทึกสำเร็จ!")
                         st.session_state.selected_tank = None
+                        st.query_params.clear()
                         time.sleep(1)
                         st.rerun()
                     else:
