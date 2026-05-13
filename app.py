@@ -252,6 +252,7 @@ def record_modal(tank_name):
                         }).execute()
                         st.success("บันทึกสำเร็จ!")
                         st.session_state.selected_tank = None
+                        st.session_state.dialog_open = False
                         st.query_params.clear()
                         time.sleep(1)
                         st.rerun()
@@ -292,6 +293,14 @@ def record_modal(tank_name):
         st.session_state.dialog_open = False
         st.query_params.clear()
         st.rerun()
+
+#---------------------------------------------------------------------------
+# ================= SESSION STATE =================
+if "selected_tank" not in st.session_state:
+    st.session_state.selected_tank = None
+
+if "dialog_open" not in st.session_state:
+    st.session_state.dialog_open = False
 #=================================================================   
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต"])
 
