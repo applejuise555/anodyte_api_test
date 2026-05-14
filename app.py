@@ -741,17 +741,16 @@ if menu == "บันทึกข้อมูลการผลิต":
         )
     
         tank_list = list(color_tanks.keys())
-    
-        color_default_index = tank_list.index(clicked_tank_name) if clicked_tank_name in tank_list else 0
 
+        if clicked_tank_name in tank_list:
+            st.session_state["color_select"] = clicked_tank_name
+        
         selected_tank_name = st.selectbox(
             "ยืนยันบ่อสี",
             tank_list,
-            index=color_default_index,
             key="color_select"
         )
-
-    
+        
         detected_color = TANK_COLOR_MAP.get(selected_tank_name, "Black")
         render_color_bar(detected_color)
     
