@@ -238,7 +238,7 @@ def render_tank_map(selected_tank_name=None):
 
         <!-- CENTER -->
 
-        <div class="tank vertical" data-tank="AlmiteSealerLiquid"
+        <div class="tank vertical" data-tank="AlmiteSealer"
             style="left:0px;top:180px;width:60px;height:275px;background:#777;">
             AlmiteSealerLiquid
         </div>
@@ -292,7 +292,7 @@ def render_tank_map(selected_tank_name=None):
 
         <!-- ANODIZE -->
 
-        <div class="tank vertical" data-tank="AnodizedPPool1"
+        <div class="tank vertical" data-tank="Anodized Tank 1"
             style="left:890px;top:520px;width:140px;height:190px;background:#ccc;color:black;">
             AnodizedPPool1
         </div>
