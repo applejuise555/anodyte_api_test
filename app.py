@@ -363,9 +363,17 @@ def render_tank_map(selected_tank_name=None):
     const selectedTank = "__SELECTED_TANK__";
 
     function selectTank(tankName) {
-        const url = new URL(window.parent.location.href);
-        url.searchParams.set("tank", tankName);
-        window.open(url.toString(), "_parent");
+        try {
+            window.parent.localStorage.setItem("selected_tank", tankName);
+            window.parent.localStorage.setItem("selected_tank_updated_at", Date.now().toString());
+        } catch (error) {
+            localStorage.setItem("selected_tank", tankName);
+            localStorage.setItem("selected_tank_updated_at", Date.now().toString());
+        }
+
+        document.querySelectorAll(".tank[data-tank]").forEach((item) => {
+            item.classList.toggle("selected", item.dataset.tank === tankName);
+        });
     }
 
     document.querySelectorAll(".tank[data-tank]").forEach((tank) => {
@@ -830,9 +838,13 @@ if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูล (Interactive Map)")
     
         # ดึงค่า ID จากการคลิก
-    clicked_tank_name = st.query_params.get("tank") if hasattr(st, "query_params") else None
-    if isinstance(clicked_tank_name, list):
-        clicked_tank_name = clicked_tank_name[0] if clicked_tank_name else None
+    # Read clicked tank from localStorage because Streamlit Cloud blocks iframe parent navigation
+    st_autorefresh(interval=800, key="tank_click_poll")
+    clicked_tank_name = streamlit_js_eval(
+        js_expressions="localStorage.getItem('selected_tank')",
+        key="selected_tank_reader",
+        want_output=True
+    )
 
     render_tank_map(clicked_tank_name)
     if clicked_tank_name:
