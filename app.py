@@ -530,11 +530,7 @@ if menu == "Dashboard":
             fig.add_hline(y=TEMP_COLOR_MIN, line_dash="dot", line_color="#1d4ed8", secondary_y=True)
             fig.add_hline(y=TEMP_COLOR_MAX, line_dash="dot", line_color="#1d4ed8", secondary_y=True)
             fig.update_layout(title=dict(text="เปรียบเทียบค่า pH และอุณหภูมิ (ล่าสุดรายบ่อ)", x=0.5), xaxis_title="ชื่อบ่อสี", barmode="group", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), height=500, margin=dict(t=100))
-            # 2. ลบเส้นแนวนอนของแกน pH (แกน Y หลัก)
-            fig_mixed.update_yaxes(showgrid=False, secondary_y=False)
-            
-            # 3. ลบเส้นแนวนอนของแกนอุณหภูมิ (แกน Y ที่สอง)
-            fig_mixed.update_yaxes(showgrid=False, secondary_y=True)
+        
             st.plotly_chart(fig, use_container_width=True)
 
         st.subheader("🚨 ตารางแจ้งเตือนบ่อสี")
