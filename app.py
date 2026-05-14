@@ -719,7 +719,7 @@ if menu == "บันทึกข้อมูลการผลิต":
     
         # ดึงค่า ID จากการคลิก
     render_tank_map()
-    tab_main = st.tabs(["บ่อสี (Color Bath)", "บ่ออโนไดซ์ (Anodize)", "งานจิ๊ก (Jig System)"])
+    tab_main = st.tabs(["บ่อสี (Color Bath)", "บ่อชุบสารเคมี(Chemical Bath)", "งานจิ๊ก (Jig System)"])
 
     with tab_main[0]:
         color_tanks = get_options(
