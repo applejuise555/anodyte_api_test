@@ -758,76 +758,68 @@ if menu == "บันทึกข้อมูลการผลิต":
                 st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
                 time.sleep(1)
                 st.rerun()
-    # --- Tab 2: บ่ออโนไดซ์ & บ่อ Seal ---
-    # --- Tab 2: บ่อสารเคมี (Anodize & Sealer) ---
+    
+    # --- Tab 2: บ่อสารเคมี (Anodize / Almite / Sealer) ---
     with tab_main[1]:
         st.subheader("🧪 บันทึกข้อมูลบ่อสารเคมี")
         
-        # 1. ดึงข้อมูลบ่อทั้งหมดมากรองเฉพาะ Anodize และ Almite Sealer
+        # 1. ดึงข้อมูลบ่อทั้งหมดจาก DB
         all_tanks = get_options("tanks", "tank_id", "tank_name")
         
-        # กรองเฉพาะชื่อบ่อที่มีคำว่า 'Anodized' หรือ 'Almite' หรือ 'Sealer' 
+        # 2. กรองเฉพาะบ่อที่ต้องการ: Anodize, Almite, Sealer
+        # ใช้ .lower() เพื่อให้ไม่สนตัวพิมพ์เล็กหรือใหญ่
         chemical_tanks = {
             name: tid for name, tid in all_tanks.items() 
-            if "anodized" in name.lower() or "almite" in name.lower() or "sealer" in name.lower()
+            if any(keyword in name.lower() for keyword in ["anodize", "almite", "sealer", "seal"])
         }
         
         if not chemical_tanks:
-            st.warning("⚠️ ไม่พบข้อมูลบ่อ Anodize หรือ Sealer ในระบบ")
+            st.warning("⚠️ ไม่พบข้อมูลบ่อที่ตรงเงื่อนไขในระบบ (กรุณาเช็คชื่อบ่อในตาราง tanks)")
         else:
-            # 2. ตัวเลือกชื่อบ่อ
+            # 3. ส่วนเลือกบ่อ
             sel_tank_name = st.selectbox(
                 "เลือกบ่อสารเคมี",
                 options=list(chemical_tanks.keys()),
                 key="chem_tank_select"
             )
             
-            # 3. ตรวจสอบเงื่อนไข: ถ้าเป็นบ่อ Sealer ให้เก็บแค่ Temp
-            # ตรวจสอบจากชื่อบ่อที่มีคำว่า 'Sealer' หรือ 'HotSeal' [cite: 2, 18]
-            is_sealer = "sealer" in sel_tank_name.lower() or "hotseal" in sel_tank_name.lower()
+            # 4. เช็คว่าเป็นบ่อ Seal หรือไม่ (ถ้าใช่จะเก็บแค่ Temp)
+            is_sealer = "sealer" in sel_tank_name.lower() or "seal" in sel_tank_name.lower()
             
+            # แสดง Guide บอกผู้ใช้ว่าบ่อนี้ต้องกรอกอะไรบ้าง
             if is_sealer:
-                st.info(f"📋 บ่อ {sel_tank_name}: บันทึกเฉพาะค่าอุณหภูมิ")
+                st.info(f"💡 บ่อ {sel_tank_name}: บันทึกเฉพาะค่า **Temperature**")
             else:
-                st.info(f"📋 บ่อ {sel_tank_name}: บันทึกค่า pH, Temperature และ Density")
+                st.info(f"💡 บ่อ {sel_tank_name}: บันทึกค่า **Temp, pH และ Density**")
     
-            # 4. ฟอร์มบันทึกข้อมูล
+            # 5. ฟอร์มบันทึกข้อมูล
             with st.form("chemical_log_form", clear_on_submit=True):
-                # ทุกบ่อต้องมีอุณหภูมิ 
+                # ทุกบ่อต้องกรอก Temp
                 temp_val = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
                 
-                # สร้างตัวแปรไว้รองรับค่า pH และ Density (ถ้าไม่ใช่ Sealer)
-                ph_val = 0.0
-                den_val = 0.0
+                # ตัวแปรสำหรับค่าที่เหลือ
+                ph_val = None
+                den_val = None
                 
                 if not is_sealer:
-                    # ถ้าเป็นบ่ออโนไดซ์ ให้แสดงช่อง pH และ Density 
+                    # ถ้าไม่ใช่บ่อ Seal (เช่น Anodize Tank 1) ให้โชว์ pH และ Density
                     ph_val = st.number_input("ค่า pH", step=0.01, format="%.2f")
                     den_val = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
                 
                 if st.form_submit_button("💾 บันทึกข้อมูล"):
                     try:
-                        # เตรียมข้อมูลสำหรับ Insert 
                         payload = {
                             "tank_id": chemical_tanks[sel_tank_name],
                             "temperature": temp_val,
+                            "ph_value": ph_val,   # จะเป็น None ถ้าเป็นบ่อ Seal
+                            "density": den_val,    # จะเป็น None ถ้าเป็นบ่อ Seal
                             "recorded_at": datetime.now(ICT).isoformat()
                         }
-                        
-                        # เพิ่ม pH และ Density เฉพาะกรณีที่ไม่ใช่ Sealer
-                        if not is_sealer:
-                            payload["ph_value"] = ph_val
-                            payload["density"] = den_val
-                        else:
-                            # กรณีเป็น Sealer อาจจะใส่ค่า Default หรือ Null ตามโครงสร้าง Database
-                            payload["ph_value"] = None
-                            payload["density"] = None
     
-                        # บันทึกลงตาราง anodize_tank_logs [cite: 91]
                         supabase.table("anodize_tank_logs").insert(payload).execute()
                         
-                        st.success(f"✅ บันทึกข้อมูลบ่อ {sel_tank_name} เรียบร้อยแล้ว")
-                        time.sleep(1.5)
+                        st.success(f"✅ บันทึกข้อมูลบ่อ {sel_tank_name} สำเร็จ")
+                        time.sleep(1.2)
                         st.rerun()
                         
                     except Exception as e:
