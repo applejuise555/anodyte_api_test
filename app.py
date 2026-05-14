@@ -705,13 +705,10 @@ if menu == "บันทึกข้อมูลการผลิต":
     st.title("📝 ระบบบันทึกข้อมูล (Interactive Map)")
     
         # ดึงค่า ID จากการคลิก
-    # อ่านชื่อบ่อที่คลิกจาก localStorage เพราะ Streamlit Cloud บล็อก iframe ไม่ให้เปลี่ยน URL
-    # อ่านชื่อบ่อที่คลิกจาก localStorage
-    # ให้ปุ่มนี้เพิ่มเลขรอบการอ่าน เพื่อบังคับให้ streamlit_js_eval อ่าน localStorage ใหม่
     if "tank_read_round" not in st.session_state:
-        st.session_state["tank_read_round"] = 0
-    
-    if st.button("โหลดบ่อที่คลิก", key="load_clicked_tank"):
+    st.session_state["tank_read_round"] = 0
+
+    if st.button("โหลดบ่อที่คลิก", key="load_clicked_tank_btn"):
         st.session_state["tank_read_round"] += 1
     
     clicked_tank_from_js = streamlit_js_eval(
@@ -729,13 +726,7 @@ if menu == "บันทึกข้อมูลการผลิต":
     
     if clicked_tank_name:
         st.success(f"เลือกบ่อจากผัง: {clicked_tank_name}")
-    
-        
-        if st.button("โหลดบ่อที่คลิก", key="load_clicked_tank"):
-            st.rerun()
-        
-        if clicked_tank_name:
-            st.success(f"เลือกบ่อจากผัง: {clicked_tank_name}")
+
 
     tab_main = st.tabs(["บ่อสี (Color Bath)", "บ่อชุบสารเคมี(Chemical Bath)", "งานจิ๊ก (Jig System)"])
 
