@@ -399,6 +399,76 @@ def render_tank_map(selected_tank_name=None):
     html = html.replace("__SELECTED_TANK__", selected_tank_name)
     components.html(html, height=750, scrolling=False)
 
+#-----------------------------------------------------------------------
+@st.dialog("บันทึกข้อมูลบ่อ")
+def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
+    if clicked_tank_name in color_tanks:
+        st.subheader(f"🎨 บ่อสี: {clicked_tank_name}")
+
+        detected_color = TANK_COLOR_MAP.get(clicked_tank_name, "Black")
+        render_color_bar(detected_color)
+
+        with st.form("dialog_color_log_form", clear_on_submit=True):
+            ph = st.number_input("ค่า pH", step=0.1, format="%.2f")
+            temp = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
+
+            if st.form_submit_button("บันทึกค่า"):
+                supabase.table("color_tank_logs").insert({
+                    "tank_id": color_tanks[clicked_tank_name],
+                    "ph_value": ph,
+                    "temperature": temp,
+                    "recorded_at": datetime.now(ICT).isoformat()
+                }).execute()
+
+                st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
+                time.sleep(1)
+                st.rerun()
+
+    elif clicked_tank_name in chemical_tanks:
+        st.subheader(f"🧪 บ่อสารเคมี: {clicked_tank_name}")
+
+        is_sealer = "sealer" in clicked_tank_name.lower() or "seal" in clicked_tank_name.lower()
+
+        if is_sealer:
+            st.info(f"💡 บ่อ {clicked_tank_name}: บันทึกเฉพาะค่า **Temperature**")
+        else:
+            st.info(f"💡 บ่อ {clicked_tank_name}: บันทึกค่า **Temp, pH และ Density**")
+
+        with st.form("dialog_chemical_log_form", clear_on_submit=True):
+            temp_val = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
+
+            ph_val = None
+            den_val = None
+
+            if not is_sealer:
+                ph_val = st.number_input("ค่า pH", step=0.01, format="%.2f")
+                den_val = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
+
+            if st.form_submit_button("💾 บันทึกข้อมูล"):
+                payload = {
+                    "tank_id": chemical_tanks[clicked_tank_name],
+                    "temperature": temp_val,
+                    "recorded_at": datetime.now(ICT).isoformat()
+                }
+
+                if not is_sealer:
+                    payload["ph_value"] = ph_val
+                    payload["density"] = den_val
+                else:
+                    payload["ph_value"] = 0.0
+                    payload["density"] = 0.0
+
+                supabase.table("anodize_tank_logs").insert(payload).execute()
+                st.success(f"✅ บันทึกข้อมูลบ่อ {clicked_tank_name} สำเร็จ")
+                time.sleep(1)
+                st.rerun()
+
+    else:
+        st.warning(
+            f"ไม่พบบ่อ `{clicked_tank_name}` ในฐานข้อมูล tanks "
+            "กรุณาเช็คชื่อ data-tank ให้ตรงกับ tank_name"
+        )
+
 
 # ================= 3. EDIT DATA (ปรับให้โชว์ รหัส + ชื่อสินค้า) =================
 def show_data_editor():
@@ -728,12 +798,31 @@ if menu == "บันทึกข้อมูลการผลิต":
 
     clicked_tank_name = st.session_state.get("clicked_tank_name")
 
+    color_tanks = get_options(
+    "tanks",
+    "tank_id",
+    "tank_name",
+    "tank_type",
+    "Color"
+    )
+    
+    all_tanks = get_options("tanks", "tank_id", "tank_name")
+    
+    chemical_tanks = {
+        name: tid for name, tid in all_tanks.items()
+        if any(keyword in name.lower() for keyword in ["anodize", "almite", "sealer", "seal"])
+    }
+    
     render_tank_map(clicked_tank_name)
-
+    
     if clicked_tank_name:
         st.success(f"เลือกบ่อจากผัง: {clicked_tank_name}")
-    else:
-        st.info("กรุณาคลิกบ่อบนผัง แล้วกดโหลดบ่อที่คลิก")
+    
+    if st.button("เปิดฟอร์มบันทึกบ่อที่เลือก", key="open_tank_dialog"):
+        if clicked_tank_name:
+            tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks)
+        else:
+            st.warning("กรุณาคลิกบ่อบนผังก่อน")
 
 
 
