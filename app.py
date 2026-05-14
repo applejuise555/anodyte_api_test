@@ -916,8 +916,8 @@ if menu == "บันทึกข้อมูลการผลิต":
                     st.rerun()
 
     
-                    except Exception as e:
-                        st.error(f"เกิดข้อผิดพลาด: {e}")
+                except Exception as e:
+                    st.error(f"เกิดข้อผิดพลาด: {e}")
     
         else:
             st.warning(
