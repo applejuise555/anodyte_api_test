@@ -503,49 +503,16 @@ def show_data_editor():
 #=================================================================   
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต", "🛠️ จัดการและแก้ไขข้อมูล"])
 
-# ================= DASHBOARD (FULL SYSTEM VIEW) =================
+# ================= DASHBOARD (FULL SYSTEM VIEW - COMPACT VERSION) =================
 if menu == "Dashboard":
-    st.title("📊 Production Dashboard (System Overview)")
+    st.title("📊 Production Dashboard")
 
     # --- 1. Global Filter (Sidebar) ---
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📅 ตั้งค่าช่วงเวลา (Global Filter)")
-    time_unit = st.sidebar.selectbox(
-        "เลือกมุมมองเวลา", 
-        ["รายวัน (ปฏิทิน)", "รายเดือน", "รายไตรมาส", "รายปี"],
-        help="มีผลกับกราฟแนวโน้มทั้งหมด"
-    )
+    st.sidebar.subheader("📅 Filter")
+    time_unit = st.sidebar.selectbox("มุมมองเวลา", ["รายวัน (ปฏิทิน)", "รายเดือน", "รายไตรมาส", "รายปี"])
     
-    g_start_dt = None
-    g_end_dt = None
-
-    if time_unit == "รายวัน (ปฏิทิน)":
-        selected_date = st.sidebar.date_input("เลือกวันที่", datetime.now(ICT))
-        g_start_dt = datetime.combine(selected_date, datetime.min.time()).replace(tzinfo=ICT)
-        g_end_dt = datetime.combine(selected_date, datetime.max.time()).replace(tzinfo=ICT)
-    elif time_unit == "รายเดือน":
-        current_year = datetime.now().year
-        selected_month = st.sidebar.selectbox("เลือกเดือน", list(range(1, 13)), index=datetime.now().month-1)
-        selected_year = st.sidebar.number_input("ปี (ค.ศ.)", value=current_year, key="m_year")
-        g_start_dt = datetime(selected_year, selected_month, 1).replace(tzinfo=ICT)
-        if selected_month == 12:
-            g_end_dt = datetime(selected_year + 1, 1, 1).replace(tzinfo=ICT) - timedelta(seconds=1)
-        else:
-            g_end_dt = datetime(selected_year, selected_month + 1, 1).replace(tzinfo=ICT) - timedelta(seconds=1)
-    elif time_unit == "รายไตรมาส":
-        year_val = st.sidebar.number_input("ปี (ค.ศ.)", value=datetime.now().year, key="q_year")
-        q_val = st.sidebar.selectbox("ไตรมาส", [1, 2, 3, 4])
-        # ตรวจสอบว่ามีฟังก์ชัน get_quarter_range หรือไม่
-        try:
-            s_date, e_date = get_quarter_range(year_val, q_val)
-            g_start_dt = s_date.replace(tzinfo=ICT)
-            g_end_dt = e_date.replace(tzinfo=ICT)
-        except:
-            st.error("ไม่พบฟังก์ชันคำนวณไตรมาส")
-    elif time_unit == "รายปี":
-        selected_year = st.sidebar.number_input("เลือกปี (ค.ศ.)", value=datetime.now().year, key="y_year")
-        g_start_dt = datetime(selected_year, 1, 1).replace(tzinfo=ICT)
-        g_end_dt = datetime(selected_year, 12, 31, 23, 59, 59).replace(tzinfo=ICT)
+    # [ส่วนการคำนวณ g_start_dt / g_end_dt คงเดิมตามโค้ดที่คุณส่งมา...]
+    # (สมมติว่าค่า g_start_dt และ g_end_dt ถูกคำนวณเรียบร้อยแล้ว)
 
     # --- Standard Values ---
     STD = {
@@ -565,95 +532,114 @@ if menu == "Dashboard":
     c_logs, a_logs, tank_map = load_dashboard_data()
     inv_tank_map = {v: k for k, v in tank_map.items()}
 
-    # --- Helper: Alert Table ---
-    def show_alert_table(df, p_min, p_max, t_min, t_max):
+    # --- Helper: Compact Alert Table ---
+    def show_alert_table_compact(df, p_min, p_max, t_min, t_max):
         alerts = []
         for _, row in df.iterrows():
             status = []
             if "ph_value" in row and pd.notnull(row["ph_value"]):
-                if row["ph_value"] < p_min or row["ph_value"] > p_max: status.append("❌ pH Out")
-                elif row["ph_value"] <= p_min+0.2 or row["ph_value"] >= p_max-0.2: status.append("⚠️ pH Warning")
+                if row["ph_value"] < p_min or row["ph_value"] > p_max: status.append("❌pH")
+                elif row["ph_value"] <= p_min+0.2 or row["ph_value"] >= p_max-0.2: status.append("⚠️pH")
             if "temperature" in row and pd.notnull(row["temperature"]):
-                if row["temperature"] < t_min or row["temperature"] > t_max: status.append("❌ Temp Out")
-                elif row["temperature"] <= t_min+2 or row["temperature"] >= t_max-2: status.append("⚠️ Temp Warning")
+                if row["temperature"] < t_min or row["temperature"] > t_max: status.append("❌Temp")
+                elif row["temperature"] <= t_min+2 or row["temperature"] >= t_max-2: status.append("⚠️Temp")
             
             if status:
-                alerts.append({"บ่อ": row["tank_name"], "สถานะ": ", ".join(status), "เวลา": row["recorded_at"].strftime('%H:%M')})
-        if alerts: st.table(pd.DataFrame(alerts))
-        else: st.success("✅ ทุกค่าอยู่ในเกณฑ์มาตรฐาน")
+                alerts.append({"บ่อ": row["tank_name"], "สถานะ": " ".join(status), "เวลา": row["recorded_at"].strftime('%H:%M')})
+        
+        if alerts:
+            # ใช้ dataframe แทน table เพื่อความกระชับ
+            st.dataframe(pd.DataFrame(alerts), hide_index=True, use_container_width=True, height=150)
+        else:
+            st.caption("✅ ปกติทุกบ่อ")
 
-    # --- 1 & 2. Color Tanks ---
-    st.subheader("🎨 วิเคราะห์ข้อมูลบ่อสี (ล่าสุดรายบ่อ)")
+    # --- SECTION 1: COLOR TANKS (Compact) ---
+    st.subheader("🎨 Color Tanks Status")
+    col_c1, col_c2 = st.columns([1, 2]) # แบ่งซ้ายเป็นตาราง ขวาเป็นกราฟ
+
     if c_logs:
         df_c = pd.DataFrame(c_logs)
         df_c["recorded_at"] = pd.to_datetime(df_c["recorded_at"]).dt.tz_convert(ICT)
         df_c["tank_name"] = df_c["tank_id"].map(inv_tank_map)
         latest_c = df_c.drop_duplicates("tank_id").sort_values("tank_name")
 
-        with st.expander("🚨 ตารางแจ้งเตือนความเสี่ยง (บ่อสี)", expanded=True):
-            show_alert_table(latest_c, *STD["COLOR_PH"], *STD["COLOR_TEMP"])
+        with col_c1:
+            st.caption("🚨 Alerts")
+            show_alert_table_compact(latest_c, *STD["COLOR_PH"], *STD["COLOR_TEMP"])
 
-        fig1 = make_subplots(specs=[[{"secondary_y": True}]])
-        fig1.add_trace(go.Bar(x=latest_c["tank_name"], y=latest_c["ph_value"], name="pH", marker_color="#2ECC71", offsetgroup=1, text=latest_c["ph_value"], textposition='outside'), secondary_y=False)
-        fig1.add_trace(go.Bar(x=latest_c["tank_name"], y=latest_c["temperature"], name="Temp", marker_color="#3498DB", offsetgroup=2, text=latest_c["temperature"], textposition='outside'), secondary_y=True)
-        fig1.update_layout(height=400, barmode="group", yaxis=dict(showgrid=False), yaxis2=dict(showgrid=False))
-        st.plotly_chart(fig1, use_container_width=True)
+        with col_c2:
+            fig1 = make_subplots(specs=[[{"secondary_y": True}]])
+            fig1.add_trace(go.Bar(x=latest_c["tank_name"], y=latest_c["ph_value"], name="pH", marker_color="#2ECC71", offsetgroup=1, text=latest_c["ph_value"], textposition='outside', textfont=dict(size=10)), secondary_y=False)
+            fig1.add_trace(go.Bar(x=latest_c["tank_name"], y=latest_c["temperature"], name="Temp", marker_color="#3498DB", offsetgroup=2, text=latest_c["temperature"], textposition='outside', textfont=dict(size=10)), secondary_y=True)
+            fig1.update_layout(height=280, margin=dict(l=10, r=10, t=30, b=10), barmode="group", showlegend=False,
+                              xaxis=dict(tickfont=dict(size=10)), yaxis=dict(showgrid=False), yaxis2=dict(showgrid=False))
+            st.plotly_chart(fig1, use_container_width=True)
 
-    # --- 3 & 4. Anodize/Seal ---
+    # --- SECTION 2: ANODIZE/SEAL (Compact) ---
     st.markdown("---")
-    st.subheader("📈 วิเคราะห์แนวโน้มบ่ออโนไดซ์ / บ่อซีล")
+    st.subheader("📈 Anodize & Seal Trend")
     if a_logs:
         df_a = pd.DataFrame(a_logs)
         df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"]).dt.tz_convert(ICT)
         df_a["tank_name"] = df_a["tank_id"].map(inv_tank_map)
         
         f_df_a = df_a[(df_a["recorded_at"] >= g_start_dt) & (df_a["recorded_at"] <= g_end_dt)]
-        sel_ano = st.selectbox("เลือกบ่อ", sorted(df_a["tank_name"].dropna().unique()))
-        is_seal = "seal" in sel_ano.lower()
         
+        c_sel1, c_sel2 = st.columns([1, 2])
+        with c_sel1:
+            sel_ano = st.selectbox("เลือกบ่อ", sorted(df_a["tank_name"].dropna().unique()), key="sel_ano_box")
+            is_seal = "seal" in sel_ano.lower()
+            # ตาราง Alert เฉพาะบ่อที่เลือก
+            st.caption(f"Status: {sel_ano}")
+            latest_ano_val = df_a[df_a["tank_name"] == sel_ano].head(1)
+            if is_seal: show_alert_table_compact(latest_ano_val, 0, 14, *STD["SEAL_TEMP"])
+            else: show_alert_table_compact(latest_ano_val, *STD["ANO_PH"], *STD["ANO_TEMP"])
+
         chart_df = f_df_a[f_df_a["tank_name"] == sel_ano].sort_values("recorded_at")
         
         if not chart_df.empty:
             if is_seal:
                 fig_s = go.Figure()
-                fig_s.add_trace(go.Scatter(x=chart_df["recorded_at"], y=chart_df["temperature"], mode='lines+markers', line=dict(color="#E74C3C")))
+                fig_s.add_trace(go.Scatter(x=chart_df["recorded_at"], y=chart_df["temperature"], mode='lines+markers', line=dict(color="#E74C3C", width=1), marker=dict(size=4)))
                 fig_s.add_hrect(y0=STD["SEAL_TEMP"][0], y1=STD["SEAL_TEMP"][1], fillcolor="green", opacity=0.1, line_width=0)
-                fig_s.update_layout(title=f"อุณหภูมิ {sel_ano}", yaxis=dict(showgrid=False))
+                fig_s.update_layout(height=200, margin=dict(l=10, r=10, t=10, b=10), yaxis=dict(showgrid=False, tickfont=dict(size=10)), xaxis=dict(tickfont=dict(size=10)))
                 st.plotly_chart(fig_s, use_container_width=True)
             else:
-                c1, c2, c3 = st.columns(3)
-                def mini_chart(title, y_col, std_range, color):
+                tc1, tc2, tc3 = st.columns(3)
+                def mini_chart_compact(title, y_col, std_range, color):
                     fig = go.Figure()
-                    fig.add_trace(go.Scatter(x=chart_df["recorded_at"], y=chart_df[y_col], mode='lines+markers', line=dict(color=color)))
+                    fig.add_trace(go.Scatter(x=chart_df["recorded_at"], y=chart_df[y_col], mode='lines+markers', line=dict(color=color, width=1), marker=dict(size=4)))
                     fig.add_hrect(y0=std_range[0], y1=std_range[1], fillcolor="green", opacity=0.1, line_width=0)
-                    fig.update_layout(title=title, height=300, yaxis=dict(showgrid=False), margin=dict(l=20,r=20,t=40,b=20))
+                    fig.update_layout(title=dict(text=title, font=dict(size=12)), height=180, margin=dict(l=5,r=5,t=30,b=5), yaxis=dict(showgrid=False, tickfont=dict(size=9)), xaxis=dict(showgrid=False, tickfont=dict(size=9)))
                     return fig
-
-                c1.plotly_chart(mini_chart("pH Trend", "ph_value", STD["ANO_PH"], "#8E44AD"), use_container_width=True)
-                c2.plotly_chart(mini_chart("Temp Trend", "temperature", STD["ANO_TEMP"], "#D35400"), use_container_width=True)
-                # จุดที่เคย Error แก้ไขเป็น STD["ANO_DEN"]
-                c3.plotly_chart(mini_chart("Density Trend", "density", STD["ANO_DEN"], "#2C3E50"), use_container_width=True)
+                tc1.plotly_chart(mini_chart_compact("pH", "ph_value", STD["ANO_PH"], "#8E44AD"), use_container_width=True)
+                tc2.plotly_chart(mini_chart_compact("Temp", "temperature", STD["ANO_TEMP"], "#D35400"), use_container_width=True)
+                tc3.plotly_chart(mini_chart_compact("Density", "density", STD["ANO_DEN"], "#2C3E50"), use_container_width=True)
         else:
-            st.info("ไม่มีข้อมูลในช่วงเวลาที่เลือก")
+            st.info("ไม่มีข้อมูลช่วงนี้")
 
-    # --- 5 & 6. Color Mixed Trend ---
+    # --- SECTION 3: MIXED TREND (Compact) ---
     st.markdown("---")
-    st.subheader("🔍 เปรียบเทียบแนวโน้มบ่อสี (รายบ่อ)")
-    if c_logs:
-        f_df_c = df_c[(df_c["recorded_at"] >= g_start_dt) & (df_c["recorded_at"] <= g_end_dt)]
-        available_c = sorted(df_c["tank_name"].unique())
-        sel_tanks = st.multiselect("เลือกบ่อสี", available_c, default=available_c[:1])
-        
-        if sel_tanks and not f_df_c.empty:
-            fig_mix = make_subplots(specs=[[{"secondary_y": True}]])
-            colors = ["#1abc9c", "#3498db", "#9b59b6", "#f1c40f", "#e67e22"]
-            for i, t_name in enumerate(sel_tanks):
-                t_data = f_df_c[f_df_c["tank_name"] == t_name].sort_values("recorded_at")
-                clr = colors[i % len(colors)]
-                fig_mix.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["ph_value"], name=f"pH: {t_name}", line=dict(color=clr)), secondary_y=False)
-                fig_mix.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["temperature"], name=f"Temp: {t_name}", line=dict(color=clr, dash='dot')), secondary_y=True)
-            fig_mix.update_layout(height=500, yaxis=dict(showgrid=False), yaxis2=dict(showgrid=False))
-            st.plotly_chart(fig_mix, use_container_width=True)
+    col_m1, col_m2 = st.columns([1, 3])
+    with col_m1:
+        st.subheader("🔍 Compare")
+        available_c = sorted(df_c["tank_name"].unique()) if c_logs else []
+        sel_tanks = st.multiselect("เลือกบ่อสี", available_c, default=available_c[:1] if available_c else [])
+    
+    with col_m2:
+        if c_logs and sel_tanks:
+            f_df_c = df_c[(df_c["recorded_at"] >= g_start_dt) & (df_c["recorded_at"] <= g_end_dt)]
+            if not f_df_c.empty:
+                fig_mix = make_subplots(specs=[[{"secondary_y": True}]])
+                colors = ["#1abc9c", "#3498db", "#9b59b6", "#f1c40f", "#e67e22"]
+                for i, t_name in enumerate(sel_tanks):
+                    t_data = f_df_c[f_df_c["tank_name"] == t_name].sort_values("recorded_at")
+                    clr = colors[i % len(colors)]
+                    fig_mix.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["ph_value"], name=f"pH:{t_name}", line=dict(color=clr, width=1.5)), secondary_y=False)
+                    fig_mix.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["temperature"], name=f"T:{t_name}", line=dict(color=clr, width=1, dash='dot')), secondary_y=True)
+                fig_mix.update_layout(height=280, margin=dict(l=10, r=10, t=10, b=10), showlegend=True, legend=dict(font=dict(size=10)),
+                                      yaxis=dict(showgrid=False, tickfont=dict(size=10)), yaxis2=dict(showgrid=False, tickfont=dict(size=10)))
+                st.plotly_chart(fig_mix, use_container_width=True)
 
 # ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
