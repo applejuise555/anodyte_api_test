@@ -707,14 +707,20 @@ if menu == "บันทึกข้อมูลการผลิต":
         # ดึงค่า ID จากการคลิก
     # อ่านชื่อบ่อที่คลิกจาก localStorage เพราะ Streamlit Cloud บล็อก iframe ไม่ให้เปลี่ยน URL
     st_autorefresh(interval=1000, key="tank_click_poll")
-    
-    clicked_tank_name = streamlit_js_eval(
+
+    clicked_tank_from_js = streamlit_js_eval(
         js_expressions="localStorage.getItem('selected_tank')",
         key="selected_tank_reader",
         want_output=True
     )
     
+    if clicked_tank_from_js:
+        st.session_state["clicked_tank_name"] = clicked_tank_from_js
+    
+    clicked_tank_name = st.session_state.get("clicked_tank_name")
+    
     render_tank_map(clicked_tank_name)
+
 
     
     if clicked_tank_name:
@@ -791,6 +797,7 @@ if menu == "บันทึกข้อมูลการผลิต":
                 index=chemical_default_index,
                 key="chem_tank_select"
             )
+
     
             
             # 4. เช็คว่าเป็นบ่อ Seal หรือไม่ (ถ้าใช่จะเก็บแค่ Temp)
