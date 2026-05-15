@@ -967,13 +967,15 @@ if menu == "Dashboard":
                     line_width=0,
                 )
                 
-                colors = ["#1abc9c", "#3498db", "#9b59b6", "#f1c40f", "#e67e22"]
-                
-                for i, t_name in enumerate(sel_tanks):
+                for t_name in sel_tanks:
                     t_data = f_df_c[f_df_c["tank_name"] == t_name].sort_values("recorded_at")
-                    clr = colors[i % len(colors)]
                 
-                    # pH
+                    # หา "ชื่อสีจริง"
+                    color_name = TANK_COLOR_MAP.get(t_name, "Black")
+                
+                    # หา HEX จาก COLOR_HEX_MAP
+                    clr = COLOR_HEX_MAP.get(color_name, "#666666")
+                
                     # ===== pH =====
                     fig_mix.add_trace(
                         go.Scatter(
@@ -987,7 +989,8 @@ if menu == "Dashboard":
                             ),
                             marker=dict(
                                 size=7,
-                                symbol="circle"
+                                symbol="circle",
+                                color=clr
                             )
                         ),
                         secondary_y=False
@@ -1007,7 +1010,8 @@ if menu == "Dashboard":
                             ),
                             marker=dict(
                                 size=8,
-                                symbol="square"
+                                symbol="square",
+                                color=clr
                             )
                         ),
                         secondary_y=True
