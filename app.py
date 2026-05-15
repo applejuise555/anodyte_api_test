@@ -853,10 +853,21 @@ if menu == "Dashboard":
     g_start_dt = now_ict.replace(hour=0, minute=0, second=0, microsecond=0)
     g_end_dt = now_ict.replace(hour=23, minute=59, second=59, microsecond=999)
 
-    if time_unit == "รายวัน (ปฏิทิน)":
-        selected_date = st.sidebar.date_input("เลือกวันที่", now_ict)
-        g_start_dt = datetime.combine(selected_date, datetime.min.time()).replace(tzinfo=ICT)
-        g_end_dt = datetime.combine(selected_date, datetime.max.time()).replace(tzinfo=ICT)
+    if time_unit == "รายวัน (เลือกหลายวัน)":
+
+        selected_dates = st.sidebar.multiselect(
+            "เลือกวันที่",
+            options=pd.date_range(
+                now_ict.date() - timedelta(days=30),
+                now_ict.date()
+            ).date,
+            default=[now_ict.date()]
+        )
+    
+        selected_dates = [
+            pd.to_datetime(d).date()
+            for d in selected_dates
+        ]
     elif time_unit == "รายเดือน":
         m_month = st.sidebar.selectbox("เดือน", list(range(1, 13)), index=now_ict.month-1)
         m_year = st.sidebar.number_input("ปี (ค.ศ.)", value=now_ict.year, key="m_year")
@@ -934,7 +945,7 @@ if menu == "Dashboard":
         df_a = pd.DataFrame(a_logs)
         df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"]).dt.tz_convert(ICT)
         df_a["tank_name"] = df_a["tank_id"].map(inv_tank_map)
-        f_df_a = df_a[(df_a["recorded_at"] >= g_start_dt) & (df_a["recorded_at"] <= g_end_dt)]
+        f_df_a = df_a[df_a["recorded_at"].dt.date.isin(selected_dates)]
         
         c_sel1, c_sel2 = st.columns([1, 3])
         with c_sel1:
@@ -972,7 +983,7 @@ if menu == "Dashboard":
         with c_m1:
             sel_tanks = st.multiselect("เลือกบ่อสี", sorted(df_c["tank_name"].unique()), default=sorted(df_c["tank_name"].unique())[:1])
         with c_m2:
-            f_df_c = df_c[(df_c["recorded_at"] >= g_start_dt) & (df_c["recorded_at"] <= g_end_dt)]
+            f_df_c = df_c[df_c["recorded_at"].dt.date.isin(selected_dates)]
             if not f_df_c.empty and sel_tanks:
                 fig_mix = make_subplots(specs=[[{"secondary_y": True}]])
                 # ===== พื้นที่มาตรฐาน pH =====
