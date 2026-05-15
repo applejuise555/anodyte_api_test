@@ -935,6 +935,26 @@ if menu == "Dashboard":
             f_df_c = df_c[(df_c["recorded_at"] >= g_start_dt) & (df_c["recorded_at"] <= g_end_dt)]
             if not f_df_c.empty and sel_tanks:
                 fig_mix = make_subplots(specs=[[{"secondary_y": True}]])
+
+                # ===== พื้นที่มาตรฐาน pH =====
+                fig_mix.add_hrect(
+                    y0=5.0,
+                    y1=6.0,
+                    fillcolor="green",
+                    opacity=0.12,
+                    line_width=0,
+                    secondary_y=False
+                )
+                
+                # ===== พื้นที่มาตรฐาน Temperature =====
+                fig_mix.add_hrect(
+                    y0=30,
+                    y1=40,
+                    fillcolor="orange",
+                    opacity=0.10,
+                    line_width=0,
+                    secondary_y=True
+                )
                 colors = ["#1abc9c", "#3498db", "#9b59b6", "#f1c40f", "#e67e22"]
                 for i, t_name in enumerate(sel_tanks):
                     t_data = f_df_c[f_df_c["tank_name"] == t_name].sort_values("recorded_at")
