@@ -98,7 +98,16 @@ def get_quarter_range(year, quarter):
     else:
         end_date = datetime(year, end_month + 1, 1) - timedelta(days=1)
     return start_date, end_date
-
+#=============================================================================
+@st.cache_data(ttl=30)
+def load_products():
+    try:
+        return supabase.table("products") \
+            .select("product_id, product_code, product_name") \
+            .execute().data or []
+    except:
+        return []
+#=================================================================================
 def render_tank_map(selected_tank_name=None):
     selected_tank_name = selected_tank_name or ""
 
@@ -1091,7 +1100,14 @@ if menu == "บันทึกข้อมูลการผลิต":
                     st.dataframe(pd.DataFrame(today_jigs.data), use_container_width=True)
     #-------------------------------------------------------------------------------                       
         with sub_log:
-            prods_res = supabase.table("products").select("product_id, product_code, product_name").execute().data
+            try:
+                prods_res = supabase.table("products") \
+                    .select("product_id, product_code, product_name") \
+                    .execute().data or []
+            
+            except Exception as e:
+                st.error(f"โหลด products ไม่สำเร็จ: {e}")
+                prods_res = []
             if prods_res:
                 display_options = {f"{p['product_code']} | {p['product_name']}": p['product_id'] for p in prods_res}
                 jigs_data = supabase.table("jigs").select("jig_id, jig_model_code, lot_no").execute().data
