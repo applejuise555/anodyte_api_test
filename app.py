@@ -1393,9 +1393,6 @@ if menu == "บันทึกข้อมูลการผลิต":
 
     if "tank_read_round" not in st.session_state:
         st.session_state["tank_read_round"] = 0
-    
-    if "open_tank_dialog" not in st.session_state:
-        st.session_state["open_tank_dialog"] = False
 
     open_dialog_now = False
     if st.button("โหลดบ่อที่คลิก", key="load_clicked_tank_btn"):
