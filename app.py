@@ -916,18 +916,60 @@ if menu == "Dashboard":
 
     # --- Helper: Alert Table (Compact) ---
     def show_alert_table_mini(df, p_min, p_max, t_min, t_max):
+
         alerts = []
+    
         for _, row in df.iterrows():
-            status = []
+    
+            ph_alert = ""
+            temp_alert = ""
+    
+            # ===== pH =====
             if "ph_value" in row and pd.notnull(row["ph_value"]):
-                if row["ph_value"] < p_min or row["ph_value"] > p_max: status.append("❌pH")
-                elif row["ph_value"] <= p_min+0.2 or row["ph_value"] >= p_max-0.2: status.append("⚠️pH")
+    
+                ph_val = float(row["ph_value"])
+    
+                if ph_val < p_min or ph_val > p_max:
+                    ph_alert = f"❌ {ph_val:.2f}"
+    
+                elif ph_val <= p_min + 0.2 or ph_val >= p_max - 0.2:
+                    ph_alert = f"⚠️ {ph_val:.2f}"
+    
+            # ===== Temperature =====
             if "temperature" in row and pd.notnull(row["temperature"]):
-                if row["temperature"] < t_min or row["temperature"] > t_max: status.append("❌T")
-                elif row["temperature"] <= t_min+2 or row["temperature"] >= t_max-2: status.append("⚠️T")
-            if status: alerts.append({"บ่อ": row["tank_name"], "สถานะ": " ".join(status), "เวลา": row["recorded_at"].strftime('%H:%M')})
-        if alerts: st.dataframe(pd.DataFrame(alerts), hide_index=True, height=120)
-        else: st.caption("✅ ปกติ")
+    
+                temp_val = float(row["temperature"])
+    
+                if temp_val < t_min or temp_val > t_max:
+                    temp_alert = f"❌ {temp_val:.1f}"
+    
+                elif temp_val <= t_min + 2 or temp_val >= t_max - 2:
+                    temp_alert = f"⚠️ {temp_val:.1f}"
+    
+            # ===== แสดงเฉพาะรายการที่มีแจ้งเตือน =====
+            if ph_alert or temp_alert:
+    
+                alerts.append({
+                    "บ่อ": row["tank_name"],
+                    "pH": ph_alert,
+                    "อุณหภูมิ": temp_alert,
+                    "เวลา": row["recorded_at"].strftime('%d/%m %H:%M')
+                })
+    
+        # ===== เรียงล่าสุดขึ้นก่อน =====
+        if alerts:
+    
+            alert_df = pd.DataFrame(alerts)
+    
+            st.dataframe(
+                alert_df,
+                hide_index=True,
+                use_container_width=True,
+                height=220
+            )
+    
+        else:
+            st.caption("✅ ทุกค่าปกติ")
 
     # --- 1. Color Tanks ---
     st.subheader("🎨 Color Tanks")
