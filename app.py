@@ -974,23 +974,41 @@ if menu == "Dashboard":
                     clr = colors[i % len(colors)]
                 
                     # pH
+                    # ===== pH =====
                     fig_mix.add_trace(
                         go.Scatter(
                             x=t_data["recorded_at"],
                             y=t_data["ph_value"],
-                            name=f"pH:{t_name}",
-                            line=dict(color=clr, width=2)
+                            name=f"pH : {t_name}",
+                            mode="lines+markers",
+                            line=dict(
+                                color=clr,
+                                width=3
+                            ),
+                            marker=dict(
+                                size=7,
+                                symbol="circle"
+                            )
                         ),
                         secondary_y=False
                     )
-                
-                    # Temperature
+                    
+                    # ===== Temperature =====
                     fig_mix.add_trace(
                         go.Scatter(
                             x=t_data["recorded_at"],
                             y=t_data["temperature"],
-                            name=f"T:{t_name}",
-                            line=dict(color=clr, dash="dot", width=2)
+                            name=f"Temp : {t_name}",
+                            mode="lines+markers",
+                            line=dict(
+                                color=clr,
+                                width=3,
+                                dash="dash"
+                            ),
+                            marker=dict(
+                                size=8,
+                                symbol="square"
+                            )
                         ),
                         secondary_y=True
                     )
