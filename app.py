@@ -1026,8 +1026,8 @@ if menu == "บันทึกข้อมูลการผลิต":
                         "recorded_at": datetime.now(ICT).isoformat()
                     }).execute()
                 
-                    st.session_state["open_tank_dialog"] = False
                     st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
+                    st.session_state["open_tank_dialog"] = False
                     time.sleep(1)
                     st.rerun()
 
@@ -1071,8 +1071,8 @@ if menu == "บันทึกข้อมูลการผลิต":
                     
                         supabase.table("anodize_tank_logs").insert(payload).execute()
                     
-                        st.session_state["open_tank_dialog"] = False
                         st.success(f"✅ บันทึกข้อมูลบ่อ {clicked_tank_name} สำเร็จ")
+                        st.session_state["open_tank_dialog"] = False
                         time.sleep(1)
                         st.rerun()
 
