@@ -470,161 +470,241 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
         )
 
 
+#=========================================================================
+def get_pk(row, candidates):
+    for col in candidates:
+        if col in row and row[col] is not None:
+            return col, row[col]
+    return None, None
+
+def delete_row(table, id_col, id_val):
+    return supabase.table(table).delete().eq(id_col, id_val).execute()
+
+def update_row(table, id_col, id_val, payload):
+    return supabase.table(table).update(payload).eq(id_col, id_val).execute()
+
 # ================= 3. EDIT DATA (ปรับให้โชว์ รหัส + ชื่อสินค้า) =================
+# --- ฟังก์ชันเสริมสำหรับระบบจัดการข้อมูล (วางไว้ก่อน show_data_editor หรือรวมไว้ที่เดียวกัน) ---
+def get_pk(data, possible_keys):
+    """ช่วยหา primary key จากข้อมูลที่ดึงมา"""
+    for key in possible_keys:
+        if key in data:
+            return key, data[key]
+    return None, None
+
+def update_row(table, id_col, id_val, data):
+    """ฟังก์ชันกลางสำหรับอัปเดตข้อมูล"""
+    return supabase.table(table).update(data).eq(id_col, id_val).execute()
+
+def delete_row(table, id_col, id_val):
+    """ฟังก์ชันกลางสำหรับลบข้อมูล"""
+    return supabase.table(table).delete().eq(id_col, id_val).execute()
+
+# ================= 3. EDIT DATA (เวอร์ชันอัปเกรดแยก Tab) =================
 def show_data_editor():
-    st.title("🛠️ จัดการและแก้ไขข้อมูลย้อนหลัง")
-    
-    edit_mode = st.radio("เลือกสิ่งที่ต้องการแก้ไข", ["📦 ข้อมูลสินค้า (Products)", "📜 ประวัติงานจิ๊ก (Jig Logs)"], horizontal=True)
+    st.title("🛠️ จัดการ แก้ไข และลบข้อมูล")
 
-    if edit_mode == "📦 ข้อมูลสินค้า (Products)":
-        st.subheader("แก้ไขข้อมูลสินค้าแบบละเอียด")
-        res = supabase.table("products").select("*").execute()
-        if res.data:
-            prod_options = {f"{p['product_code']} | {p['product_name']}": p for p in res.data}
-            selected_p_label = st.selectbox("เลือกสินค้าที่ต้องการแก้ไข", list(prod_options.keys()))
-            p_data = prod_options[selected_p_label]
-            
-            # --- ส่วนสำคัญ: ย้าย Selectbox เลือกทรงออกมานอก Form เพื่อให้ UI เปลี่ยนตามทันที ---
-            current_shape_in_db = p_data.get('shape', 'สี่เหลี่ยม')
-            shapes = ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง"]
-            
-            # ใช้ st.selectbox ตรงนี้เพื่อให้แอป Rerun เมื่อเปลี่ยนค่า
-            new_shape = st.selectbox("เปลี่ยนรูปทรง", shapes, index=shapes.index(current_shape_in_db) if current_shape_in_db in shapes else 0)
-            
-            # หลังจากเลือกทรงแล้ว ค่อยเข้าสู่ฟอร์มแก้ไขข้อมูลที่เหลือ
-            with st.form("edit_product_form_v3"):
-                col1, col2 = st.columns(2)
-                new_code = col1.text_input("รหัสสินค้า", value=p_data['product_code'])
-                new_name = col1.text_input("ชื่อสินค้า", value=p_data['product_name'])
-                new_finish = col2.text_input("พื้นผิว (Surface)", value=p_data.get('surface_finish', '-'))
+    tab_product, tab_jig, tab_jiglog, tab_color, tab_chemical = st.tabs([
+        "สินค้า",
+        "จิ๊ก",
+        "บันทึกงานจิ๊ก",
+        "บ่อสี",
+        "บ่อสารเคมี"
+    ])
 
-                st.divider()
-                st.write(f"📏 **แก้ไขสัดส่วนชิ้นงาน (ทรง: {new_shape})**")
-                
-                c_a, c_b, c_c = st.columns(3)
-                # ดึงค่าเดิมมาเป็นค่าเริ่มต้น (Default Value)
-                h = c_a.number_input("ความสูง/ยาว (H) [mm]", min_value=0.0, value=float(p_data.get('height', 0)))
-                
-                u_vol, w, t, od, id_inner = 0.0, 0.0, 0.0, 0.0, 0.0
+    with tab_product:
+        st.subheader("📦 แก้ไข / ลบสินค้า")
+        products = supabase.table("products").select("*").order("product_code").execute().data or []
 
-                # เงื่อนไขการโชว์ช่องกรอก จะเปลี่ยนตาม new_shape ที่เลือกไว้นอกฟอร์ม
-                if new_shape == "สี่เหลี่ยม":
-                    w = c_b.number_input("กว้าง [mm]", min_value=0.0, value=float(p_data.get('width', 0)))
-                    t = c_c.number_input("หนา [mm]", min_value=0.0, value=float(p_data.get('thickness', 0)))
-                    u_vol = h * w * t
-                elif new_shape == "ทรงกระบอกทึบ":
-                    od = c_b.number_input("เส้นผ่านศูนย์กลาง (OD) [mm]", min_value=0.0, value=float(p_data.get('outer_diameter', 0)))
-                    u_vol = math.pi * ((od/2)**2) * h
-                elif new_shape == "ทรงกระบอกกลวง":
-                    od = c_b.number_input("OD [mm]", min_value=0.0, value=float(p_data.get('outer_diameter', 0)))
-                    t_wall = c_c.number_input("ความหนาเนื้อ [mm]", min_value=0.0, value=float(p_data.get('thickness', 0)))
-                    id_inner = max(0.0, od - (2 * t_wall))
-                    u_vol = math.pi * ((od/2)**2 - (id_inner/2)**2) * h
-                    t = t_wall 
-
-                st.info(f"💡 ปริมาตรที่คำนวณใหม่: **{u_vol:,.2f} mm³**")
-                
-                if st.form_submit_button("💾 บันทึกการเปลี่ยนแปลงสินค้า"):
-                    try:
-                        supabase.table("products").update({
-                            "product_code": new_code,
-                            "product_name": new_name,
-                            "shape": new_shape,
-                            "unit_volume": u_vol,
-                            "height": h,
-                            "width": w,
-                            "thickness": t,
-                            "outer_diameter": od,
-                            "inner_diameter": id_inner,
-                            "surface_finish": new_finish
-                        }).eq("product_id", p_data['product_id']).execute()
-                        
-                        st.success("✅ อัปเดตข้อมูลสำเร็จ!")
-                        time.sleep(1)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"เกิดข้อผิดพลาด: {e}")
-
-    elif edit_mode == "📜 ประวัติงานจิ๊ก (Jig Logs)":
-        st.subheader("แก้ไขประวัติการบันทึกงานแบบละเอียด")
-        
-        # 1. คัดกรองวันที่
-        col_f1, col_f2 = st.columns([1, 2])
-        filter_date = col_f1.date_input("📅 เลือกวันที่", datetime.now(ICT))
-        
-        start_dt = filter_date.strftime("%Y-%m-%d 00:00:00")
-        end_dt = filter_date.strftime("%Y-%m-%d 23:59:59")
-        
-        logs_res = supabase.table("jig_usage_log")\
-            .select("*, products(*), jigs(jig_model_code)")\
-            .gte("recorded_date", start_dt)\
-            .lte("recorded_date", end_dt)\
-            .order("recorded_date", desc=True).execute()
-        
-        if logs_res.data:
-            # ปรับตรงนี้: ให้แสดงชื่อสินค้าในรายการ Log ด้วย
-            log_options = {
-                f"🕒 {l['recorded_date'][11:16]}น. | จิ๊ก: {l['jigs']['jig_model_code']} | สินค้า: {l['products']['product_code']} - {l['products']['product_name']}": l 
-                for l in logs_res.data
-            }
-            selected_log_label = st.selectbox(f"รายการวันที่ {filter_date}", list(log_options.keys()))
-            l_data = log_options[selected_log_label]
-            
-            with st.form("edit_log_detailed_form"):
-                st.markdown(f"### 📝 แก้ไขข้อมูลจิ๊ก: `{l_data['jigs']['jig_model_code']}`")
-                
-                c1, c2 = st.columns(2)
-                # ดึงรายการสินค้าทั้งหมด และปรับให้โชว์ รหัส | ชื่อ ในเมนูแก้ไข
-                all_prods = supabase.table("products").select("product_id, product_code, product_name").execute().data
-                prod_list_display = {f"{p['product_code']} | {p['product_name']}": p['product_id'] for p in all_prods}
-                
-                # หาค่า Default สำหรับเมนูเลือกสินค้า
-                current_p_label = f"{l_data['products']['product_code']} | {l_data['products']['product_name']}"
-                
-                new_p_label = c1.selectbox("เปลี่ยนสินค้า", list(prod_list_display.keys()), 
-                                           index=list(prod_list_display.keys()).index(current_p_label) if current_p_label in prod_list_display else 0)
-                
-                color_list = sorted(list(set(TANK_COLOR_MAP.values())))
-                current_color = l_data.get('color', color_list[0])
-                new_color = c2.selectbox("เปลี่ยนสี", color_list, 
-                                         index=color_list.index(current_color) if current_color in color_list else 0)
-                
-                st.divider()
-                
-                col_a, col_b, col_c = st.columns(3)
-                new_pcs_per_row = col_a.number_input("จำนวนต่อแถว", min_value=0, value=int(l_data.get('pcs_per_row', 0)))
-                new_rows = col_b.number_input("จำนวนแถวที่เต็ม", min_value=0, value=int(l_data.get('rows_filled', 0)))
-                new_partial = col_c.number_input("เศษ (ชิ้น)", min_value=0, value=int(l_data.get('partial_pieces', 0)))
-                
-                new_total_pcs = (new_rows * new_pcs_per_row) + new_partial
-                
-                # ดึงค่าปริมาตรจากสินค้าตัวที่เลือกใหม่
-                selected_prod_id = prod_list_display[new_p_label]
-                selected_prod_info = supabase.table("products").select("unit_volume").eq("product_id", selected_prod_id).single().execute().data
-                u_vol = selected_prod_info['unit_volume'] or 0
-                new_total_vol = new_total_pcs * u_vol
-                
-                st.info(f"📊 **สรุปยอดใหม่:** จำนวนรวม **{new_total_pcs}** ชิ้น | ปริมาตรรวม **{new_total_vol:,.2f}** mm³")
-                
-                if st.form_submit_button("💾 ยืนยันการแก้ไขข้อมูลทั้งหมด"):
-                    try:
-                        supabase.table("jig_usage_log").update({
-                            "product_id": selected_prod_id,
-                            "color": new_color,
-                            "pcs_per_row": new_pcs_per_row,
-                            "rows_filled": new_rows,
-                            "partial_pieces": new_partial,
-                            "total_pieces": new_total_pcs,
-                            "total_volume": new_total_vol
-                        }).eq("log_id", l_data['log_id']).execute()
-                        
-                        st.success("✅ แก้ไขข้อมูลเรียบร้อยแล้ว!")
-                        time.sleep(1)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"เกิดข้อผิดพลาด: {e}")
+        if not products:
+            st.info("ยังไม่มีข้อมูลสินค้า")
         else:
-            st.warning(f"❌ ไม่พบประวัติในวันที่ {filter_date}")
+            product_map = {f"{p.get('product_code', '')} | {p.get('product_name', '')}": p for p in products}
+            selected_label = st.selectbox("เลือกสินค้า", list(product_map.keys()), key="edit_product_select")
+            p = product_map[selected_label]
+
+            with st.form("edit_product_form"):
+                product_code = st.text_input("รหัสสินค้า", value=p.get("product_code", ""))
+                product_name = st.text_input("ชื่อสินค้า", value=p.get("product_name", ""))
+                surface_finish = st.text_input("พื้นผิว", value=p.get("surface_finish", ""))
+
+                col_save, col_delete = st.columns(2)
+                if col_save.form_submit_button("💾 บันทึกสินค้า"):
+                    try:
+                        update_row("products", "product_id", p["product_id"], {
+                            "product_code": product_code,
+                            "product_name": product_name,
+                            "surface_finish": surface_finish
+                        })
+                        st.success("บันทึกข้อมูลสินค้าแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"บันทึกไม่สำเร็จ: {e}")
+
+                if col_delete.form_submit_button("🗑️ ลบสินค้า"):
+                    try:
+                        delete_row("products", "product_id", p["product_id"])
+                        st.success("ลบสินค้าแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"ลบไม่ได้ อาจมีข้อมูลอื่นอ้างอิงสินค้านี้อยู่: {e}")
+
+    with tab_jig:
+        st.subheader("🛠️ แก้ไข / ลบจิ๊ก")
+        jigs = supabase.table("jigs").select("*").order("jig_model_code").execute().data or []
+
+        if not jigs:
+            st.info("ยังไม่มีข้อมูลจิ๊ก")
+        else:
+            jig_map = {f"{j.get('jig_model_code', '')} | Lot: {j.get('lot_no', '')}": j for j in jigs}
+            selected_label = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()), key="edit_jig_select")
+            j = jig_map[selected_label]
+
+            with st.form("edit_jig_form"):
+                jig_model_code = st.text_input("รหัสจิ๊ก", value=j.get("jig_model_code", ""))
+                lot_no = st.text_input("Lot No.", value=j.get("lot_no", ""))
+                total_pcs_in_jig = st.number_input("จำนวนชิ้นในจิ๊ก", min_value=0, value=int(j.get("total_pcs_in_jig") or 0))
+
+                col_save, col_delete = st.columns(2)
+                if col_save.form_submit_button("💾 บันทึกจิ๊ก"):
+                    try:
+                        update_row("jigs", "jig_id", j["jig_id"], {
+                            "jig_model_code": jig_model_code,
+                            "lot_no": lot_no,
+                            "total_pcs_in_jig": total_pcs_in_jig
+                        })
+                        st.success("บันทึกข้อมูลจิ๊กแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"บันทึกไม่สำเร็จ: {e}")
+
+                if col_delete.form_submit_button("🗑️ ลบจิ๊ก"):
+                    try:
+                        delete_row("jigs", "jig_id", j["jig_id"])
+                        st.success("ลบจิ๊กแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"ลบไม่ได้ อาจมี log อ้างอิงอยู่: {e}")
+
+    with tab_jiglog:
+        st.subheader("⚡ แก้ไข / ลบบันทึกงานจิ๊ก")
+        logs = supabase.table("jig_usage_log").select("*, products(product_code, product_name), jigs(jig_model_code)").order("recorded_date", desc=True).limit(200).execute().data or []
+
+        if not logs:
+            st.info("ยังไม่มีบันทึกงานจิ๊ก")
+        else:
+            log_map = {f"{l.get('recorded_date', '')} | Jig: {l.get('jigs', {}).get('jig_model_code', '')} | {l.get('products', {}).get('product_code', '')}": l for l in logs}
+            selected_label = st.selectbox("เลือกบันทึกงานจิ๊ก", list(log_map.keys()), key="edit_jiglog_select")
+            log = log_map[selected_label]
+            id_col, id_val = get_pk(log, ["log_id", "id", "jig_usage_log_id"])
+
+            with st.form("edit_jiglog_form"):
+                pcs_per_row = st.number_input("จำนวนต่อแถว", min_value=0, value=int(log.get("pcs_per_row") or 0))
+                rows_filled = st.number_input("แถวที่เต็ม", min_value=0, value=int(log.get("rows_filled") or 0))
+                partial_pieces = st.number_input("เศษ", min_value=0, value=int(log.get("partial_pieces") or 0))
+                total_pieces = (pcs_per_row * rows_filled) + partial_pieces
+                st.info(f"จำนวนรวมใหม่: {total_pieces}")
+
+                col_save, col_delete = st.columns(2)
+                if col_save.form_submit_button("💾 บันทึกงานจิ๊ก"):
+                    try:
+                        update_row("jig_usage_log", id_col, id_val, {
+                            "pcs_per_row": pcs_per_row,
+                            "rows_filled": rows_filled,
+                            "partial_pieces": partial_pieces,
+                            "total_pieces": total_pieces
+                        })
+                        st.success("บันทึกงานจิ๊กแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"บันทึกไม่สำเร็จ: {e}")
+
+                if col_delete.form_submit_button("🗑️ ลบบันทึกงานจิ๊ก"):
+                    try:
+                        delete_row("jig_usage_log", id_col, id_val)
+                        st.success("ลบบันทึกงานจิ๊กแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"ลบไม่สำเร็จ: {e}")
+
+    with tab_color:
+        st.subheader("🎨 แก้ไข / ลบบันทึกบ่อสี")
+        color_logs = supabase.table("color_tank_logs").select("*, tanks(tank_name)").order("recorded_at", desc=True).limit(200).execute().data or []
+
+        if not color_logs:
+            st.info("ยังไม่มีบันทึกบ่อสี")
+        else:
+            log_map = {f"{l.get('recorded_at', '')} | {l.get('tanks', {}).get('tank_name', '')}": l for l in color_logs}
+            selected_label = st.selectbox("เลือกบันทึกบ่อสี", list(log_map.keys()), key="edit_colorlog_select")
+            log = log_map[selected_label]
+            id_col, id_val = get_pk(log, ["log_id", "id", "color_log_id"])
+
+            with st.form("edit_colorlog_form"):
+                ph_value = st.number_input("ค่า pH", step=0.1, format="%.2f", value=float(log.get("ph_value") or 0))
+                temperature = st.number_input("อุณหภูมิ", step=0.1, format="%.1f", value=float(log.get("temperature") or 0))
+
+                col_save, col_delete = st.columns(2)
+                if col_save.form_submit_button("💾 บันทึกบ่อสี"):
+                    try:
+                        update_row("color_tank_logs", id_col, id_val, {"ph_value": ph_value, "temperature": temperature})
+                        st.success("บันทึกข้อมูลบ่อสีแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"บันทึกไม่สำเร็จ: {e}")
+
+                if col_delete.form_submit_button("🗑️ ลบบันทึกบ่อสี"):
+                    try:
+                        delete_row("color_tank_logs", id_col, id_val)
+                        st.success("ลบบันทึกบ่อสีแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"ลบไม่สำเร็จ: {e}")
+
+    with tab_chemical:
+        st.subheader("🧪 แก้ไข / ลบบันทึกบ่อสารเคมี")
+        chemical_logs = supabase.table("anodize_tank_logs").select("*, tanks(tank_name)").order("recorded_at", desc=True).limit(200).execute().data or []
+
+        if not chemical_logs:
+            st.info("ยังไม่มีบันทึกบ่อสารเคมี")
+        else:
+            log_map = {f"{l.get('recorded_at', '')} | {l.get('tanks', {}).get('tank_name', '')}": l for l in chemical_logs}
+            selected_label = st.selectbox("เลือกบันทึกบ่อสารเคมี", list(log_map.keys()), key="edit_chemlog_select")
+            log = log_map[selected_label]
+            id_col, id_val = get_pk(log, ["log_id", "id", "anodize_log_id"])
+
+            with st.form("edit_chemlog_form"):
+                temperature = st.number_input("อุณหภูมิ", step=0.1, format="%.1f", value=float(log.get("temperature") or 0))
+                ph_value = st.number_input("ค่า pH", step=0.01, format="%.2f", value=float(log.get("ph_value") or 0))
+                density = st.number_input("Density", step=0.001, format="%.3f", value=float(log.get("density") or 0))
+
+                col_save, col_delete = st.columns(2)
+                if col_save.form_submit_button("💾 บันทึกบ่อสารเคมี"):
+                    try:
+                        update_row("anodize_tank_logs", id_col, id_val, {
+                            "temperature": temperature, "ph_value": ph_value, "density": density
+                        })
+                        st.success("บันทึกข้อมูลบ่อสารเคมีแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"บันทึกไม่สำเร็จ: {e}")
+
+                if col_delete.form_submit_button("🗑️ ลบบันทึกบ่อสารเคมี"):
+                    try:
+                        delete_row("anodize_tank_logs", id_col, id_val)
+                        st.success("ลบบันทึกบ่อสารเคมีแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"ลบไม่สำเร็จ: {e}")
 
 #=================================================================   
 menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต", "🛠️ จัดการและแก้ไขข้อมูล"])
