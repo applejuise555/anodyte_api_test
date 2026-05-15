@@ -107,6 +107,19 @@ def load_products():
             .execute().data or []
     except:
         return []
+
+#================================================================================
+def lighten_color(hex_color, factor=0.45):
+    hex_color = hex_color.lstrip("#")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+
+    r = int(r + (255 - r) * factor)
+    g = int(g + (255 - g) * factor)
+    b = int(b + (255 - b) * factor)
+
+    return f"rgb({r},{g},{b})"
 #=================================================================================
 def render_tank_map(selected_tank_name=None):
     selected_tank_name = selected_tank_name or ""
@@ -1004,12 +1017,13 @@ if menu == "Dashboard":
                             name=f"Temp : {t_name}",
                             mode="lines+markers",
                             line=dict(
-                                color=clr,
-                                width=3,
-                                dash="dash"
+                                color=temp_clr,
+                                width=2,
+                                dash="dot"
                             ),
                             marker=dict(
-                                size=8,
+                                size=6,
+                                line=dict(width=1,color="white"),
                                 symbol="square",
                                 color=clr
                             )
@@ -1029,7 +1043,16 @@ if menu == "Dashboard":
                 
                 fig_mix.update_yaxes(title_text="pH", secondary_y=False)
                 fig_mix.update_yaxes(title_text="Temperature (°C)", secondary_y=True)
+                fig_mix.update_yaxes(
+                    showgrid=True,
+                    gridcolor="rgba(148,163,184,0.15)",
+                    secondary_y=False
+                )
                 
+                fig_mix.update_yaxes(
+                    showgrid=False,
+                    secondary_y=True
+                )
                 st.plotly_chart(fig_mix, use_container_width=True)
 # ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
