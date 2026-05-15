@@ -111,12 +111,13 @@ def render_tank_map(selected_tank_name=None):
 
     .plant-map{
         position:relative;
-        width:1100px;
+        width:100%;
+        min-width:1100px;
         height:720px;
         background:#e9e9e9;
         border:2px solid #999;
         margin:auto;
-        overflow:hidden;
+        overflow:Auto;
     }
 
     .tank{
@@ -397,7 +398,7 @@ def render_tank_map(selected_tank_name=None):
     """
 
     html = html.replace("__SELECTED_TANK__", selected_tank_name)
-    components.html(html, height=750, scrolling=False)
+    components.html(html, height=750, scrolling=True)
 
 #-----------------------------------------------------------------------
 @st.dialog("บันทึกข้อมูลบ่อ")
