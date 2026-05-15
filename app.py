@@ -485,6 +485,8 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
             }).execute()
 
                 st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
+                st.session_state["open_tank_dialog"] = False
+                st.session_state["dialog_loaded"] = False
                 time.sleep(1)
                 st.rerun()
 
@@ -525,6 +527,8 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
 
                 supabase.table("anodize_tank_logs").insert(payload).execute()
                 st.success(f"✅ บันทึกข้อมูลบ่อ {clicked_tank_name} สำเร็จ")
+                st.session_state["open_tank_dialog"] = False
+                st.session_state["dialog_loaded"] = False
                 time.sleep(1)
                 st.rerun()
 
@@ -1394,6 +1398,9 @@ if menu == "บันทึกข้อมูลการผลิต":
 
     if "open_tank_dialog" not in st.session_state:
         st.session_state["open_tank_dialog"] = False
+    
+    if "dialog_loaded" not in st.session_state:
+        st.session_state["dialog_loaded"] = False
 
     open_dialog_now = False
     load_clicked = st.button(
@@ -1401,9 +1408,12 @@ if menu == "บันทึกข้อมูลการผลิต":
         key="load_clicked_tank_btn"
     )
     
-    if load_clicked:
+    if st.button("โหลดบ่อที่คลิก", key="load_clicked_tank_btn"):
+
         st.session_state["tank_read_round"] += 1
+    
         st.session_state["open_tank_dialog"] = True
+        st.session_state["dialog_loaded"] = False
     
     clicked_tank_payload = streamlit_js_eval(
         js_expressions="localStorage.getItem('selected_tank_payload')",
@@ -1437,12 +1447,17 @@ if menu == "บันทึกข้อมูลการผลิต":
     }
     
     render_tank_map(clicked_tank_name)
-    
+
     if clicked_tank_name:
         st.success(f"เลือกบ่อจากผัง: {clicked_tank_name}")
     
-    if load_clicked and clicked_tank_name:
-
+    if (
+        st.session_state.get("open_tank_dialog")
+        and not st.session_state.get("dialog_loaded")
+        and clicked_tank_name
+    ):
+    
+        st.session_state["dialog_loaded"] = True
     
         tank_record_dialog(
             clicked_tank_name,
