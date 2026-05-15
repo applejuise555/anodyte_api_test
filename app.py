@@ -906,10 +906,51 @@ if menu == "Dashboard":
     # --- Data Loading ---
     @st.cache_data(ttl=10)
     def load_dashboard_data():
-        c_logs = supabase.table("color_tank_logs").select("*").order("recorded_at", desc=True).limit(500).execute().data
-        a_logs = supabase.table("anodize_tank_logs").select("*").order("recorded_at", desc=True).limit(500).execute().data
-        tanks = get_options("tanks", "tank_id", "tank_name")
-        return c_logs, a_logs, tanks
+    
+        try:
+    
+            c_res = supabase.table("color_tank_logs") \
+                .select("*") \
+                .order("recorded_at", desc=True) \
+                .limit(300) \
+                .execute()
+    
+            c_logs = c_res.data if c_res.data else []
+    
+        except Exception as e:
+    
+            st.warning(f"โหลด Color Tank Logs ไม่สำเร็จ: {e}")
+            c_logs = []
+    
+        try:
+    
+            a_res = supabase.table("anodize_tank_logs") \
+                .select("*") \
+                .order("recorded_at", desc=True) \
+                .limit(300) \
+                .execute()
+    
+            a_logs = a_res.data if a_res.data else []
+    
+        except Exception as e:
+    
+            st.warning(f"โหลด Anodize Logs ไม่สำเร็จ: {e}")
+            a_logs = []
+    
+        try:
+    
+            tanks = get_options(
+                "tanks",
+                "tank_id",
+                "tank_name"
+            )
+    
+        except Exception as e:
+    
+            st.warning(f"โหลด Tanks ไม่สำเร็จ: {e}")
+            tanks = {}
+
+    return c_logs, a_logs, tanks
 
     c_logs, a_logs, tank_map = load_dashboard_data()
     inv_tank_map = {v: k for k, v in tank_map.items()}
