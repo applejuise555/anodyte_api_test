@@ -424,11 +424,12 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
 
             if st.form_submit_button("บันทึกค่า"):
                 supabase.table("color_tank_logs").insert({
-                    "tank_id": color_tanks[clicked_tank_name],
-                    "ph_value": ph,
-                    "temperature": temp,
-                    "recorded_at": datetime.now(ICT).isoformat()
-                }).execute()
+                "tank_id": color_tanks[clicked_tank_name],
+                "tank_name_snapshot": clicked_tank_name,
+                "ph_value": ph,
+                "temperature": temp,
+                "recorded_at": datetime.now(ICT).isoformat()
+            }).execute()
 
                 st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
                 st.session_state["open_tank_dialog"] = False
@@ -457,10 +458,11 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
 
             if st.form_submit_button("💾 บันทึกข้อมูล"):
                 payload = {
-                    "tank_id": chemical_tanks[clicked_tank_name],
-                    "temperature": temp_val,
-                    "recorded_at": datetime.now(ICT).isoformat()
-                }
+                "tank_id": chemical_tanks[clicked_tank_name],
+                "tank_name_snapshot": clicked_tank_name,
+                "temperature": temp_val,
+                "recorded_at": datetime.now(ICT).isoformat()
+            }
 
                 if not is_sealer:
                     payload["ph_value"] = ph_val
@@ -705,7 +707,7 @@ def show_data_editor():
         end_dt = f"{filter_date_str}T23:59:59"
         
         color_logs = supabase.table("color_tank_logs")\
-            .select("*, tanks(tank_name)")\
+            .select("*")
             .gte("recorded_at", start_dt).lte("recorded_at", end_dt)\
             .order("recorded_at", desc=True).execute().data or []
 
@@ -875,7 +877,7 @@ if menu == "Dashboard":
     if c_logs:
         df_c = pd.DataFrame(c_logs)
         df_c["recorded_at"] = pd.to_datetime(df_c["recorded_at"]).dt.tz_convert(ICT)
-        df_c["tank_name"] = df_c["tank_id"].map(inv_tank_map)
+        df_c["tank_name"] = df_c["tank_name_snapshot"]
         latest_c = df_c.drop_duplicates("tank_id").sort_values("tank_name")
         with col1:
             st.caption("🚨 Alerts")
