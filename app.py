@@ -935,33 +935,76 @@ if menu == "Dashboard":
             f_df_c = df_c[(df_c["recorded_at"] >= g_start_dt) & (df_c["recorded_at"] <= g_end_dt)]
             if not f_df_c.empty and sel_tanks:
                 fig_mix = make_subplots(specs=[[{"secondary_y": True}]])
-
                 # ===== พื้นที่มาตรฐาน pH =====
-                fig_mix.add_hrect(
-                    y0=5.0,
-                    y1=6.0,
+                fig_mix.add_shape(
+                    type="rect",
+                    xref="paper",
+                    yref="y",
+                    x0=0,
+                    x1=1,
+                    y0=5,
+                    y1=6,
                     fillcolor="green",
                     opacity=0.12,
+                    layer="below",
                     line_width=0,
-                    secondary_y=False
                 )
                 
                 # ===== พื้นที่มาตรฐาน Temperature =====
-                fig_mix.add_hrect(
+                fig_mix.add_shape(
+                    type="rect",
+                    xref="paper",
+                    yref="y2",
+                    x0=0,
+                    x1=1,
                     y0=30,
                     y1=40,
                     fillcolor="orange",
                     opacity=0.10,
+                    layer="below",
                     line_width=0,
-                    secondary_y=True
                 )
+                
                 colors = ["#1abc9c", "#3498db", "#9b59b6", "#f1c40f", "#e67e22"]
+                
                 for i, t_name in enumerate(sel_tanks):
                     t_data = f_df_c[f_df_c["tank_name"] == t_name].sort_values("recorded_at")
                     clr = colors[i % len(colors)]
-                    fig_mix.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["ph_value"], name=f"pH:{t_name}", line_color=clr), secondary_y=False)
-                    fig_mix.add_trace(go.Scatter(x=t_data["recorded_at"], y=t_data["temperature"], name=f"T:{t_name}", line=dict(color=clr, dash='dot')), secondary_y=True)
-                fig_mix.update_layout(height=250, margin=dict(l=5,r=5,t=10,b=5), legend=dict(font_size=9), yaxis_showgrid=False, yaxis2_showgrid=False)
+                
+                    # pH
+                    fig_mix.add_trace(
+                        go.Scatter(
+                            x=t_data["recorded_at"],
+                            y=t_data["ph_value"],
+                            name=f"pH:{t_name}",
+                            line=dict(color=clr, width=2)
+                        ),
+                        secondary_y=False
+                    )
+                
+                    # Temperature
+                    fig_mix.add_trace(
+                        go.Scatter(
+                            x=t_data["recorded_at"],
+                            y=t_data["temperature"],
+                            name=f"T:{t_name}",
+                            line=dict(color=clr, dash="dot", width=2)
+                        ),
+                        secondary_y=True
+                    )
+                
+                fig_mix.update_layout(
+                    height=300,
+                    margin=dict(l=5, r=5, t=10, b=5),
+                    legend=dict(font_size=9),
+                    yaxis_showgrid=False,
+                    yaxis2_showgrid=False,
+                    plot_bgcolor="white"
+                )
+                
+                fig_mix.update_yaxes(title_text="pH", secondary_y=False)
+                fig_mix.update_yaxes(title_text="Temperature (°C)", secondary_y=True)
+                
                 st.plotly_chart(fig_mix, use_container_width=True)
 # ================= RECORD PAGE =================
 if menu == "บันทึกข้อมูลการผลิต":
