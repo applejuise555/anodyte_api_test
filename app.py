@@ -503,6 +503,9 @@ def delete_row(table, id_col, id_val):
 # ================= 3. EDIT DATA (เวอร์ชันอัปเกรดแยก Tab) =================
 def show_data_editor():
     st.title("🛠️ จัดการ แก้ไข และลบข้อมูล")
+    st.info("💡 เลือกวันที่เพื่อกรองข้อมูลในแท็บบันทึกต่างๆ")
+    filter_date = st.date_input("กรองข้อมูลจากวันที่ผลิต/บันทึก", value=datetime.now(ICT).date())
+    filter_date_str = filter_date.isoformat()
 
     tab_product, tab_jig, tab_jiglog, tab_color, tab_chemical = st.tabs([
         "สินค้า",
@@ -591,13 +594,20 @@ def show_data_editor():
                         st.error(f"ลบไม่ได้ อาจมี log อ้างอิงอยู่: {e}")
 
     with tab_jiglog:
-        st.subheader("⚡ แก้ไข / ลบบันทึกงานจิ๊ก")
-        logs = supabase.table("jig_usage_log").select("*, products(product_code, product_name), jigs(jig_model_code)").order("recorded_date", desc=True).limit(200).execute().data or []
+        st.subheader(f"⚡ แก้ไข / ลบบันทึกงานจิ๊ก ({filter_date})")
+        # แก้ไขการดึงข้อมูลโดยเพิ่ม .eq("recorded_date", filter_date_str)
+        logs = supabase.table("jig_usage_log")\
+            .select("*, products(product_code, product_name), jigs(jig_model_code)")\
+            .eq("recorded_date", filter_date_str)\
+            .order("recorded_date", desc=True).execute().data or []
 
         if not logs:
-            st.info("ยังไม่มีบันทึกงานจิ๊ก")
+            st.warning(f"ไม่มีข้อมูลบันทึกในวันที่ {filter_date}")
         else:
-            log_map = {f"{l.get('recorded_date', '')} | Jig: {l.get('jigs', {}).get('jig_model_code', '')} | {l.get('products', {}).get('product_code', '')}": l for l in logs}
+            log_map = {
+                f"{l.get('recorded_date')} | Jig: {l.get('jigs', {}).get('jig_model_code')} | {l.get('products', {}).get('product_code')}": l
+                for l in logs
+            }
             selected_label = st.selectbox("เลือกบันทึกงานจิ๊ก", list(log_map.keys()), key="edit_jiglog_select")
             log = log_map[selected_label]
             id_col, id_val = get_pk(log, ["log_id", "id", "jig_usage_log_id"])
@@ -634,13 +644,21 @@ def show_data_editor():
                         st.error(f"ลบไม่สำเร็จ: {e}")
 
     with tab_color:
-        st.subheader("🎨 แก้ไข / ลบบันทึกบ่อสี")
-        color_logs = supabase.table("color_tank_logs").select("*, tanks(tank_name)").order("recorded_at", desc=True).limit(200).execute().data or []
+        st.subheader(f"🎨 แก้ไข / ลบบันทึกบ่อสี ({filter_date})")
+        # ใช้ gte/lte เพื่อกรองวันที่จาก timestamp (recorded_at)
+        start_dt = f"{filter_date_str}T00:00:00"
+        end_dt = f"{filter_date_str}T23:59:59"
+        
+        color_logs = supabase.table("color_tank_logs")\
+            .select("*, tanks(tank_name)")\
+            .gte("recorded_at", start_dt)\
+            .lte("recorded_at", end_dt)\
+            .order("recorded_at", desc=True).execute().data or []
 
         if not color_logs:
-            st.info("ยังไม่มีบันทึกบ่อสี")
+            st.warning(f"ไม่มีบันทึกบ่อสีในวันที่ {filter_date}")
         else:
-            log_map = {f"{l.get('recorded_at', '')} | {l.get('tanks', {}).get('tank_name', '')}": l for l in color_logs}
+            log_map = {f"{l.get('recorded_at')} | {l.get('tanks', {}).get('tank_name')}": l for l in color_logs}
             selected_label = st.selectbox("เลือกบันทึกบ่อสี", list(log_map.keys()), key="edit_colorlog_select")
             log = log_map[selected_label]
             id_col, id_val = get_pk(log, ["log_id", "id", "color_log_id"])
@@ -669,13 +687,20 @@ def show_data_editor():
                         st.error(f"ลบไม่สำเร็จ: {e}")
 
     with tab_chemical:
-        st.subheader("🧪 แก้ไข / ลบบันทึกบ่อสารเคมี")
-        chemical_logs = supabase.table("anodize_tank_logs").select("*, tanks(tank_name)").order("recorded_at", desc=True).limit(200).execute().data or []
+        st.subheader(f"🧪 แก้ไข / ลบบันทึกบ่อสารเคมี ({filter_date})")
+        start_dt = f"{filter_date_str}T00:00:00"
+        end_dt = f"{filter_date_str}T23:59:59"
+
+        chemical_logs = supabase.table("anodize_tank_logs")\
+            .select("*, tanks(tank_name)")\
+            .gte("recorded_at", start_dt)\
+            .lte("recorded_at", end_dt)\
+            .order("recorded_at", desc=True).execute().data or []
 
         if not chemical_logs:
-            st.info("ยังไม่มีบันทึกบ่อสารเคมี")
+            st.warning(f"ไม่มีบันทึกบ่อสารเคมีในวันที่ {filter_date}")
         else:
-            log_map = {f"{l.get('recorded_at', '')} | {l.get('tanks', {}).get('tank_name', '')}": l for l in chemical_logs}
+            log_map = {f"{l.get('recorded_at')} | {l.get('tanks', {}).get('tank_name')}": l for l in chemical_logs}
             selected_label = st.selectbox("เลือกบันทึกบ่อสารเคมี", list(log_map.keys()), key="edit_chemlog_select")
             log = log_map[selected_label]
             id_col, id_val = get_pk(log, ["log_id", "id", "anodize_log_id"])
