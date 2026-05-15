@@ -485,6 +485,7 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
             }).execute()
 
                 st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
+                st.session_state["open_tank_dialog"] = False
                 time.sleep(1)
                 st.rerun()
 
@@ -525,6 +526,7 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
 
                 supabase.table("anodize_tank_logs").insert(payload).execute()
                 st.success(f"✅ บันทึกข้อมูลบ่อ {clicked_tank_name} สำเร็จ")
+                st.session_state["open_tank_dialog"] = False
                 time.sleep(1)
                 st.rerun()
 
@@ -1439,7 +1441,6 @@ if menu == "บันทึกข้อมูลการผลิต":
     if st.session_state.get("open_tank_dialog") and clicked_tank_name:
 
         # รีเซ็ตก่อนเปิด dialog
-        st.session_state["open_tank_dialog"] = False
     
         tank_record_dialog(
             clicked_tank_name,
