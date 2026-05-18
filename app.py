@@ -1440,17 +1440,17 @@ if menu == "บันทึกข้อมูลการผลิต":
         name: tid for name, tid in all_tanks.items()
         if any(keyword in name.lower() for keyword in ["anodize", "almite", "sealer", "seal"])
     }
-
+    render_tank_map(clicked_tank_name)
     if st.session_state.get("open_tank_dialog") and clicked_tank_name:
 
-    tank_record_dialog(
-        clicked_tank_name,
-        color_tanks,
-        chemical_tanks
-    )
-
-    st.session_state["open_tank_dialog"] = False
-    render_tank_map(clicked_tank_name)
+        tank_record_dialog(
+            clicked_tank_name,
+            color_tanks,
+            chemical_tanks
+        )
+    
+        st.session_state["open_tank_dialog"] = False
+    
 
     if clicked_tank_name:
         st.success(f"เลือกบ่อจากผัง: {clicked_tank_name}")
