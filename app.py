@@ -1412,12 +1412,25 @@ if menu == "บันทึกข้อมูลการผลิต":
     if clicked_tank_payload:
         try:
             payload = json.loads(clicked_tank_payload)
+    
             if payload.get("tank"):
+    
                 st.session_state["clicked_tank_name"] = payload["tank"]
-        except Exception:
-            pass
+    
+                # ===== ล้างค่าเก่าทันที =====
+                streamlit_js_eval(
+                    js_expressions="""
+                    localStorage.removeItem('selected_tank_payload')
+                    """,
+                    key=f"clear_payload_{time.time()}",
+                    want_output=False
+                )
+    
+        except Exception as e:
+            st.warning(e)
     
     clicked_tank_name = st.session_state.get("clicked_tank_name")
+    st.write("CURRENT =", clicked_tank_name)
 
     color_tanks = get_options(
         "tanks",
