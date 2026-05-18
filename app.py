@@ -1439,9 +1439,6 @@ if menu == "บันทึกข้อมูลการผลิต":
         "tank_type",
         "Color"
     )
-    st.write(color_tanks)
-    st.write(color_tanks.get("1DarkRedA"))
-    st.write(color_tanks.get("1DarkRedB"))
     all_tanks = get_options("tanks", "tank_id", "tank_name")
     
     chemical_tanks = {
