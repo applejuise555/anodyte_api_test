@@ -354,22 +354,22 @@ def render_tank_map():
 
     const selectedTank = "{selected_tank}";
     
-    document.querySelectorAll(".tank").forEach((tank)=>{
+    document.querySelectorAll(".tank").forEach((tank)=>{{
     
-        if(tank.dataset.tank === selectedTank){
+        if(tank.dataset.tank === selectedTank){{
             tank.classList.add("selected");
-        }
+        }}
     
-        tank.addEventListener("click", ()=>{
+        tank.addEventListener("click", ()=>{{
     
             localStorage.setItem(
                 "selected_tank",
                 tank.dataset.tank
             );
     
-        });
+        }});
     
-    });
+    }});
     
     </script>
     """
