@@ -60,15 +60,14 @@ def init_connection():
 supabase = init_connection()
 
 # --- Helper Functions ---
-import re
-
 def normalize_text(text):
-    return re.sub(r'[^a-z0-9]', '', str(text).lower())
+    return str(text).lower().replace(" ", "").replace("_", "")
 
 def get_hex_from_name(name):
 
     name_clean = normalize_text(name)
 
+    # เรียงชื่อสีจากยาว -> สั้น
     sorted_colors = sorted(
         COLOR_HEX_MAP.keys(),
         key=lambda x: len(normalize_text(x)),
@@ -82,7 +81,7 @@ def get_hex_from_name(name):
         if color_clean in name_clean:
             return COLOR_HEX_MAP[color_name]
 
-    return "#888888"
+    return "#CCCCCC"
 
 def render_color_bar(name):
     hex_code = get_hex_from_name(name)
@@ -132,10 +131,8 @@ def load_products():
         return []
 
 #================================================================================
-def lighten_color(hex_color, factor=0.25):
-
+def lighten_color(hex_color, factor=0.45):
     hex_color = hex_color.lstrip("#")
-
     r = int(hex_color[0:2], 16)
     g = int(hex_color[2:4], 16)
     b = int(hex_color[4:6], 16)
@@ -163,53 +160,29 @@ def load_tank_color_map():
         return {}
 
 tank_color_map = load_tank_color_map()
-
-def tank_bg(tank_name):
-
-    color_name = tank_color_map.get(
-        tank_name,
-        tank_name
-    )
-
-    return get_hex_from_name(color_name)
 #====================================================================================
-@st.dialog("📝 บันทึกข้อมูลบ่อ")
-def popup_tank_dialog():
+def render_tank_map(selected_tank_name=None):
+    selected_tank_name = selected_tank_name or ""
 
-    clicked_tank = st.session_state.get("selected_tank")
-
-    if not clicked_tank:
-        st.warning("ไม่พบบ่อ")
-        return
-
-    tank_record_dialog(
-        clicked_tank,
-        color_tanks,
-        chemical_tanks
-    )
-
-    if st.button("❌ ปิด"):
-        st.session_state["selected_tank"] = None
-        st.rerun()
-# =====================================================================================
-def render_tank_map():
-
-    selected_tank = st.session_state.get("selected_tank", "")
-
-    html = f"""
+    html = """
     <style>
+    body{
+        margin:0;
+        padding:0;
+    }
 
-    .plant-map {{
+    .plant-map{
         position:relative;
-        width:1100px;
+        width:100%;
+        min-width:1100px;
         height:720px;
         background:#e9e9e9;
         border:2px solid #999;
         margin:auto;
-        overflow:auto;
-    }}
+        overflow:Auto;
+    }
 
-    .tank {{
+    .tank{
         position:absolute;
         color:white;
         font-weight:bold;
@@ -220,30 +193,34 @@ def render_tank_map():
         border:1px solid #555;
         box-sizing:border-box;
         font-family:Arial;
-        cursor:pointer;
-        transition:.15s;
-    }}
+    }
 
-    .tank:hover {{
-        transform:scale(1.03);
-        z-index:5;
-    }}
-
-    .selected {{
-        outline:4px solid yellow;
-        z-index:10;
-    }}
-
-    .vertical {{
+    .vertical{
         writing-mode:vertical-rl;
         text-orientation:mixed;
-    }}
+    }
 
-    .ro {{
+    .ro{
         background:#d7ffff !important;
         color:black !important;
-    }}
+    }
 
+    .tank.clickable{
+        cursor:pointer;
+        transition:transform .12s ease, box-shadow .12s ease, outline .12s ease;
+    }
+
+    .tank.clickable:hover{
+        transform:translateY(-2px);
+        box-shadow:0 8px 18px rgba(0,0,0,.25);
+        z-index:5;
+    }
+
+    .tank.selected{
+        outline:4px solid #ffeb3b;
+        box-shadow:0 0 0 3px rgba(0,0,0,.35), 0 10px 22px rgba(0,0,0,.35);
+        z-index:10;
+    }
     </style>
 
     <div class="plant-map">
@@ -305,11 +282,28 @@ def render_tank_map():
             4.Dark Blue
         </div>
 
+        <!-- RO -->
+
+        <div class="tank ro"
+            style="left:140px;top:82px;width:130px;height:65px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:455px;top:82px;width:130px;height:65px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:785px;top:82px;width:130px;height:65px;">
+            RO
+        </div>
+
         <!-- CENTER -->
 
         <div class="tank vertical" data-tank="AlmiteSealer"
             style="left:0px;top:180px;width:60px;height:275px;background:#777;">
-            AlmiteSealer
+            AlmiteSealerLiquid
         </div>
 
         <div class="tank" data-tank="20Black"
@@ -363,53 +357,113 @@ def render_tank_map():
 
         <div class="tank vertical" data-tank="Anodize Tank 1"
             style="left:890px;top:520px;width:140px;height:190px;background:#ccc;color:black;">
-            Anodize
+            AnodizedPPool1
+        </div>
+
+        <!-- DARK TITANIUM -->
+
+        <div class="tank" data-tank="13DarkTitanium"
+            style="left:310px;top:120px;width:80px;height:40px;background:#666;">
+            13.DarkTitanium
+        </div>
+
+        <div class="tank"
+            style="left:390px;top:120px;width:80px;height:40px;background:#666;">
+        </div>
+
+        <!-- ORANGE OIL -->
+
+        <div class="tank" data-tank="18OrangeOil"
+            style="left:625px;top:120px;width:80px;height:40px;background:#dd6600;">
+            18.OrangeOil
+        </div>
+
+        <div class="tank"
+            style="left:705px;top:120px;width:80px;height:40px;background:#dd6600;">
+        </div>
+
+        <!-- RO CENTER -->
+
+        <div class="tank ro"
+            style="left:380px;top:355px;width:85px;height:90px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:625px;top:190px;width:90px;height:125px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:625px;top:320px;width:90px;height:125px;">
+            RO
+        </div>
+
+        <!-- RO RIGHT -->
+
+        <div class="tank ro"
+            style="left:850px;top:200px;width:85px;height:110px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:850px;top:312px;width:85px;height:114px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:990px;top:215px;width:85px;height:80px;">
+            RO
         </div>
 
     </div>
 
     <script>
-
-    const selectedTank = "{selected_tank}";
+    const selectedTank = "__SELECTED_TANK__";
     
-    document.querySelectorAll(".tank").forEach((tank)=>{{
+    function selectTank(tankName) {
+        const payload = JSON.stringify({
+            tank: tankName,
+            updatedAt: Date.now()
+        });
     
-        if(tank.dataset.tank === selectedTank){{
+        try {
+            window.parent.localStorage.setItem("selected_tank_payload", payload);
+        } catch (error) {
+            localStorage.setItem("selected_tank_payload", payload);
+        }
+    
+        document.querySelectorAll(".tank[data-tank]").forEach((item) => {
+            item.classList.toggle("selected", item.dataset.tank === tankName);
+        });
+    }
+    
+    document.querySelectorAll(".tank[data-tank]").forEach((tank) => {
+        tank.classList.add("clickable");
+        tank.setAttribute("role", "button");
+        tank.setAttribute("tabindex", "0");
+        tank.title = "คลิกเพื่อกรอกข้อมูลบ่อ " + tank.dataset.tank;
+    
+        if (tank.dataset.tank === selectedTank) {
             tank.classList.add("selected");
-        }}
+        }
     
-        tank.addEventListener("click", ()=>{{
-    
-            localStorage.setItem(
-                "selected_tank",
-                tank.dataset.tank
-            );
-    
-        }});
-    
-    }});
-    
+        tank.addEventListener("click", () => selectTank(tank.dataset.tank));
+        tank.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                selectTank(tank.dataset.tank);
+            }
+        });
+    });
     </script>
     """
 
-    components.html(
-        html,
-        height=760,
-        scrolling=True
-    )
-    
-    # ===== อ่านค่าที่คลิก =====
-    clicked = streamlit_js_eval(
-        js_expressions='localStorage.getItem("selected_tank")',
-        key=f"get_selected_tank_{time.time()}"
-    )
-    
-    # ===== sync session =====
-    if clicked:
-    
-        st.session_state["selected_tank"] = clicked
-#-----------------------------------------------------------------------
+    html = html.replace("__SELECTED_TANK__", selected_tank_name)
+    components.html(html, height=750, scrolling=True)
 
+#-----------------------------------------------------------------------
+@st.dialog("บันทึกข้อมูลบ่อ")
 def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
     if clicked_tank_name in color_tanks:
         st.subheader(f"🎨 บ่อสี: {clicked_tank_name}")
@@ -431,14 +485,9 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
             }).execute()
 
                 st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
-
-                time.sleep(0.7)
-                
-                st.session_state["selected_tank"] = None
-                
+                st.session_state["open_tank_dialog"] = False
+                time.sleep(1)
                 st.rerun()
-                
-                
 
     elif clicked_tank_name in chemical_tanks:
         st.subheader(f"🧪 บ่อสารเคมี: {clicked_tank_name}")
@@ -477,13 +526,10 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
 
                 supabase.table("anodize_tank_logs").insert(payload).execute()
                 st.success(f"✅ บันทึกข้อมูลบ่อ {clicked_tank_name} สำเร็จ")
-
-                time.sleep(0.7)
-                
-                st.session_state["selected_tank"] = None
-                
+                st.session_state["open_tank_dialog"] = False
+                time.sleep(1)
                 st.rerun()
-                
+
     else:
         st.warning(
             f"ไม่พบบ่อ `{clicked_tank_name}` ในฐานข้อมูล tanks "
@@ -1272,7 +1318,7 @@ if menu == "Dashboard":
                     color_name = tank_color_map.get(t_name, "Gray")
                 
                     # หา HEX จาก COLOR_HEX_MAP
-                    clr = get_hex_from_name(color_name)
+                    clr = COLOR_HEX_MAP.get(color_name, "#666666")
 
                     temp_clr = lighten_color(clr)
                 
@@ -1351,32 +1397,23 @@ if menu == "บันทึกข้อมูลการผลิต":
     if "open_tank_dialog" not in st.session_state:
         st.session_state["open_tank_dialog"] = False
     
-    # ปุ่มโหลดบ่อที่คลิก
-    load_clicked = st.button("โหลดบ่อที่คลิก")
-    
-    if load_clicked:
-    
-        # อ่าน localStorage ใหม่
+    if st.button("โหลดบ่อที่คลิก", key="load_clicked_tank_btn"):
         st.session_state["tank_read_round"] += 1
+        st.session_state["open_tank_dialog"] = True
     
-        clicked_tank_payload = streamlit_js_eval(
-            js_expressions="localStorage.getItem('selected_tank_payload')",
-            key=f"selected_tank_payload_reader_{st.session_state['tank_read_round']}",
-            want_output=True
-        )
+    clicked_tank_payload = streamlit_js_eval(
+        js_expressions="localStorage.getItem('selected_tank_payload')",
+        key=f"selected_tank_payload_reader_{st.session_state['tank_read_round']}",
+        want_output=True
+    )
     
-        if clicked_tank_payload:
-            try:
-                payload = json.loads(clicked_tank_payload)
-    
-                if payload.get("tank"):
-                    st.session_state["clicked_tank_name"] = payload["tank"]
-    
-                    # เปิด dialog เฉพาะตอนกดปุ่ม
-                    st.session_state["open_tank_dialog"] = True
-    
-            except Exception:
-                pass
+    if clicked_tank_payload:
+        try:
+            payload = json.loads(clicked_tank_payload)
+            if payload.get("tank"):
+                st.session_state["clicked_tank_name"] = payload["tank"]
+        except Exception:
+            pass
     
     clicked_tank_name = st.session_state.get("clicked_tank_name")
 
@@ -1394,51 +1431,15 @@ if menu == "บันทึกข้อมูลการผลิต":
         name: tid for name, tid in all_tanks.items()
         if any(keyword in name.lower() for keyword in ["anodize", "almite", "sealer", "seal"])
     }
-    render_tank_map()
-
-    render_tank_map()
-
-    clicked_tank = st.session_state.get("selected_tank")
     
-    if clicked_tank:
-        popup_tank_dialog()
+    render_tank_map(clicked_tank_name)
     
-
     if clicked_tank_name:
         st.success(f"เลือกบ่อจากผัง: {clicked_tank_name}")
     
-    if (
-        st.session_state.get("open_tank_dialog")
-        and not st.session_state.get("dialog_loaded")
-        and clicked_tank_name
-    ):
-    
-        st.session_state["dialog_loaded"] = True
-    
-        if st.session_state.get("open_tank_dialog") and clicked_tank_name:
+    if st.session_state.get("open_tank_dialog") and clicked_tank_name:
+        tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks)
 
-            with st.container(border=True):
-        
-                col1, col2 = st.columns([10,1])
-        
-                with col1:
-                    st.subheader(f"📝 บันทึกข้อมูลบ่อ : {clicked_tank_name}")
-        
-                with col2:
-                    if st.button("❌", key="close_tank_form"):
-                        st.session_state["open_tank_dialog"] = False
-                        st.rerun()
-        
-                if st.session_state.get("open_tank_dialog") and clicked_tank_name:
-
-                    tank_record_dialog(
-                        clicked_tank_name,
-                        color_tanks,
-                        chemical_tanks
-                    )
-                
-                    # ปิดทันทีหลัง render
-                    st.session_state["open_tank_dialog"] = False
 #====================================================================================
     tab_main = st.tabs(["งานจิ๊ก (Jig System)"])
 
