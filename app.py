@@ -401,7 +401,7 @@ def render_tank_map():
     # ===== อ่านค่าที่คลิก =====
     clicked = streamlit_js_eval(
         js_expressions='localStorage.getItem("selected_tank")',
-        key="get_selected_tank"
+        key=f"get_selected_tank_{time.time()}"
     )
     
     # ===== sync session =====
