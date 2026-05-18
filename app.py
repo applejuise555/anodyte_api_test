@@ -311,9 +311,9 @@ def render_tank_map(selected_tank_name=None):
             20.Black
         </div>
 
-        <div class="tank" data-tank="1DarkRedA"
+        <div class="tank" data-tank="1DarkRedB"
             style="left:270px;top:252px;width:80px;height:35px;background:darkred;">
-            1.DarkRedA
+            1.DarkRedB
         </div>
 
         <div class="tank vertical" data-tank="7Pink"
@@ -333,9 +333,9 @@ def render_tank_map(selected_tank_name=None):
 
         <!-- RIGHT -->
 
-        <div class="tank" data-tank="1DarkRedB"
+        <div class="tank" data-tank="1DarkRedA"
             style="left:785px;top:200px;width:65px;height:55px;background:darkred;">
-            1.DarkRedB
+            1.DarkRedA
         </div>
 
         <div class="tank" data-tank="19Copper"
