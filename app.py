@@ -240,7 +240,7 @@ def render_tank_map(selected_tank_name=None):
 
     <div class="plant-map">
 
-        <!-- TOP -->
+        <!-- TOP ROW -->
 
         <div class="tank"
             data-tank="5Black"
@@ -322,6 +322,109 @@ def render_tank_map(selected_tank_name=None):
             4.Dark Blue
         </div>
 
+        <!-- RO -->
+
+        <div class="tank ro"
+            style="left:140px;top:82px;width:130px;height:65px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:455px;top:82px;width:130px;height:65px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:785px;top:82px;width:130px;height:65px;">
+            RO
+        </div>
+
+        <!-- CENTER -->
+
+        <div class="tank vertical"
+            data-tank="AlmiteSealer"
+            style="left:0px;top:180px;width:60px;height:275px;
+            background:{tank_bg('AlmiteSealer')};">
+            AlmiteSealerLiquid
+        </div>
+
+        <div class="tank"
+            data-tank="20Black"
+            style="left:270px;top:200px;width:80px;height:50px;
+            background:{tank_bg('20Black')};">
+            20.Black
+        </div>
+
+        <div class="tank"
+            data-tank="1DarkRedA"
+            style="left:270px;top:252px;width:80px;height:35px;
+            background:{tank_bg('1DarkRedA')};">
+            1.DarkRed
+        </div>
+
+        <div class="tank vertical"
+            data-tank="7Pink"
+            style="left:380px;top:210px;width:85px;height:130px;
+            background:{tank_bg('7Pink')};">
+            7.Pink
+        </div>
+
+        <div class="tank"
+            data-tank="HotSealH60"
+            style="left:540px;top:190px;width:85px;height:130px;
+            background:{tank_bg('HotSealH60')};">
+            HotSeal
+        </div>
+
+        <div class="tank vertical"
+            data-tank="11Gold"
+            style="left:540px;top:325px;width:85px;height:120px;
+            background:{tank_bg('11Gold')};
+            color:black;">
+            11.Gold
+        </div>
+
+        <!-- RIGHT -->
+
+        <div class="tank"
+            data-tank="1DarkRedB"
+            style="left:785px;top:200px;width:65px;height:55px;
+            background:{tank_bg('1DarkRedB')};">
+            1.DarkRed
+        </div>
+
+        <div class="tank"
+            data-tank="19Copper"
+            style="left:785px;top:257px;width:65px;height:55px;
+            background:{tank_bg('19Copper')};
+            color:black;">
+            19.Copper
+        </div>
+
+        <div class="tank"
+            data-tank="12Titanium"
+            style="left:785px;top:314px;width:65px;height:55px;
+            background:{tank_bg('12Titanium')};">
+            12.Titanium
+        </div>
+
+        <div class="tank"
+            data-tank="14RoseGold"
+            style="left:785px;top:371px;width:65px;height:55px;
+            background:{tank_bg('14RoseGold')};">
+            14.RoseGold
+        </div>
+
+        <!-- ANODIZE -->
+
+        <div class="tank vertical"
+            data-tank="Anodize Tank 1"
+            style="left:890px;top:520px;width:140px;height:190px;
+            background:{tank_bg('Anodize Tank 1')};
+            color:black;">
+            AnodizedPool1
+        </div>
+
         <!-- DARK TITANIUM -->
 
         <div class="tank"
@@ -331,6 +434,11 @@ def render_tank_map(selected_tank_name=None):
             13.DarkTitanium
         </div>
 
+        <div class="tank"
+            style="left:390px;top:120px;width:80px;height:40px;
+            background:{tank_bg('13DarkTitanium')};">
+        </div>
+
         <!-- ORANGE OIL -->
 
         <div class="tank"
@@ -338,6 +446,45 @@ def render_tank_map(selected_tank_name=None):
             style="left:625px;top:120px;width:80px;height:40px;
             background:{tank_bg('18OrangeOil')};">
             18.OrangeOil
+        </div>
+
+        <div class="tank"
+            style="left:705px;top:120px;width:80px;height:40px;
+            background:{tank_bg('18OrangeOil')};">
+        </div>
+
+        <!-- RO CENTER -->
+
+        <div class="tank ro"
+            style="left:380px;top:355px;width:85px;height:90px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:625px;top:190px;width:90px;height:125px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:625px;top:320px;width:90px;height:125px;">
+            RO
+        </div>
+
+        <!-- RO RIGHT -->
+
+        <div class="tank ro"
+            style="left:850px;top:200px;width:85px;height:110px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:850px;top:312px;width:85px;height:114px;">
+            RO
+        </div>
+
+        <div class="tank ro"
+            style="left:990px;top:215px;width:85px;height:80px;">
+            RO
         </div>
 
     </div>
