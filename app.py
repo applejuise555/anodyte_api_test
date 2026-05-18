@@ -353,27 +353,24 @@ def render_tank_map():
     <script>
 
     const selectedTank = "{selected_tank}";
-
-    document.querySelectorAll(".tank").forEach((tank)=>{{
-
-        if(tank.dataset.tank === selectedTank){{
+    
+    document.querySelectorAll(".tank").forEach((tank)=>{
+    
+        if(tank.dataset.tank === selectedTank){
             tank.classList.add("selected");
-        }}
-
-        tank.addEventListener("click", ()=>{{
-
-            const value = tank.dataset.tank;
-
+        }
+    
+        tank.addEventListener("click", ()=>{
+    
             localStorage.setItem(
                 "selected_tank",
-                value
+                tank.dataset.tank
             );
-
-
-        }});
-
-    }});
-
+    
+        });
+    
+    });
+    
     </script>
     """
 
@@ -382,18 +379,17 @@ def render_tank_map():
         height=760,
         scrolling=True
     )
-
-    # ===== อ่านค่าจาก localStorage =====
-    clicked = st_javascript("""
-    await (async () => {
-        return localStorage.getItem("selected_tank");
-    })()
-    """)
     
-    if clicked != st.session_state.get("selected_tank"):
+    # ===== อ่านค่าที่คลิก =====
+    clicked = streamlit_js_eval(
+        js_expressions='localStorage.getItem("selected_tank")',
+        key="get_selected_tank"
+    )
+    
+    # ===== sync session =====
+    if clicked:
     
         st.session_state["selected_tank"] = clicked
-        st.rerun()
 #-----------------------------------------------------------------------
 
 def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
@@ -1373,8 +1369,9 @@ if menu == "บันทึกข้อมูลการผลิต":
         if any(keyword in name.lower() for keyword in ["anodize", "almite", "sealer", "seal"])
     }
     render_tank_map()
-    clicked_tank = st.session_state.get("selected_tank")
 
+    clicked_tank = st.session_state.get("selected_tank")
+    
     if clicked_tank:
     
         st.markdown("---")
