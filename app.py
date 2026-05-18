@@ -313,7 +313,7 @@ def render_tank_map(selected_tank_name=None):
 
         <div class="tank" data-tank="1DarkRedA"
             style="left:270px;top:252px;width:80px;height:35px;background:darkred;">
-            1.DarkRed
+            1.DarkRedA
         </div>
 
         <div class="tank vertical" data-tank="7Pink"
@@ -335,7 +335,7 @@ def render_tank_map(selected_tank_name=None):
 
         <div class="tank" data-tank="1DarkRedB"
             style="left:785px;top:200px;width:65px;height:55px;background:darkred;">
-            1.DarkRed
+            1.DarkRedB
         </div>
 
         <div class="tank" data-tank="19Copper"
@@ -1328,7 +1328,7 @@ if menu == "Dashboard":
                         go.Scatter(
                             x=t_data["recorded_at"],
                             y=t_data["ph_value"],
-                            name=f"pH : {t_name}",
+                            name=f"{t_name} pH",
                             mode="lines+markers",
                             line=dict(
                                 color=clr,
@@ -1348,7 +1348,8 @@ if menu == "Dashboard":
                         go.Scatter(
                             x=t_data["recorded_at"],
                             y=t_data["temperature"],
-                            name=f"Temp : {t_name}",
+                            name=f"{t_name} Temp",
+                            legendgroup=t_name,
                             mode="lines+markers",
                             line=dict(
                                 color=temp_clr,
