@@ -173,6 +173,24 @@ def tank_bg(tank_name):
 
     return get_hex_from_name(color_name)
 #====================================================================================
+@st.dialog("📝 บันทึกข้อมูลบ่อ")
+def popup_tank_dialog():
+
+    clicked_tank = st.session_state.get("selected_tank")
+
+    if not clicked_tank:
+        st.warning("ไม่พบบ่อ")
+        return
+
+    tank_record_dialog(
+        clicked_tank,
+        color_tanks,
+        chemical_tanks
+    )
+
+    if st.button("❌ ปิด"):
+        st.session_state["selected_tank"] = None
+        st.rerun()
 # =====================================================================================
 def render_tank_map():
 
@@ -413,7 +431,11 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
             }).execute()
 
                 st.success("✅ บันทึกข้อมูลบ่อสีสำเร็จ")
-                time.sleep(1)
+
+                time.sleep(0.7)
+                
+                st.session_state["selected_tank"] = None
+                
                 st.rerun()
                 
                 
@@ -455,7 +477,11 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
 
                 supabase.table("anodize_tank_logs").insert(payload).execute()
                 st.success(f"✅ บันทึกข้อมูลบ่อ {clicked_tank_name} สำเร็จ")
-                time.sleep(1)
+
+                time.sleep(0.7)
+                
+                st.session_state["selected_tank"] = None
+                
                 st.rerun()
                 
     else:
@@ -1370,18 +1396,12 @@ if menu == "บันทึกข้อมูลการผลิต":
     }
     render_tank_map()
 
+    render_tank_map()
+
     clicked_tank = st.session_state.get("selected_tank")
     
     if clicked_tank:
-    
-        st.markdown("---")
-    
-        tank_record_dialog(
-            clicked_tank,
-            color_tanks,
-            chemical_tanks
-        )
-        st.session_state["open_tank_dialog"] = False
+        popup_tank_dialog()
     
 
     if clicked_tank_name:
