@@ -369,7 +369,6 @@ def render_tank_map():
                 value
             );
 
-            window.parent.location.reload();
 
         }});
 
@@ -390,9 +389,11 @@ def render_tank_map():
         return localStorage.getItem("selected_tank");
     })()
     """)
-
-    if clicked:
+    
+    if clicked != st.session_state.get("selected_tank"):
+    
         st.session_state["selected_tank"] = clicked
+        st.rerun()
 #-----------------------------------------------------------------------
 
 def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
