@@ -60,14 +60,15 @@ def init_connection():
 supabase = init_connection()
 
 # --- Helper Functions ---
+import re
+
 def normalize_text(text):
-    return str(text).lower().replace(" ", "").replace("_", "")
+    return re.sub(r'[^a-z0-9]', '', str(text).lower())
 
 def get_hex_from_name(name):
 
     name_clean = normalize_text(name)
 
-    # เรียงชื่อสีจากยาว -> สั้น
     sorted_colors = sorted(
         COLOR_HEX_MAP.keys(),
         key=lambda x: len(normalize_text(x)),
@@ -81,7 +82,7 @@ def get_hex_from_name(name):
         if color_clean in name_clean:
             return COLOR_HEX_MAP[color_name]
 
-    return "#CCCCCC"
+    return "#888888"
 
 def render_color_bar(name):
     hex_code = get_hex_from_name(name)
@@ -131,8 +132,10 @@ def load_products():
         return []
 
 #================================================================================
-def lighten_color(hex_color, factor=0.45):
+def lighten_color(hex_color, factor=0.25):
+
     hex_color = hex_color.lstrip("#")
+
     r = int(hex_color[0:2], 16)
     g = int(hex_color[2:4], 16)
     b = int(hex_color[4:6], 16)
@@ -160,18 +163,29 @@ def load_tank_color_map():
         return {}
 
 tank_color_map = load_tank_color_map()
+
+def tank_bg(tank_name):
+
+    color_name = tank_color_map.get(
+        tank_name,
+        tank_name
+    )
+
+    return get_hex_from_name(color_name)
 #====================================================================================
 def render_tank_map(selected_tank_name=None):
+
     selected_tank_name = selected_tank_name or ""
 
-    html = """
+    html = f"""
     <style>
-    body{
+
+    body{{
         margin:0;
         padding:0;
-    }
+    }}
 
-    .plant-map{
+    .plant-map{{
         position:relative;
         width:100%;
         min-width:1100px;
@@ -179,10 +193,10 @@ def render_tank_map(selected_tank_name=None):
         background:#e9e9e9;
         border:2px solid #999;
         margin:auto;
-        overflow:Auto;
-    }
+        overflow:auto;
+    }}
 
-    .tank{
+    .tank{{
         position:absolute;
         color:white;
         font-weight:bold;
@@ -193,275 +207,203 @@ def render_tank_map(selected_tank_name=None):
         border:1px solid #555;
         box-sizing:border-box;
         font-family:Arial;
-    }
+    }}
 
-    .vertical{
+    .vertical{{
         writing-mode:vertical-rl;
         text-orientation:mixed;
-    }
+    }}
 
-    .ro{
-        background:#d7ffff !important;
+    .ro{{
+        background:{get_hex_from_name("RO")} !important;
         color:black !important;
-    }
+    }}
 
-    .tank.clickable{
+    .tank.clickable{{
         cursor:pointer;
-        transition:transform .12s ease, box-shadow .12s ease, outline .12s ease;
-    }
+        transition:transform .12s ease, box-shadow .12s ease;
+    }}
 
-    .tank.clickable:hover{
+    .tank.clickable:hover{{
         transform:translateY(-2px);
         box-shadow:0 8px 18px rgba(0,0,0,.25);
         z-index:5;
-    }
+    }}
 
-    .tank.selected{
+    .tank.selected{{
         outline:4px solid #ffeb3b;
-        box-shadow:0 0 0 3px rgba(0,0,0,.35), 0 10px 22px rgba(0,0,0,.35);
+        box-shadow:0 0 0 3px rgba(0,0,0,.35);
         z-index:10;
-    }
+    }}
+
     </style>
 
     <div class="plant-map">
 
-        <!-- TOP ROW -->
+        <!-- TOP -->
 
-        <div class="tank" data-tank="5Black"
-            style="left:0px;top:0px;width:80px;height:80px;background:#111;">
+        <div class="tank"
+            data-tank="5Black"
+            style="left:0px;top:0px;width:80px;height:80px;
+            background:{tank_bg('5Black')};">
             5.Black
         </div>
 
-        <div class="tank" data-tank="2Red"
-            style="left:140px;top:0px;width:70px;height:80px;background:red;">
+        <div class="tank"
+            data-tank="2Red"
+            style="left:140px;top:0px;width:70px;height:80px;
+            background:{tank_bg('2Red')};">
             2.Red
         </div>
 
-        <div class="tank" data-tank="3Violet"
-            style="left:210px;top:0px;width:60px;height:80px;background:purple;">
+        <div class="tank"
+            data-tank="3Violet"
+            style="left:210px;top:0px;width:60px;height:80px;
+            background:{tank_bg('3Violet')};">
             3.Violet
         </div>
 
-        <div class="tank" data-tank="8Green"
-            style="left:295px;top:0px;width:70px;height:80px;background:green;">
+        <div class="tank"
+            data-tank="8Green"
+            style="left:295px;top:0px;width:70px;height:80px;
+            background:{tank_bg('8Green')};">
             8.Green
         </div>
 
-        <div class="tank" data-tank="17Black"
-            style="left:365px;top:0px;width:65px;height:80px;background:#222;">
+        <div class="tank"
+            data-tank="17Black"
+            style="left:365px;top:0px;width:65px;height:80px;
+            background:{tank_bg('17Black')};">
             17.Black
         </div>
 
-        <div class="tank" data-tank="15Gold"
-            style="left:455px;top:0px;width:70px;height:80px;background:#d4af00;color:black;">
+        <div class="tank"
+            data-tank="15Gold"
+            style="left:455px;top:0px;width:70px;height:80px;
+            background:{tank_bg('15Gold')};
+            color:black;">
             15.Gold
         </div>
 
-        <div class="tank" data-tank="9Orange"
-            style="left:525px;top:0px;width:65px;height:80px;background:orange;">
+        <div class="tank"
+            data-tank="9Orange"
+            style="left:525px;top:0px;width:65px;height:80px;
+            background:{tank_bg('9Orange')};">
             9.Orange
         </div>
 
-        <div class="tank" data-tank="10LightBlue"
-            style="left:620px;top:0px;width:70px;height:80px;background:cyan;color:black;">
+        <div class="tank"
+            data-tank="10LightBlue"
+            style="left:620px;top:0px;width:70px;height:80px;
+            background:{tank_bg('10LightBlue')};
+            color:black;">
             10.Light Blue
         </div>
 
-        <div class="tank" data-tank="6BananaLeafGreen"
-            style="left:690px;top:0px;width:70px;height:80px;background:#7fff00;color:black;">
+        <div class="tank"
+            data-tank="6BananaLeafGreen"
+            style="left:690px;top:0px;width:70px;height:80px;
+            background:{tank_bg('6BananaLeafGreen')};
+            color:black;">
             6.Banana
         </div>
 
-        <div class="tank" data-tank="16Blue"
-            style="left:785px;top:0px;width:70px;height:80px;background:blue;">
+        <div class="tank"
+            data-tank="16Blue"
+            style="left:785px;top:0px;width:70px;height:80px;
+            background:{tank_bg('16Blue')};">
             16.Blue
         </div>
 
-        <div class="tank" data-tank="4DarkBlue"
-            style="left:855px;top:0px;width:65px;height:80px;background:darkblue;">
+        <div class="tank"
+            data-tank="4DarkBlue"
+            style="left:855px;top:0px;width:65px;height:80px;
+            background:{tank_bg('4DarkBlue')};">
             4.Dark Blue
-        </div>
-
-        <!-- RO -->
-
-        <div class="tank ro"
-            style="left:140px;top:82px;width:130px;height:65px;">
-            RO
-        </div>
-
-        <div class="tank ro"
-            style="left:455px;top:82px;width:130px;height:65px;">
-            RO
-        </div>
-
-        <div class="tank ro"
-            style="left:785px;top:82px;width:130px;height:65px;">
-            RO
-        </div>
-
-        <!-- CENTER -->
-
-        <div class="tank vertical" data-tank="AlmiteSealer"
-            style="left:0px;top:180px;width:60px;height:275px;background:#777;">
-            AlmiteSealerLiquid
-        </div>
-
-        <div class="tank" data-tank="20Black"
-            style="left:270px;top:200px;width:80px;height:50px;background:#111;">
-            20.Black
-        </div>
-
-        <div class="tank" data-tank="1DarkRedA"
-            style="left:270px;top:252px;width:80px;height:35px;background:darkred;">
-            1.DarkRed
-        </div>
-
-        <div class="tank vertical" data-tank="7Pink"
-            style="left:380px;top:210px;width:85px;height:130px;background:magenta;">
-            7.Pink
-        </div>
-
-        <div class="tank" data-tank="HotSealH60"
-            style="left:540px;top:190px;width:85px;height:130px;background:#777;">
-            HotSeal
-        </div>
-
-        <div class="tank vertical" data-tank="11Gold"
-            style="left:540px;top:325px;width:85px;height:120px;background:#d4af00;color:black;">
-            11.Gold
-        </div>
-
-        <!-- RIGHT -->
-
-        <div class="tank" data-tank="1DarkRedB"
-            style="left:785px;top:200px;width:65px;height:55px;background:darkred;">
-            1.DarkRed
-        </div>
-
-        <div class="tank" data-tank="19Copper"
-            style="left:785px;top:257px;width:65px;height:55px;background:#d9a27f;color:black;">
-            19.Copper
-        </div>
-
-        <div class="tank" data-tank="12Titanium"
-            style="left:785px;top:314px;width:65px;height:55px;background:#777;">
-            12.Titanium
-        </div>
-
-        <div class="tank" data-tank="14RoseGold"
-            style="left:785px;top:371px;width:65px;height:55px;background:plum;">
-            14.RoseGold
-        </div>
-
-        <!-- ANODIZE -->
-
-        <div class="tank vertical" data-tank="Anodize Tank 1"
-            style="left:890px;top:520px;width:140px;height:190px;background:#ccc;color:black;">
-            AnodizedPPool1
         </div>
 
         <!-- DARK TITANIUM -->
 
-        <div class="tank" data-tank="13DarkTitanium"
-            style="left:310px;top:120px;width:80px;height:40px;background:#666;">
-            13.DarkTitanium
-        </div>
-
         <div class="tank"
-            style="left:390px;top:120px;width:80px;height:40px;background:#666;">
+            data-tank="13DarkTitanium"
+            style="left:310px;top:120px;width:80px;height:40px;
+            background:{tank_bg('13DarkTitanium')};">
+            13.DarkTitanium
         </div>
 
         <!-- ORANGE OIL -->
 
-        <div class="tank" data-tank="18OrangeOil"
-            style="left:625px;top:120px;width:80px;height:40px;background:#dd6600;">
-            18.OrangeOil
-        </div>
-
         <div class="tank"
-            style="left:705px;top:120px;width:80px;height:40px;background:#dd6600;">
-        </div>
-
-        <!-- RO CENTER -->
-
-        <div class="tank ro"
-            style="left:380px;top:355px;width:85px;height:90px;">
-            RO
-        </div>
-
-        <div class="tank ro"
-            style="left:625px;top:190px;width:90px;height:125px;">
-            RO
-        </div>
-
-        <div class="tank ro"
-            style="left:625px;top:320px;width:90px;height:125px;">
-            RO
-        </div>
-
-        <!-- RO RIGHT -->
-
-        <div class="tank ro"
-            style="left:850px;top:200px;width:85px;height:110px;">
-            RO
-        </div>
-
-        <div class="tank ro"
-            style="left:850px;top:312px;width:85px;height:114px;">
-            RO
-        </div>
-
-        <div class="tank ro"
-            style="left:990px;top:215px;width:85px;height:80px;">
-            RO
+            data-tank="18OrangeOil"
+            style="left:625px;top:120px;width:80px;height:40px;
+            background:{tank_bg('18OrangeOil')};">
+            18.OrangeOil
         </div>
 
     </div>
 
     <script>
+
     const selectedTank = "__SELECTED_TANK__";
-    
-    function selectTank(tankName) {
-        const payload = JSON.stringify({
-            tank: tankName,
-            updatedAt: Date.now()
-        });
-    
-        try {
-            window.parent.localStorage.setItem("selected_tank_payload", payload);
-        } catch (error) {
-            localStorage.setItem("selected_tank_payload", payload);
-        }
-    
-        document.querySelectorAll(".tank[data-tank]").forEach((item) => {
-            item.classList.toggle("selected", item.dataset.tank === tankName);
-        });
-    }
-    
-    document.querySelectorAll(".tank[data-tank]").forEach((tank) => {
+
+    function selectTank(tankName) {{
+
+        const payload = JSON.stringify({{
+            tank:tankName,
+            updatedAt:Date.now()
+        }});
+
+        try {{
+            window.parent.localStorage.setItem(
+                "selected_tank_payload",
+                payload
+            );
+        }}
+        catch(error) {{
+            localStorage.setItem(
+                "selected_tank_payload",
+                payload
+            );
+        }}
+
+        document.querySelectorAll(".tank[data-tank]")
+        .forEach((item)=>{{
+            item.classList.toggle(
+                "selected",
+                item.dataset.tank === tankName
+            );
+        }});
+    }}
+
+    document.querySelectorAll(".tank[data-tank]")
+    .forEach((tank)=>{{
+
         tank.classList.add("clickable");
-        tank.setAttribute("role", "button");
-        tank.setAttribute("tabindex", "0");
-        tank.title = "คลิกเพื่อกรอกข้อมูลบ่อ " + tank.dataset.tank;
-    
-        if (tank.dataset.tank === selectedTank) {
+
+        if(tank.dataset.tank === selectedTank){{
             tank.classList.add("selected");
-        }
-    
-        tank.addEventListener("click", () => selectTank(tank.dataset.tank));
-        tank.addEventListener("keydown", (event) => {
-            if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                selectTank(tank.dataset.tank);
-            }
-        });
-    });
+        }}
+
+        tank.addEventListener(
+            "click",
+            ()=>selectTank(tank.dataset.tank)
+        );
+
+    }});
+
     </script>
     """
 
-    html = html.replace("__SELECTED_TANK__", selected_tank_name)
-    components.html(html, height=750, scrolling=True)
+    html = html.replace(
+        "__SELECTED_TANK__",
+        selected_tank_name
+    )
 
+    components.html(
+        html,
+        height=750,
+        scrolling=True
+    )
 #-----------------------------------------------------------------------
 
 def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
@@ -1318,7 +1260,7 @@ if menu == "Dashboard":
                     color_name = tank_color_map.get(t_name, "Gray")
                 
                     # หา HEX จาก COLOR_HEX_MAP
-                    clr = COLOR_HEX_MAP.get(color_name, "#666666")
+                    clr = get_hex_from_name(color_name)
 
                     temp_clr = lighten_color(clr)
                 
