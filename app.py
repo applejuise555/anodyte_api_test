@@ -1717,9 +1717,13 @@ if menu == "🎨 อัปเดตลงบ่อสี":
         }
         
         # ===== โหลด jig map =====
-        jig_rows = supabase.table("jigs") \
-            .select("jig_id, jig_model_code") \
-            .execute().data or []
+        jig_rows = (
+            supabase.table("jigs")
+            .select("jig_id, jig_model_code")
+            .execute()
+            .data
+            or []
+        )
         
         jig_map = {
             j["jig_id"]: j["jig_model_code"]
