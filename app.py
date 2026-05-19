@@ -1931,13 +1931,22 @@ if menu == "🎨 อัปเดตลงบ่อสี":
 
             try:
 
+                # หา color จริงจาก tank
+                real_color = tank_color_map.get(selected_tank, "Unknown")
+                
                 supabase.table("jig_usage_log").update({
-
+                
                     "tank_id": color_tanks[selected_tank],
+                
                     "tank_name_snapshot": selected_tank,
+                
+                    # ===== เพิ่มตรงนี้ =====
+                    "color": real_color,
+                
                     "status": "processing",
+                
                     "started_dip_at": datetime.now(ICT).isoformat()
-
+                
                 }).eq(
                     "log_id",
                     int(selected_log_id)
