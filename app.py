@@ -1616,7 +1616,7 @@ if menu == "บันทึกข้อมูลการผลิต":
                         selected_display = st.selectbox("เลือกสินค้า (รหัส | ชื่อ)", options=list(display_options.keys()), key="sel_p_log")
                         selected_prod_id = display_options[selected_display]
                         p_info = supabase.table("products").select("*").eq("product_id", selected_prod_id).single().execute().data
-                        action = st.radio("การทำงาน", ["🔵 บันทึกงานต่อ", "🟢 เสร็จสิ้นงาน"], key="action_radio")
+                        action = st.radio("การทำงาน", ["🔵 บันทึกงานต่อ"], key="action_radio")
 
                         if action == "🔵 บันทึกงานต่อ":
 
@@ -1785,68 +1785,7 @@ if menu == "บันทึกข้อมูลการผลิต":
                         
                                         st.error(f"เกิดข้อผิดพลาดในการบันทึก: {str(e)}")
 
-                        # =========================================================
-                        # ปิดงาน
-                        # =========================================================
-                        elif action == "🟢 เสร็จสิ้นงาน":
-                        
-                            try:
-                        
-                                check_log = (
-                                    supabase.table("jig_usage_log")
-                                    .select("*")
-                                    .eq("jig_id", jig_id)
-                                    .limit(1)
-                                    .execute()
-                                )
-                        
-                            except Exception as e:
-                        
-                                st.error(f"รายละเอียด Error: {e}")
-                        
-                            else:
-                        
-                                if not check_log.data:
-                        
-                                    st.warning(
-                                        "⚠️ จิ๊กนี้ยังไม่มีการบันทึกข้อมูล"
-                                    )
-                        
-                                else:
-                        
-                                    st.warning(
-                                        "เมื่อกดเสร็จสิ้นงาน "
-                                        "จิ๊กจะไม่แสดงในงานที่กำลังผลิต"
-                                    )
-                        
-                                    if st.button(
-                                        "🏁 ยืนยันเสร็จสิ้นงาน",
-                                        use_container_width=True
-                                    ):
-                        
-                                        try:
-                        
-                                            supabase.table("jig_status").upsert({
-                        
-                                                "jig_id": jig_id,
-                        
-                                                "status_type": "Finished",
-                        
-                                                "current_tank_id": None,
-                        
-                                                "updated_at": datetime.now(ICT).isoformat()
-                        
-                                            }).execute()
-                        
-                                            st.success("✅ ปิดงานสำเร็จ")
-                        
-                                            time.sleep(1)
-                        
-                                            st.rerun()
-                        
-                                        except Exception as e:
-                        
-                                            st.error(f"ปิดงานไม่สำเร็จ: {e}")
+                       
 
         # =========================================================
         # 🎨 TAB อัปเดตลงบ่อสี
