@@ -1501,19 +1501,31 @@ if menu == "บันทึกข้อมูลการผลิต":
                             st.error(f"❌ รหัสสินค้า '{p_code}' นี้มีอยู่ในระบบแล้ว")
                         else:
                             payload = {
-                                "product_id": product_id,
-                                "qty": qty,
-                                "jig_code": jig_code,
+
+                                "product_code": p_code,
                             
-                                # ===== ยังไม่ลงบ่อ =====
-                                "tank_id": None,
-                                "tank_name_snapshot": None,
+                                "product_name": p_name,
                             
-                                # ===== สถานะ =====
-                                "status": "pending",
+                                "height": height,
                             
-                                "recorded_at": datetime.now(ICT).isoformat()
+                                "width": width,
+                            
+                                "thickness": thickness,
+                            
+                                "depth": 0,
+                            
+                                "outer_diameter": od,
+                            
+                                "inner_diameter": id_inner,
+                            
+                                "surface_finish": s_finish,
+                            
+                                "unit_volume": u_vol,
+                            
+                                "shape": shape
+                            
                             }
+                            
                             supabase.table("products").insert(payload).execute()
                             st.success(f"✅ ลงทะเบียนรหัส {p_code} สำเร็จ!")
                     else: 
