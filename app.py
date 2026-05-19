@@ -776,12 +776,16 @@ def show_data_editor():
         start_dt = f"{filter_date_str}T00:00:00"
         end_dt = f"{filter_date_str}T23:59:59"
     
-        color_logs = supabase.table("color_tank_logs")\
-            .select("*")\
-            .gte("recorded_at", start_dt)\
-            .lte("recorded_at", end_dt)\
-            .order("recorded_date", desc=True)
-            .execute().data or []
+        color_logs = (
+            supabase.table("color_tank_logs")
+            .select("*")
+            .gte("recorded_at", start_dt)
+            .lte("recorded_at", end_dt)
+            .order("recorded_at", desc=True)
+            .execute()
+            .data
+            or []
+        )
     
         if not color_logs:
             st.warning("📅 ไม่มีบันทึกบ่อสีในวันที่เลือก")
