@@ -1462,7 +1462,13 @@ if menu == "บันทึกข้อมูลการผลิต":
     tab_main = st.tabs(["งานจิ๊ก (Jig System)"])
 
     with tab_main[0]:
-        sub_prod, sub_jig, sub_log = st.tabs(["📦 1. ลงทะเบียนสินค้า", "🛠️ 2. ลงทะเบียนจิ๊ก", "⚡ 3. บันทึกผลผลิต"])
+        sub_prod, sub_jig, sub_log, sub_update, sub_finish = st.tabs([
+            "📦 1. ลงทะเบียนสินค้า",
+            "🛠️ 2. ลงทะเบียนจิ๊ก",
+            "⚡ 3. บันทึกผลผลิต",
+            "🎨 4. อัปเดตลงบ่อสี",
+            "🏁 5. เสร็จสิ้นงาน"
+        ])
 
         with sub_prod:
             st.subheader("เพิ่มสินค้าใหม่ลงระบบ")
@@ -1841,126 +1847,159 @@ if menu == "บันทึกข้อมูลการผลิต":
                                         except Exception as e:
                         
                                             st.error(f"ปิดงานไม่สำเร็จ: {e}")
-# ================= UPDATE TANK PAGE =================
-if menu == "🎨 อัปเดตลงบ่อสี":
 
-    st.title("🎨 อัปเดตลงบ่อสี")
-
-    try:
-
-        pending_res = supabase.table("jig_usage_log") \
-            .select("*") \
-            .is_("tank_id", "null") \
-            .order("recorded_date", desc=True)\
-            .execute()
-
-        pending_logs = pending_res.data or []
-
-    except Exception as e:
-
-        st.error(f"โหลดงานรอชุบไม่สำเร็จ: {e}")
-        pending_logs = []
-
-    if not pending_logs:
-
-        st.success("✅ ไม่มีงานรออัปเดตบ่อสี")
-
-    else:
-
-        pending_df = pd.DataFrame(pending_logs)
-
-        # ===== โหลด product map =====
-        products = load_products()
+        # =========================================================
+        # 🎨 TAB อัปเดตลงบ่อสี
+        # =========================================================
+        with sub_update:
         
-        product_map = {
-            p["product_id"]: (
-                f"{p['product_code']} | {p['product_name']}"
-            )
-            for p in products
-        }
+            st.subheader("🎨 อัปเดตลงบ่อสี")
         
-        # ===== โหลด jig map =====
-        jig_rows = (
-            supabase.table("jigs")
-            .select("jig_id, jig_model_code")
-            .execute()
-            .data
-            or []
-        )
-        
-        jig_map = {
-            j["jig_id"]: j["jig_model_code"]
-            for j in jig_rows
-        }
-
-        # ===== display =====
-        pending_df["display"] = pending_df.apply(
-            lambda row: (
-                f"{product_map.get(row['product_id'], 'Unknown')} "
-                f"| Jig: {jig_map.get(row['jig_id'], '-')}"
-                f"| Qty: {row.get('total_pieces',0)}"
-            ),
-            axis=1
-        )
-
-        selected_log_id = st.selectbox(
-            "เลือกงานที่ต้องการลงบ่อ",
-            options=pending_df["log_id"],
-            format_func=lambda x: pending_df[
-                pending_df["log_id"] == x
-            ]["display"].iloc[0]
-        )
-
-        # ===== เลือกบ่อสี =====
-        color_tanks = get_options(
-            "tanks",
-            "tank_id",
-            "tank_name",
-            "tank_type",
-            "Color"
-        )
-
-        selected_tank = st.selectbox(
-            "เลือกบ่อสี",
-            sorted(color_tanks.keys())
-        )
-
-        render_color_bar(selected_tank)
-
-        if st.button("💾 อัปเดตลงบ่อสี"):
-
             try:
-
-                # หา color จริงจาก tank
-                real_color = tank_color_map.get(selected_tank, "Unknown")
-                
-                supabase.table("jig_usage_log").update({
-                
-                    "tank_id": color_tanks[selected_tank],
-                
-                    "tank_name_snapshot": selected_tank,
-                
-                    # ===== เพิ่มตรงนี้ =====
-                    "color": real_color,
-                
-                    "status": "processing",
-                
-                    "started_dip_at": datetime.now(ICT).isoformat()
-                
-                }).eq(
-                    "log_id",
-                    int(selected_log_id)
-                ).execute()
-
-                st.success("✅ อัปเดตบ่อสีสำเร็จ")
-
-                time.sleep(1)
-
-                st.rerun()
-
+        
+                pending_res = (
+                    supabase.table("jig_usage_log")
+                    .select("*")
+                    .is_("tank_id", "null")
+                    .order("recorded_date", desc=True)
+                    .execute()
+                )
+        
+                pending_logs = pending_res.data or []
+        
             except Exception as e:
-
-                st.error(f"อัปเดตไม่สำเร็จ: {e}")
+        
+                st.error(f"โหลดงานรอชุบไม่สำเร็จ: {e}")
+        
+                pending_logs = []
+        
+            if not pending_logs:
+        
+                st.success("✅ ไม่มีงานรออัปเดตบ่อสี")
+        
+            else:
+        
+                pending_df = pd.DataFrame(pending_logs)
+        
+                # ===== product map =====
+                products = load_products()
+        
+                product_map = {
+                    p["product_id"]:
+                    f"{p['product_code']} | {p['product_name']}"
+                    for p in products
+                }
+        
+                # ===== jig map =====
+                jig_rows = (
+                    supabase.table("jigs")
+                    .select("jig_id, jig_model_code")
+                    .execute()
+                    .data
+                    or []
+                )
+        
+                jig_map = {
+                    j["jig_id"]: j["jig_model_code"]
+                    for j in jig_rows
+                }
+        
+                # ===== display =====
+                pending_df["display"] = pending_df.apply(
+                    lambda row:
+                    (
+                        f"{product_map.get(row['product_id'], 'Unknown')} "
+                        f"| Jig: {jig_map.get(row['jig_id'], '-')}"
+                        f"| Qty: {row.get('total_pieces',0)}"
+                    ),
+                    axis=1
+                )
+        
+                selected_log_id = st.selectbox(
+                    "เลือกงานที่ต้องการลงบ่อ",
+                    options=pending_df["log_id"],
+                    format_func=lambda x:
+                    pending_df[
+                        pending_df["log_id"] == x
+                    ]["display"].iloc[0],
+                    key="update_tank_select"
+                )
+        
+                # ===== เลือกบ่อ =====
+                color_tanks = get_options(
+                    "tanks",
+                    "tank_id",
+                    "tank_name",
+                    "tank_type",
+                    "Color"
+                )
+        
+                selected_tank = st.selectbox(
+                    "เลือกบ่อสี",
+                    sorted(color_tanks.keys()),
+                    key="update_tank_name"
+                )
+        
+                render_color_bar(selected_tank)
+        
+                if st.button(
+                    "💾 อัปเดตลงบ่อสี",
+                    use_container_width=True
+                ):
+        
+                    try:
+        
+                        real_color = tank_color_map.get(
+                            selected_tank,
+                            "Unknown"
+                        )
+        
+                        supabase.table("jig_usage_log").update({
+        
+                            "tank_id": color_tanks[selected_tank],
+        
+                            "tank_name_snapshot": selected_tank,
+        
+                            "color": real_color,
+        
+                            "status": "processing",
+        
+                            "started_dip_at":
+                            datetime.now(ICT).isoformat()
+        
+                        }).eq(
+                            "log_id",
+                            int(selected_log_id)
+                        ).execute()
+        
+                        # ===== update jig status =====
+                        selected_row = pending_df[
+                            pending_df["log_id"] == selected_log_id
+                        ].iloc[0]
+        
+                        supabase.table("jig_status").upsert({
+        
+                            "jig_id": selected_row["jig_id"],
+        
+                            "status_type": "In-Process",
+        
+                            "current_tank_id":
+                            color_tanks[selected_tank],
+        
+                            "updated_at":
+                            datetime.now(ICT).isoformat()
+        
+                        }).execute()
+        
+                        st.success("✅ อัปเดตบ่อสีสำเร็จ")
+        
+                        time.sleep(1)
+        
+                        st.rerun()
+        
+                    except Exception as e:
+        
+                        st.error(f"อัปเดตไม่สำเร็จ: {e}")
 
 elif menu == "🛠️ จัดการและแก้ไขข้อมูล":
     show_data_editor()
