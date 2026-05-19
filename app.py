@@ -1750,19 +1750,18 @@ if menu == "บันทึกข้อมูลการผลิต":
                         
                                         # ===== อัปเดต jig_status =====
                                         supabase.table("jig_status").upsert({
-                        
-                                            "jig_id": jig_id,
-                        
-                                            "status_type": (
-                                                "Waiting"
-                                                if status_value == "pending"
-                                                else "In-Process"
+    
+                                            "jig_id": int(selected_row["jig_id"]),
+                                        
+                                            "status_type": "In-Process",
+                                        
+                                            "current_tank_id": int(
+                                                color_tanks[selected_tank]
                                             ),
-                        
-                                            "current_tank_id": selected_tank_id,
-                        
-                                            "updated_at": datetime.now(ICT).isoformat()
-                        
+                                        
+                                            "updated_at":
+                                            datetime.now(ICT).isoformat()
+                                        
                                         }).execute()
                         
                                         # ===== update total pcs =====
@@ -1856,7 +1855,7 @@ if menu == "บันทึกข้อมูลการผลิต":
         
                 selected_log_id = int(st.selectbox(
                     "เลือกงานที่ต้องการลงบ่อ",
-                    options=pending_df["log_id"].tolist(),
+                    options=[int(x) for x in pending_df["log_id"].tolist()],
                     format_func=lambda x: pending_df[
                         pending_df["log_id"] == x
                     ]["display"].iloc[0]
