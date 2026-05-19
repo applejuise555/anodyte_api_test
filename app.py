@@ -1692,7 +1692,7 @@ if menu == "🎨 อัปเดตลงบ่อสี":
         pending_res = supabase.table("jig_usage_log") \
             .select("*") \
             .is_("tank_id", "null") \
-            .order("recorded_at", desc=True) \
+            .order("recorded_date", desc=True)\
             .execute()
 
         pending_logs = pending_res.data or []
