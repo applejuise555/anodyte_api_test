@@ -1750,13 +1750,19 @@ if menu == "บันทึกข้อมูลการผลิต":
                         
                                         # ===== อัปเดต jig_status =====
                                         supabase.table("jig_status").upsert({
-    
-                                            "jig_id": int(selected_row["jig_id"]),
                                         
-                                            "status_type": "In-Process",
+                                            "jig_id": int(jig_id),
                                         
-                                            "current_tank_id": int(
-                                                color_tanks[selected_tank]
+                                            "status_type": (
+                                                "Waiting"
+                                                if status_value == "pending"
+                                                else "In-Process"
+                                            ),
+                                        
+                                            "current_tank_id": (
+                                                int(selected_tank_id)
+                                                if selected_tank_id is not None
+                                                else None
                                             ),
                                         
                                             "updated_at":
