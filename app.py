@@ -1023,7 +1023,7 @@ def show_data_editor():
                             st.rerun()
 
 #=================================================================   
-menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต","🎨 อัปเดตลงบ่อสี", "🛠️ จัดการและแก้ไขข้อมูล"])
+menu = st.sidebar.radio("เมนู", ["Dashboard","บันทึกข้อมูลการผลิต", "🛠️ จัดการและแก้ไขข้อมูล"])
 
 # ================= DASHBOARD (COMPACT & FIXED VERSION) =================
 if menu == "Dashboard":
