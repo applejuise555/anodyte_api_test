@@ -1663,14 +1663,21 @@ if menu == "บันทึกข้อมูลการผลิต":
                             for p in filtered_products
                         }
                         
-                        # ===== เลือกสินค้า =====
-                        selected_display = st.selectbox(
-                            "เลือกสินค้า (รหัส | ชื่อ)",
-                            options=list(display_options.keys()),
-                            key="sel_p_log"
-                        )
+                        # ===== ถ้าไม่มีสินค้า =====
+                        if not display_options:
                         
-                        selected_prod_id = display_options[selected_display]
+                            st.warning("❌ ไม่มีสินค้าในรูปแบบนี้")
+                        
+                        # ===== ถ้ามีสินค้า =====
+                        else:
+                        
+                            selected_display = st.selectbox(
+                                "เลือกสินค้า (รหัส | ชื่อ)",
+                                options=list(display_options.keys()),
+                                key="sel_p_log"
+                            )
+                        
+                            selected_prod_id = display_options[selected_display]
                         p_info = supabase.table("products").select("*").eq("product_id", selected_prod_id).single().execute().data
                         action = st.radio("การทำงาน", ["🔵 บันทึกงานต่อ"], key="action_radio")
 
