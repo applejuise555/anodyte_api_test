@@ -1265,7 +1265,7 @@ if menu == "Dashboard":
 
     # --- 3. Compare ---
     st.markdown("---")
-    st.subheader("🔍 Compare Trend")
+    st.subheader("🔍 กราฟเส้นเเนวโน้มค่าpHเเละอุณหภูมิบ่อสีรายบ่อ")
     if c_logs:
         c_m1, c_m2 = st.columns([1, 3])
         with c_m1:
