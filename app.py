@@ -381,12 +381,12 @@ def render_tank_map(selected_tank_name=None):
         <!-- ORANGE OIL -->
 
         <div class="tank circle-tank" data-tank="18OrangeOil"
-            style="left:645px;top:110px;width:70px;height:70px;background:#dd6600;">
+            style="left:620px;top:110px;width:70px;height:70px;background:#dd6600;">
             18.OrangeOil
         </div>
         
         <div class="tank circle-tank"
-            style="left:720px;top:110px;width:70px;height:70px;background:#dd6600;">
+            style="left:690px;top:110px;width:70px;height:70px;background:#dd6600;">
         </div>
 
         <!-- RO CENTER -->
