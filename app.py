@@ -370,23 +370,23 @@ def render_tank_map(selected_tank_name=None):
         <!-- DARK TITANIUM -->
 
         <div class="tank circle-tank" data-tank="13DarkTitanium"
-            style="left:315px;top:110px;width:70px;height:70px;background:#666;">
+            style="left:295px;top:110px;width:70px;height:70px;background:#666;">
             13.DarkTitanium
         </div>
         
         <div class="tank circle-tank"
-            style="left:390px;top:110px;width:70px;height:70px;background:#666;">
+            style="left:370px;top:110px;width:70px;height:70px;background:#666;">
         </div>
 
         <!-- ORANGE OIL -->
 
         <div class="tank circle-tank" data-tank="18OrangeOil"
-            style="left:630px;top:110px;width:70px;height:70px;background:#dd6600;">
+            style="left:645px;top:110px;width:70px;height:70px;background:#dd6600;">
             18.OrangeOil
         </div>
         
         <div class="tank circle-tank"
-            style="left:705px;top:110px;width:70px;height:70px;background:#dd6600;">
+            style="left:720px;top:110px;width:70px;height:70px;background:#dd6600;">
         </div>
 
         <!-- RO CENTER -->
