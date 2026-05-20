@@ -364,7 +364,18 @@ def render_tank_map(selected_tank_name=None):
         <!-- DARK TITANIUM -->
 
         <div class="tank" data-tank="13DarkTitanium"
-            style="left:310px;top:120px;width:80px;height:40px;background:#666;">
+            style="
+            left:320px;
+            top:110px;
+            width:70px;
+            height:70px;
+            background:#666;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:11px;
+            ">
             13.DarkTitanium
         </div>
 
