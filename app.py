@@ -201,6 +201,12 @@ def render_tank_map(selected_tank_name=None):
         writing-mode:vertical-rl;
         text-orientation:mixed;
     }
+    .circle-tank{
+    border-radius:50% !important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    }
 
     .ro{
         background:#d7ffff !important;
@@ -363,35 +369,24 @@ def render_tank_map(selected_tank_name=None):
 
         <!-- DARK TITANIUM -->
 
-        <div class="tank" data-tank="13DarkTitanium"
-            style="
-            left:320px;
-            top:110px;
-            width:70px;
-            height:70px;
-            background:#666;
-            border-radius:50%;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-size:11px;
-            ">
+        <div class="tank circle-tank" data-tank="13DarkTitanium"
+            style="left:315px;top:110px;width:70px;height:70px;background:#666;">
             13.DarkTitanium
         </div>
-
-        <div class="tank"
-            style="left:390px;top:120px;width:80px;height:40px;background:#666;">
+        
+        <div class="tank circle-tank"
+            style="left:390px;top:110px;width:70px;height:70px;background:#666;">
         </div>
 
         <!-- ORANGE OIL -->
 
-        <div class="tank" data-tank="18OrangeOil"
-            style="left:625px;top:120px;width:80px;height:40px;background:#dd6600;">
+        <div class="tank circle-tank" data-tank="18OrangeOil"
+            style="left:630px;top:110px;width:70px;height:70px;background:#dd6600;">
             18.OrangeOil
         </div>
-
-        <div class="tank"
-            style="left:705px;top:120px;width:80px;height:40px;background:#dd6600;">
+        
+        <div class="tank circle-tank"
+            style="left:705px;top:110px;width:70px;height:70px;background:#dd6600;">
         </div>
 
         <!-- RO CENTER -->
