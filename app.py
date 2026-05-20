@@ -1678,8 +1678,8 @@ if menu == "บันทึกข้อมูลการผลิต":
                             )
                         
                             selected_prod_id = display_options[selected_display]
-                        p_info = supabase.table("products").select("*").eq("product_id", selected_prod_id).single().execute().data
-                        action = st.radio("การทำงาน", ["🔵 บันทึกงานต่อ"], key="action_radio")
+                            p_info = supabase.table("products").select("*").eq("product_id", selected_prod_id).single().execute().data
+                            action = st.radio("การทำงาน", ["🔵 บันทึกงานต่อ"], key="action_radio")
 
                         if action == "🔵 บันทึกงานต่อ":
 
