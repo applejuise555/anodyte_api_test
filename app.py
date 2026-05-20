@@ -1085,7 +1085,7 @@ if menu == "Dashboard":
     STD = {
         "COLOR_PH": [5.0, 6.0], "COLOR_TEMP": [30, 40],
         "ANO_PH": [1.0, 1.5], "ANO_TEMP": [18, 22], "ANO_DEN": [0.5, 1.5],
-        "SEAL_TEMP": [90, 98]
+        "SEAL_TEMP": [80, 98]
     }
 
     # --- Data Loading ---
