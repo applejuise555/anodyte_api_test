@@ -1198,7 +1198,7 @@ if menu == "Dashboard":
             st.caption("✅ ทุกค่าปกติ")
 
     # --- 1. Color Tanks ---
-    st.subheader("🎨 Color Tanks")
+    st.subheader("🎨 กราฟเเท่งเเสดงค่าอุณหภูมิเเละpHของบ่อสีล่าสุด")
     col1, col2 = st.columns([1, 2.5])
     if c_logs:
         df_c = pd.DataFrame(c_logs)
@@ -1217,7 +1217,7 @@ if menu == "Dashboard":
 
     # --- 2. Anodize/Seal ---
     st.markdown("---")
-    st.subheader("📈 Anodize & Seal")
+    st.subheader("📈 เเนวโน้มบ่อAnodize เเละ บ่อSealรายวัน")
     if a_logs:
         df_a = pd.DataFrame(a_logs)
         df_a["recorded_at"] = pd.to_datetime(df_a["recorded_at"]).dt.tz_convert(ICT)
