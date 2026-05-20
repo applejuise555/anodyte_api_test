@@ -1625,7 +1625,51 @@ if menu == "บันทึกข้อมูลการผลิต":
                     if display_options and color_tanks_all:
                         sel_j = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()), key="sel_j_log")
                         jig_id = jig_map[sel_j]
-                        selected_display = st.selectbox("เลือกสินค้า (รหัส | ชื่อ)", options=list(display_options.keys()), key="sel_p_log")
+                        # =====================================================
+                        # FILTER รูปแบบสินค้า
+                        # =====================================================
+                        
+                        shape_filter = st.selectbox(
+                            "กรองรูปแบบสินค้า",
+                            [
+                                "ทั้งหมด",
+                                "สี่เหลี่ยม",
+                                "ทรงกระบอกทึบ",
+                                "ทรงกระบอกกลวง"
+                            ],
+                            key="shape_filter_jig"
+                        )
+                        
+                        # ===== โหลด products ทั้งหมด =====
+                        all_products = supabase.table("products").select(
+                            "product_id, product_code, product_name, shape"
+                        ).execute().data or []
+                        
+                        # ===== filter ตาม shape =====
+                        if shape_filter != "ทั้งหมด":
+                        
+                            filtered_products = [
+                                p for p in all_products
+                                if p.get("shape") == shape_filter
+                            ]
+                        
+                        else:
+                        
+                            filtered_products = all_products
+                        
+                        # ===== display options =====
+                        display_options = {
+                            f"{p['product_code']} | {p['product_name']}": p["product_id"]
+                            for p in filtered_products
+                        }
+                        
+                        # ===== เลือกสินค้า =====
+                        selected_display = st.selectbox(
+                            "เลือกสินค้า (รหัส | ชื่อ)",
+                            options=list(display_options.keys()),
+                            key="sel_p_log"
+                        )
+                        
                         selected_prod_id = display_options[selected_display]
                         p_info = supabase.table("products").select("*").eq("product_id", selected_prod_id).single().execute().data
                         action = st.radio("การทำงาน", ["🔵 บันทึกงานต่อ"], key="action_radio")
