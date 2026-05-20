@@ -1434,7 +1434,7 @@ if menu == "บันทึกข้อมูลการผลิต":
             st.warning(e)
     
     clicked_tank_name = st.session_state.get("clicked_tank_name")
-    st.write("CURRENT =", clicked_tank_name)
+    
 
     color_tanks = get_options(
         "tanks",
