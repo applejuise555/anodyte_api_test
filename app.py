@@ -757,9 +757,87 @@ def show_data_editor():
 
                     try:
                 
-                        # =========================
-                        # 1. อัปเดต log ปัจจุบัน
-                        # =========================
+                        # =========================================================
+                        # 1. ดึงข้อมูลสินค้าใหม่
+                        # =========================================================
+                        p_info = supabase.table("products") \
+                            .select("*") \
+                            .eq("product_id", selected_prod_id) \
+                            .single() \
+                            .execute().data
+                
+                        # =========================================================
+                        # 2. คำนวณพื้นที่/ปริมาตรต่อชิ้น
+                        # ใช้สูตรเดียวกับตอนบันทึกลงจิ๊ก
+                        # =========================================================
+                        shape_type = p_info.get("shape_type")
+                        width_mm = float(p_info.get("width_mm") or 0)
+                        height_mm = float(p_info.get("height_mm") or 0)
+                        length_mm = float(p_info.get("length_mm") or 0)
+                        hole_count = int(p_info.get("hole_count") or 0)
+                        hole_diameter_mm = float(p_info.get("hole_diameter_mm") or 0)
+                
+                        volume_per_piece = 0
+                
+                        # ===== ทรงกระบอกตัน =====
+                        if shape_type == "กระบอกตัน":
+                
+                            radius = width_mm / 2
+                
+                            area_mm2 = (
+                                (2 * math.pi * radius * length_mm)
+                                + (2 * math.pi * (radius ** 2))
+                            )
+                
+                            volume_per_piece = area_mm2 / 1_000_000
+                
+                        # ===== ทรงกระบอกกลวง =====
+                        elif shape_type == "กระบอกกลวง":
+                
+                            outer_r = width_mm / 2
+                            inner_r = hole_diameter_mm / 2
+                
+                            area_mm2 = (
+                                (2 * math.pi * outer_r * length_mm)
+                                + (2 * math.pi * inner_r * length_mm)
+                                + (2 * math.pi * ((outer_r ** 2) - (inner_r ** 2)))
+                            )
+                
+                            volume_per_piece = area_mm2 / 1_000_000
+                
+                        # ===== สี่เหลี่ยม =====
+                        elif shape_type == "สี่เหลี่ยม":
+                
+                            area_mm2 = (
+                                2 * (
+                                    (width_mm * height_mm)
+                                    + (width_mm * length_mm)
+                                    + (height_mm * length_mm)
+                                )
+                            )
+                
+                            if hole_count > 0 and hole_diameter_mm > 0:
+                
+                                hole_r = hole_diameter_mm / 2
+                
+                                hole_area = (
+                                    hole_count
+                                    * math.pi
+                                    * (hole_r ** 2)
+                                )
+                
+                                area_mm2 -= hole_area
+                
+                            volume_per_piece = area_mm2 / 1_000_000
+                
+                        # =========================================================
+                        # 3. คำนวณ total volume ของ log นี้
+                        # =========================================================
+                        total_volume = volume_per_piece * total_pieces
+                
+                        # =========================================================
+                        # 4. อัปเดต jig_usage_log
+                        # =========================================================
                         update_row(
                             "jig_usage_log",
                             id_col,
@@ -769,54 +847,39 @@ def show_data_editor():
                                 "pcs_per_row": pcs_per_row,
                                 "rows_filled": rows_filled,
                                 "partial_pieces": partial_pieces,
-                                "total_pieces": total_pieces
+                                "total_pieces": total_pieces,
+                                "total_volume": total_volume
                             }
                         )
                 
-                        # =========================
-                        # 2. ดึง log ทั้งหมดของ jig เดียวกัน
-                        # =========================
+                        # =========================================================
+                        # 5. รวม total volume ของทั้งจิ๊กใหม่
+                        # =========================================================
                         jig_id = log.get("jig_id")
                 
                         all_logs = supabase.table("jig_usage_log") \
-                            .select("""
-                                *,
-                                products(surface_finish)
-                            """) \
+                            .select("total_volume") \
                             .eq("jig_id", jig_id) \
                             .execute().data or []
                 
-                        # =========================
-                        # 3. คำนวณ total volume ใหม่
-                        # =========================
-                        total_volume = 0
-                
-                        for item in all_logs:
-                
-                            pcs = int(item.get("total_pieces") or 0)
-                
-                            product_data = item.get("products") or {}
-                
-                            surface_area = float(
-                                product_data.get("surface_area") or 0
-                            )
-                
-                            total_volume += pcs * surface_area
-                
-                        # =========================
-                        # 4. อัปเดตกลับเข้า jigs
-                        # =========================
-                        supabase.table("jigs") \
-                            .update({
-                                "total_volume": total_volume
-                            }) \
-                            .eq("jig_id", jig_id) \
-                            .execute()
-                
-                        st.success(
-                            f"อัปเดตข้อมูลเรียบร้อยแล้ว ✅\n\n"
-                            f"Total Volume ใหม่ = {total_volume:,.2f}"
+                        jig_total_volume = sum(
+                            float(x.get("total_volume") or 0)
+                            for x in all_logs
                         )
+                
+                        # =========================================================
+                        # 6. อัปเดต total volume ของจิ๊ก
+                        # =========================================================
+                        update_row(
+                            "jigs",
+                            "jig_id",
+                            jig_id,
+                            {
+                                "total_volume": jig_total_volume
+                            }
+                        )
+                
+                        st.success("อัปเดตข้อมูล + คำนวณ Total Volume ใหม่เรียบร้อยแล้ว")
                 
                         time.sleep(1)
                         st.rerun()
