@@ -1188,10 +1188,9 @@ def show_data_editor():
 
     with tab_color:
         st.subheader(f"🎨 บันทึกบ่อสีวันที่ {filter_date.strftime('%d/%m/%Y')}")
-    
         start_dt = f"{filter_date_str}T00:00:00"
         end_dt = f"{filter_date_str}T23:59:59"
-    
+        
         color_logs = (
             supabase.table("color_tank_logs")
             .select("*")
@@ -1199,48 +1198,22 @@ def show_data_editor():
             .lte("recorded_at", end_dt)
             .order("recorded_at", desc=True)
             .execute()
-            .data
-            or []
+            .data or []
         )
-    
+        
         if not color_logs:
             st.warning("📅 ไม่มีบันทึกบ่อสีในวันที่เลือก")
-    
         else:
+            # 1. สร้าง DataFrame ชื่อ df_color
             df_color = pd.DataFrame(color_logs)
-    
-            df_color["recorded_at"] = pd.to_datetime(df_color["recorded_at"])\
-                .dt.tz_convert(ICT)
-    
-            df_color["เวลา"] = df_color["recorded_at"].dt.strftime("%H:%M")
-    
-            # ===== เลือกบ่อ =====
-            tank_list = sorted(df_color["tank_name_snapshot"].dropna().unique())
-    
-            selected_tank = st.selectbox(
-                "เลือกบ่อสี",
-                tank_list,
-                key="color_tank_filter"
-            )
-    
-            tank_df = df_color[
-                df_color["tank_name_snapshot"] == selected_tank
-            ].copy()
-    
-            show_df = tank_df[[
-                "เวลา",
-                "ph_value",
-                "temperature"
-            ]].rename(columns={
-                "ph_value": "pH",
-                "temperature": "Temp"
-            })
-    
-            st.dataframe(
-                show_df,
-                use_container_width=True,
-                hide_index=True
-            )
+            df_color["recorded_at"] = pd.to_datetime(df_color["recorded_at"])
+            
+            # 2. แก้ไขจุดที่ดึงแกน X และ Y ของกราฟให้ใช้ df_color ให้ถูกต้อง
+            # (เปลี่ยนจาก x=graph_df["recorded_at"] ให้เป็นตามนี้ 👇)
+            x_data = df_color["recorded_at"]
+            
+            # แสดงตารางข้อมูลเดิมที่มีอยู่ของคุณ
+            st.dataframe(df_color, use_container_width=True
             st.markdown("### 📈 กราฟค่า pH")
 
             
@@ -1248,8 +1221,8 @@ def show_data_editor():
             
             fig_ph.add_trace(
                 go.Scatter(
-                    x=graph_df["recorded_at"],
-                    y=graph_df["ph_value"],
+                    x=df_color["recorded_at"],
+                    y=df_color["ph_value"],
                     mode="lines+markers",
                     name="pH"
                 )
