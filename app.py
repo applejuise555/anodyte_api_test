@@ -1683,7 +1683,7 @@ if menu == "Dashboard":
         st.info("📅 ไม่มีข้อมูลบันทึกบ่อสีในช่วงวันที่เลือก")
 
 
-    # --- 2. Anodize/Seal (ตารางแสดงค่าล่าสุดของบ่อเคมีที่เลือก ย้ายมาแทนตรงนี้) ---
+    # --- 2. Anodize/Seal (ตารางแสดงค่าล่าสุดของบ่อเคมีที่เลือก) ---
     st.markdown("---")
     st.subheader("📈 เเนวโน้มบ่อ Anodize เเละ บ่อ Seal")
     
@@ -1793,16 +1793,17 @@ if menu == "Dashboard":
 
 
     # =============================================================================
-    # 🌟 --- ส่วนที่ย้ายมาใหม่: ตารางดิบสรุปค่าบ่อสีตามวันที่เลือก (อยู่ล่างสุด) ---
+    # 🌟 --- ส่วนแก้ไข: แสดงประวัติดิบทั้งหมดของบ่อสีตามวันที่เลือก (เรียงลำดับตามเวลาล่าสุด) ---
     # =============================================================================
     st.markdown("---")
-    st.markdown("### 📋 ตารางสรุปค่าล่าสุดของบ่อสีตามช่วงวันที่เลือก")
+    st.markdown("### 📋 ตารางประวัติบันทึกข้อมูลของบ่อสีตามช่วงเวลาที่เลือก")
     
     if not df_c_filtered.empty:
-        latest_c_table = df_c_filtered.sort_values("recorded_at").groupby("tank_name").last().reset_index()
+        # เรียงลำดับข้อมูลดิบจากเวลาล่าสุดลงไปอดีตตามที่ Filter ไว้ (รองรับการเลือกหลายวันแบบแจกแจงทุกแถว)
+        all_c_records = df_c_filtered.sort_values("recorded_at", ascending=False)
         
         color_rows = []
-        for _, row in latest_c_table.iterrows():
+        for _, row in all_c_records.iterrows():
             v_ph = float(row["ph_value"] or 0)
             v_tmp = float(row["temperature"] or 0)
             
@@ -1811,11 +1812,13 @@ if menu == "Dashboard":
             style_t = "color:#DC2626; font-weight:bold;" if (v_tmp < STD["COLOR_TEMP"][0] or v_tmp > STD["COLOR_TEMP"][1]) else ""
             
             color_rows.append({
+                "วันที่/เวลา บันทึก": row["recorded_at"].strftime("%d/%m/%Y %H:%M:%S"),
                 "ชื่อบ่อสี": row["tank_name"],
-                "เวลาบันทึกล่าสุด": row["recorded_at"].strftime("%d/%m/%Y %H:%M"),
                 "ค่า pH": f"<span style='{style_p}'>{v_ph:.2f}</span>" if style_p else f"{v_ph:.2f}",
                 "อุณหภูมิ (°C)": f"<span style='{style_t}'>{v_tmp:.1f}</span>" if style_t else f"{v_tmp:.1f}"
             })
+            
+        # แสดงผลเป็น HTML Table หน้ากว้างเต็มจอเพื่อให้ไล่ดูประวัติในแต่ละวันได้ง่ายขึ้น
         st.write(pd.DataFrame(color_rows).to_html(escape=False, index=False), unsafe_allow_html=True)
     else:
         st.caption("📅 ไม่มีข้อมูลบันทึกบ่อสีในวันที่และเวลาที่กำหนด")
