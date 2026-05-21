@@ -1213,7 +1213,7 @@ def show_data_editor():
             x_data = df_color["recorded_at"]
             
             # แสดงตารางข้อมูลเดิมที่มีอยู่ของคุณ
-            st.dataframe(df_color, use_container_width=True
+            st.dataframe(df_color, use_container_width=True)
             st.markdown("### 📈 กราฟค่า pH")
 
             
