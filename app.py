@@ -727,6 +727,17 @@ def show_data_editor():
                     break
 
             # 3. ฟอร์มการแก้ไข
+            # ===== โหลดบ่อสี =====
+            tank_rows = supabase.table("tanks") \
+                .select("tank_id, tank_name") \
+                .ilike("tank_type", "%color%") \
+                .order("tank_name") \
+                .execute().data or []
+            
+            tank_options = {
+                t["tank_name"]: t["tank_id"]
+                for t in tank_rows
+            }
             with st.form("edit_jiglog_form_v2"):
                 st.markdown("### 🔄 เปลี่ยนชิ้นงานและแก้ไขจำนวน")
                 
@@ -742,6 +753,55 @@ def show_data_editor():
                     index=current_index
                 )
                 selected_prod_id = prod_options[new_product_id]
+                # ===== เลือกสี =====
+                color_options = [
+                    "clear",
+                    "Black",
+                    "Red",
+                    "Dark Red",
+                    "Violet",
+                    "Green",
+                    "Banana leaf Green",
+                    "Gold",
+                    "Orange",
+                    "Light Blue",
+                    "Blue",
+                    "Dark Blue",
+                    "Pink",
+                    "Copper",
+                    "Titanium",
+                    "Dark Titanium",
+                    "Rose Gold"
+                ]
+                
+                current_color = log.get("color") or "clear"
+                
+                selected_color = st.selectbox(
+                    "เลือกสี",
+                    color_options,
+                    index=color_options.index(current_color)
+                    if current_color in color_options else 0
+                )
+                
+                # ===== เลือกบ่อสี =====
+                tank_names = ["- ยังไม่ลงบ่อ -"] + list(tank_options.keys())
+                
+                current_tank_name = (
+                    log.get("tank_name_snapshot")
+                    or "- ยังไม่ลงบ่อ -"
+                )
+                
+                selected_tank_name = st.selectbox(
+                    "เลือกบ่อสี",
+                    tank_names,
+                    index=tank_names.index(current_tank_name)
+                )
+                
+                selected_tank_id = (
+                    None
+                    if selected_tank_name == "- ยังไม่ลงบ่อ -"
+                    else tank_options[selected_tank_name]
+                )
 
                 col1, col2, col3 = st.columns(3)
                 pcs_per_row = col1.number_input("จำนวนต่อแถว", min_value=0, value=int(log.get("pcs_per_row") or 0))
@@ -838,19 +898,23 @@ def show_data_editor():
                         # =========================================================
                         # 4. อัปเดต jig_usage_log
                         # =========================================================
-                        update_row(
-                            "jig_usage_log",
-                            id_col,
-                            id_val,
-                            {
-                                "product_id": selected_prod_id,
-                                "pcs_per_row": pcs_per_row,
-                                "rows_filled": rows_filled,
-                                "partial_pieces": partial_pieces,
-                                "total_pieces": total_pieces,
-                                "total_volume": total_volume
-                            }
-                        )
+                        update_row("jig_usage_log", id_col, id_val, {
+
+                            "product_id": selected_prod_id,
+                        
+                            "pcs_per_row": pcs_per_row,
+                            "rows_filled": rows_filled,
+                            "partial_pieces": partial_pieces,
+                            "total_pieces": total_pieces,
+                        
+                            # ===== สี + บ่อสี =====
+                            "color": selected_color,
+                            "tank_name_snapshot": (
+                                None
+                                if selected_tank_name == "- ยังไม่ลงบ่อ -"
+                                else selected_tank_name
+                            )
+                        })
                 
                         # =========================================================
                         # 5. รวม total volume ของทั้งจิ๊กใหม่
