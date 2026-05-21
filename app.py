@@ -825,140 +825,135 @@ def show_data_editor():
 
                 col_save, col_delete = st.columns(2)
 
+                save_btn = False
+                delete_btn = False
+                
                 with col_save:
                     save_btn = st.form_submit_button("💾 บันทึกการเปลี่ยนแปลง")
                 
                 with col_delete:
                     delete_btn = st.form_submit_button("🗑️ ลบบันทึกนี้")
                 
+                # =========================================================
+                # 💾 SAVE
+                # =========================================================
                 if save_btn:
+                
                     try:
                 
                         # =========================================================
-                        # 1. ดึงข้อมูลสินค้าใหม่
+                        # 1. คำนวณจำนวนรวม
                         # =========================================================
-                        p_info = supabase.table("products") \
-                            .select("*") \
-                            .eq("product_id", selected_prod_id) \
-                            .single() \
-                            .execute().data
-                
-                        # =========================================================
-                        # 2. คำนวณพื้นที่/ปริมาตรต่อชิ้น
-                        # ใช้สูตรเดียวกับตอนบันทึกลงจิ๊ก
-                        # =========================================================
-                        shape_type = p_info.get("shape_type")
-                        width_mm = float(p_info.get("width_mm") or 0)
-                        height_mm = float(p_info.get("height_mm") or 0)
-                        length_mm = float(p_info.get("length_mm") or 0)
-                        hole_count = int(p_info.get("hole_count") or 0)
-                        hole_diameter_mm = float(p_info.get("hole_diameter_mm") or 0)
-                
-                        volume_per_piece = 0
-                
-                        # ===== ทรงกระบอกตัน =====
-                        if shape_type == "กระบอกตัน":
-                
-                            radius = width_mm / 2
-                
-                            area_mm2 = (
-                                (2 * math.pi * radius * length_mm)
-                                + (2 * math.pi * (radius ** 2))
-                            )
-                
-                            volume_per_piece = area_mm2 / 1_000_000
-                
-                        # ===== ทรงกระบอกกลวง =====
-                        elif shape_type == "กระบอกกลวง":
-                
-                            outer_r = width_mm / 2
-                            inner_r = hole_diameter_mm / 2
-                
-                            area_mm2 = (
-                                (2 * math.pi * outer_r * length_mm)
-                                + (2 * math.pi * inner_r * length_mm)
-                                + (2 * math.pi * ((outer_r ** 2) - (inner_r ** 2)))
-                            )
-                
-                            volume_per_piece = area_mm2 / 1_000_000
-                
-                        # ===== สี่เหลี่ยม =====
-                        elif shape_type == "สี่เหลี่ยม":
-                
-                            area_mm2 = (
-                                2 * (
-                                    (width_mm * height_mm)
-                                    + (width_mm * length_mm)
-                                    + (height_mm * length_mm)
-                                )
-                            )
-                
-                            if hole_count > 0 and hole_diameter_mm > 0:
-                
-                                hole_r = hole_diameter_mm / 2
-                
-                                hole_area = (
-                                    hole_count
-                                    * math.pi
-                                    * (hole_r ** 2)
-                                )
-                
-                                area_mm2 -= hole_area
-                
-                            volume_per_piece = area_mm2 / 1_000_000
+                        total_pieces = (
+                            (pcs_per_row * rows_filled)
+                            + partial_pieces
+                        )
                 
                         # =========================================================
-                        # 3. คำนวณ total volume ของ log นี้
+                        # 2. ดึงข้อมูลสินค้าใหม่
                         # =========================================================
-                        total_volume = volume_per_piece * total_pieces
+                        product_info = (
+                            supabase.table("products")
+                            .select("*")
+                            .eq("product_id", selected_prod_id)
+                            .single()
+                            .execute()
+                            .data
+                        )
                 
                         # =========================================================
-                        # 4. อัปเดต jig_usage_log
+                        # 3. คำนวณปริมาตรต่อชิ้น
                         # =========================================================
-                        update_row("jig_usage_log", id_col, id_val, {
+                        width = float(product_info.get("width_mm") or 0)
+                        height = float(product_info.get("height_mm") or 0)
+                        length = float(product_info.get("length_mm") or 0)
+                
+                        volume_per_piece = (
+                            width * height * length
+                        ) / 1000000
+                
+                        # =========================================================
+                        # 4. total volume ของ log นี้
+                        # =========================================================
+                        log_total_volume = (
+                            volume_per_piece * total_pieces
+                        )
+                
+                        # =========================================================
+                        # 5. update jig_usage_log
+                        # =========================================================
+                        update_payload = {
                             "product_id": selected_prod_id,
                             "pcs_per_row": pcs_per_row,
                             "rows_filled": rows_filled,
                             "partial_pieces": partial_pieces,
                             "total_pieces": total_pieces,
+                            "total_volume": log_total_volume,
                             "color": selected_color_name,
                             "tank_name_snapshot": selected_tank_name
-                        })
+                        }
                 
-                        # =========================================================
-                        # 5. รวม total volume ของทั้งจิ๊กใหม่
-                        # =========================================================
-                        jig_id = log.get("jig_id")
-                
-                        all_logs = supabase.table("jig_usage_log") \
-                            .select("total_volume") \
-                            .eq("jig_id", jig_id) \
-                            .execute().data or []
-                
-                        jig_total_volume = sum(
-                            float(x.get("total_volume") or 0)
-                            for x in all_logs
+                        update_row(
+                            "jig_usage_log",
+                            id_col,
+                            id_val,
+                            update_payload
                         )
                 
                         # =========================================================
                         # 6. อัปเดต total volume ของจิ๊ก
                         # =========================================================
+                        jig_id = log.get("jig_id")
+                
+                        all_logs = (
+                            supabase.table("jig_usage_log")
+                            .select("*")
+                            .eq("jig_id", jig_id)
+                            .execute()
+                            .data
+                            or []
+                        )
+                
+                        total_jig_volume = sum([
+                            float(x.get("total_volume") or 0)
+                            for x in all_logs
+                        ])
+                
                         update_row(
                             "jigs",
                             "jig_id",
                             jig_id,
                             {
-                                "total_volume": jig_total_volume
+                                "total_volume": total_jig_volume
                             }
                         )
                 
-                        st.success("อัปเดตข้อมูล + คำนวณ Total Volume ใหม่เรียบร้อยแล้ว")
-                
+                        st.success("อัปเดตข้อมูลเรียบร้อยแล้ว!")
                         time.sleep(1)
                         st.rerun()
                 
                     except Exception as e:
                         st.error(f"บันทึกไม่สำเร็จ: {e}")
+                
+                # =========================================================
+                # 🗑️ DELETE
+                # =========================================================
+                if delete_btn:
+                
+                    try:
+                
+                        delete_row(
+                            "jig_usage_log",
+                            id_col,
+                            id_val
+                        )
+                
+                        st.success("ลบบันทึกงานจิ๊กแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+                
+                    except Exception as e:
+                        st.error(f"ลบไม่สำเร็จ: {e}")
 
     with tab_color:
         st.subheader(f"🎨 บันทึกบ่อสีวันที่ {filter_date.strftime('%d/%m/%Y')}")
