@@ -2003,6 +2003,8 @@ if menu == "บันทึกข้อมูลการผลิต":
                     supabase.table("jig_usage_log")
                     .select("*")
                     .is_("tank_id", "null")
+                    .neq("status", "Finished")
+                    .neq("color_name", "clear")
                     .order("recorded_date", desc=True)
                     .execute()
                 )
