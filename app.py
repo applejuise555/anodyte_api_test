@@ -754,7 +754,6 @@ def show_data_editor():
                 )
                 selected_prod_id = prod_options[new_product_id]
                 # ===== เลือกสี =====
-                # ===== เลือกสี =====
                 color_options = [
                     "clear",
                     "Black",
@@ -769,6 +768,7 @@ def show_data_editor():
                 ]
                 
                 current_color = log.get("color") or "clear"
+                current_tank_name = log.get("tank_name_snapshot") or ""
                 
                 if current_color in color_options:
                     color_index = color_options.index(current_color)
