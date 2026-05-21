@@ -786,6 +786,64 @@ def show_data_editor():
             # =====================================================
             # FORM
             # =====================================================
+            # =====================================================
+            # เลือกสี (อยู่นอก form)
+            # =====================================================
+            
+            color_options = [
+                "Clear",
+                "Black",
+                "Red",
+                "Blue",
+                "Gold",
+                "Green",
+                "Orange",
+                "Pink",
+                "Titanium",
+                "Dark Titanium"
+            ]
+            
+            current_color = str(log.get("color") or "Clear").strip()
+            
+            if current_color in color_options:
+                color_index = color_options.index(current_color)
+            else:
+                color_index = 0
+            
+            selected_color_name = st.selectbox(
+                "เลือกสี",
+                color_options,
+                index=color_index,
+                key=f"color_select_{id_val}"
+            )
+            
+            # =====================================================
+            # เลือกบ่อสี
+            # =====================================================
+            
+            selected_tank_name = None
+            
+            if selected_color_name.strip().lower() != "clear":
+            
+                current_tank_name = str(
+                    log.get("tank_name_snapshot") or ""
+                ).strip()
+            
+                if current_tank_name in tank_names:
+                    tank_index = tank_names.index(current_tank_name)
+                else:
+                    tank_index = 0
+            
+                selected_tank_name = st.selectbox(
+                    "เลือกบ่อสี",
+                    tank_names,
+                    index=tank_index,
+                    key=f"tank_select_{id_val}"
+                )
+            
+            else:
+            
+                st.info("🪟 สี Clear ไม่ต้องเลือกบ่อสี")
 
             with st.form("edit_jiglog_form_v2"):
 
@@ -812,77 +870,7 @@ def show_data_editor():
 
                 selected_prod_id = prod_options[new_product_id]
 
-                # ===== เลือกสี =====
-                color_options = [
-                    "Clear",
-                    "Black",
-                    "Red",
-                    "Blue",
-                    "Gold",
-                    "Green",
-                    "Orange",
-                    "Pink",
-                    "Titanium",
-                    "Dark Titanium"
-                ]
                 
-                current_color = str(log.get("color") or "Clear").strip()
-                
-                if current_color in color_options:
-                    color_index = color_options.index(current_color)
-                else:
-                    color_index = 0
-                
-                selected_color_name = st.selectbox(
-                    "เลือกสี",
-                    color_options,
-                    index=color_index,
-                    key=f"color_select_{id_val}"
-                )
-                
-                # =====================================================
-                # ถ้า Clear → ไม่ต้องเลือกบ่อสี
-                # =====================================================
-                if selected_color_name.strip().lower() == "clear":
-                
-                    selected_tank_name = None
-                
-                    st.info("🪟 สี Clear ไม่ต้องเลือกบ่อสี")
-                
-                # =====================================================
-                # สีอื่น → ให้เลือกบ่อสี
-                # =====================================================
-                else:
-                
-                    current_tank_name = str(
-                        log.get("tank_name_snapshot") or ""
-                    ).strip()
-                
-                    tank_rows = (
-                        supabase.table("tanks")
-                        .select("tank_name")
-                        .execute()
-                        .data
-                        or []
-                    )
-                
-                    tank_names = sorted([
-                        t["tank_name"]
-                        for t in tank_rows
-                        if t.get("tank_name")
-                    ])
-                
-                    if current_tank_name in tank_names:
-                        tank_index = tank_names.index(current_tank_name)
-                    else:
-                        tank_index = 0
-                
-                    selected_tank_name = st.selectbox(
-                        "เลือกบ่อสี",
-                        tank_names,
-                        index=tank_index,
-                        key=f"tank_select_{id_val}"
-                    )
 
                 # =====================================================
                 # จำนวน
