@@ -1243,7 +1243,6 @@ def show_data_editor():
             )
             st.markdown("### 📈 กราฟค่า pH")
 
-            graph_df = chem_df.sort_values("recorded_at")
             
             fig_ph = go.Figure()
             
@@ -1362,6 +1361,7 @@ def show_data_editor():
             chem_df = df_chem[
                 df_chem["tank_name"] == selected_chem
             ].copy()
+            graph_df = chem_df.sort_values("recorded_at")
     
             is_sealer = (
                 "seal" in selected_chem.lower()
