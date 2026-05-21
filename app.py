@@ -1177,11 +1177,9 @@ def show_data_editor():
                         st.error(f"ลบไม่สำเร็จ: {e}")
 
     with tab_color:
-        st.subheader(f"🎨 บันทึกบ่อสีวันที่ {filter_date.strftime('%d/%m/%Y')}")
-    
+        st.subheader(f"🎨 บันทึกบ่อสีทั้งหมดประจำวันที่ {filter_date.strftime('%d/%m/%Y')}")
         start_dt = f"{filter_date_str}T00:00:00"
         end_dt = f"{filter_date_str}T23:59:59"
-    
         color_logs = (
             supabase.table("color_tank_logs")
             .select("*")
@@ -1189,104 +1187,87 @@ def show_data_editor():
             .lte("recorded_at", end_dt)
             .order("recorded_at", desc=True)
             .execute()
-            .data
-            or []
+            .data or []
         )
-    
+
         if not color_logs:
             st.warning("📅 ไม่มีบันทึกบ่อสีในวันที่เลือก")
-    
         else:
             df_color = pd.DataFrame(color_logs)
-    
-            df_color["recorded_at"] = pd.to_datetime(df_color["recorded_at"])\
-                .dt.tz_convert(ICT)
-    
+            df_color["recorded_at"] = pd.to_datetime(df_color["recorded_at"]).dt.tz_convert(ICT)
             df_color["เวลา"] = df_color["recorded_at"].dt.strftime("%H:%M")
-    
-            # ===== เลือกบ่อ =====
-            tank_list = sorted(df_color["tank_name_snapshot"].dropna().unique())
-    
-            selected_tank = st.selectbox(
-                "เลือกบ่อสี",
-                tank_list,
-                key="color_tank_filter"
-            )
-    
-            tank_df = df_color[
-                df_color["tank_name_snapshot"] == selected_tank
-            ].copy()
-    
-            show_df = tank_df[[
-                "เวลา",
-                "ph_value",
-                "temperature"
-            ]].rename(columns={
-                "ph_value": "pH",
-                "temperature": "Temp"
+
+            # ----------------------------------------------------
+            # 🔴 เพิ่มส่วนตรวจสอบค่าเกินมาตรฐานและทำตัวหนังสือสีแดง
+            # ----------------------------------------------------
+            st.markdown("##### 📊 ตารางสรุปค่าบ่อสีของวันนี้ (ค่าที่ผิดปกติจะถูกเตือนเป็นตัวอักษรสีแดง)")
+            
+            # ตัวอย่างการกำหนดเกณฑ์มาตรฐาน (สามารถปรับเปลี่ยนตัวเลข Min/Max ได้ตามจริง)
+            COLOR_PH_MIN, COLOR_PH_MAX = 4.5, 6.5
+            COLOR_TEMP_MIN, COLOR_TEMP_MAX = 20.0, 35.0
+
+            has_warning = False
+            warning_messages = []
+
+            # วนลูปตรวจสอบข้อมูลเพื่อสร้างลิสต์แจ้งเตือนตัวหนังสือสีแดง
+            for idx, row in df_color.iterrows():
+                tank_name = row['tank_name_snapshot']
+                v_time = row['เวลา']
+                v_ph = float(row['ph_value'] or 0)
+                v_temp = float(row['temperature'] or 0)
+
+                # ตรวจสอบ pH
+                if v_ph < COLOR_PH_MIN or v_ph > COLOR_PH_MAX:
+                    has_warning = True
+                    warning_messages.append(f"⚠️ บ่อสี <b>{tank_name}</b> เวลา <b>{v_time}</b>: ค่า pH ({v_ph}) เกินเกณฑ์มาตรฐาน ({COLOR_PH_MIN} - {COLOR_PH_MAX})")
+                
+                # ตรวจสอบ Temperature
+                if v_temp < COLOR_TEMP_MIN or v_temp > COLOR_TEMP_MAX:
+                    has_warning = True
+                    warning_messages.append(f"⚠️ บ่อสี <b>{tank_name}</b> เวลา <b>{v_time}</b>: ค่า Temp ({v_temp}°C) เกินเกณฑ์มาตรฐาน ({COLOR_TEMP_MIN} - {COLOR_TEMP_MAX}°C)")
+
+            # แสดงตารางแบบภาพรวมของวันนั้นทั้งหมด
+            summary_color_df = df_color[["เวลา", "tank_name_snapshot", "ph_value", "temperature"]].rename(columns={
+                "tank_name_snapshot": "ชื่อบ่อสี",
+                "ph_value": "ค่า pH",
+                "temperature": "อุณหภูมิ (Temp)"
             })
-    
-            st.dataframe(
-                show_df,
-                use_container_width=True,
-                hide_index=True
-            )
-    
+            st.dataframe(summary_color_df, use_container_width=True, hide_index=True)
+
+            # หากมีค่าใดเกินมาตรฐาน ให้แสดงข้อความเตือนเป็น "ตัวหนังสือสีแดง" ด้านล่างตาราง
+            if has_warning:
+                st.markdown("<p style='color: #DC2626; font-weight: bold; margin-bottom: 5px;'>🚨 พบข้อมูลเกินเกณฑ์มาตรฐานด้านล่างนี้:</p>", unsafe_allow_html=True)
+                for msg in warning_messages:
+                    st.markdown(f"<div style='color: #DC2626; padding-left: 15px; font-size: 14px;'>{msg}</div>", unsafe_allow_html=True)
+            else:
+                st.success("🟢 ค่าบ่อสีทุกบ่ออยู่ในเกณฑ์ปกติ")
+
             st.markdown("---")
-            st.subheader("✏️ แก้ไขข้อมูล")
-    
+            st.subheader("✏️ แก้ไขข้อมูลรายบ่อสี")
+            # ===== ตัวเลือกสำหรับฟอร์มแก้ไข (คงเดิมตามระบบของคุณ) =====
+            tank_list = sorted(df_color["tank_name_snapshot"].dropna().unique())
+            selected_tank = st.selectbox("เลือกบ่อที่ต้องการแก้ไขข้อมูล", tank_list, key="color_tank_filter")
+            tank_df = df_color[df_color["tank_name_snapshot"] == selected_tank].copy()
+
             for idx, row in tank_df.iterrows():
-    
-                with st.expander(f"⏰ {row['เวลา']}"):
-    
+                with st.expander(f"⏰ บ่อ: {row['tank_name_snapshot']} | เวลา {row['เวลา']}"):
                     with st.form(f"edit_color_{idx}"):
-    
-                        ph_value = st.number_input(
-                            "pH",
-                            value=float(row["ph_value"] or 0),
-                            step=0.01,
-                            format="%.2f"
-                        )
-    
-                        temperature = st.number_input(
-                            "Temperature",
-                            value=float(row["temperature"] or 0),
-                            step=0.1,
-                            format="%.1f"
-                        )
-    
+                        ph_value = st.number_input("pH", value=float(row["ph_value"] or 0), step=0.01, format="%.2f")
+                        temperature = st.number_input("Temperature", value=float(row["temperature"] or 0), step=0.1, format="%.1f")
                         col1, col2 = st.columns(2)
-    
                         if col1.form_submit_button("💾 บันทึก"):
-    
-                            update_row(
-                                "color_tank_logs",
-                                "id",
-                                row["id"],
-                                {
-                                    "ph_value": ph_value,
-                                    "temperature": temperature
-                                }
-                            )
-    
+                            update_row("color_tank_logs", "id", row["id"], {"ph_value": ph_value, "temperature": temperature})
                             st.success("บันทึกสำเร็จ")
                             time.sleep(1)
                             st.rerun()
-    
                         if col2.form_submit_button("🗑️ ลบ"):
-    
-                            delete_row(
-                                "color_tank_logs",
-                                "id",
-                                row["id"]
-                            )
-    
+                            delete_row("color_tank_logs", "id", row["id"])
                             st.success("ลบสำเร็จ")
                             time.sleep(1)
                             st.rerun()
 
     with tab_chemical:
-        st.subheader(f"🧪 บันทึกบ่อสารเคมีวันที่ {filter_date.strftime('%d/%m/%Y')}")
+        st.subheader(f"🧪 บันทึกบ่อสารเคมีทั้งหมดประจำวันที่ {filter_date.strftime('%d/%m/%Y')}")
         start_dt = f"{filter_date_str}T00:00:00"
         end_dt = f"{filter_date_str}T23:59:59"
         chem_logs = supabase.table("anodize_tank_logs")\
@@ -1297,76 +1278,93 @@ def show_data_editor():
             .execute().data or []
 
         if not chem_logs:
-            st.warning("📅 ไม่มีบันทึกบ่อสารเคมี")
+            st.warning("📅 ไม่มีบันทึกบ่อสารเคมีในวันที่เลือก")
         else:
             df_chem = pd.DataFrame(chem_logs)
-            df_chem["recorded_at"] = pd.to_datetime(df_chem["recorded_at"])\
-                .dt.tz_convert(ICT)
-            df_chem["tank_name"] = df_chem["tanks"]\
-                .apply(lambda x: x.get("tank_name") if isinstance(x, dict) else "-")
+            df_chem["recorded_at"] = pd.to_datetime(df_chem["recorded_at"]).dt.tz_convert(ICT)
+            df_chem["tank_name"] = df_chem["tanks"].apply(lambda x: x.get("tank_name") if isinstance(x, dict) else "-")
             df_chem["เวลา"] = df_chem["recorded_at"].dt.strftime("%H:%M")
 
-            # ===== เลือกบ่อ =====
-            chem_tanks = sorted(df_chem["tank_name"].dropna().unique())
-            selected_chem = st.selectbox(
-                "เลือกบ่อสารเคมี", chem_tanks, key="chem_tank_filter"
-            )
-            chem_df = df_chem[ df_chem["tank_name"] == selected_chem ].copy()
-            is_sealer = ( "seal" in selected_chem.lower() or "sealer" in selected_chem.lower() )
+            # ----------------------------------------------------
+            # 🔴 เพิ่มส่วนตรวจสอบค่าเกินมาตรฐานและทำตัวหนังสือสีแดง
+            # ----------------------------------------------------
+            st.markdown("##### 📊 ตารางสรุปค่าบ่อสารเคมีของวันนี้ (ค่าที่ผิดปกติจะถูกเตือนเป็นตัวอักษรสีแดง)")
+            
+            # ตัวอย่างการกำหนดเกณฑ์มาตรฐานของบ่อเคมีทั่วไป
+            CHEM_PH_MIN, CHEM_PH_MAX = 1.0, 3.5
+            CHEM_TEMP_MIN, CHEM_TEMP_MAX = 15.0, 30.0
+            CHEM_DEN_MIN, CHEM_DEN_MAX = 1.000, 1.150
 
-            # ===== แสดงตารางข้อมูล =====
-            # บ่อ Sealer: ให้แสดง เวลา, pH, Temp (ไม่ต้องแสดง Density)
-            if is_sealer:
-                show_df = chem_df[[ "เวลา", "ph_value", "temperature" ]].rename(columns={
-                    "ph_value": "pH",
-                    "temperature": "Temp"
-                })
+            chem_warning = False
+            chem_warning_messages = []
+
+            for idx, row in df_chem.iterrows():
+                t_name = row['tank_name']
+                v_time = row['เวลา']
+                v_ph = float(row['ph_value'] or 0)
+                v_temp = float(row['temperature'] or 0)
+                v_den = float(row['density'] or 0)
+                
+                # ตรวจว่าใช่บ่อ Seal/Sealer หรือไม่ (บ่อซีลจะละเว้นการเช็ค pH/Density ตามเงื่อนไขบ่อ)
+                is_seal = "seal" in t_name.lower() or "sealer" in t_name.lower()
+
+                # เช็ค Temp (เช็คทุกบ่อ)
+                if v_temp < CHEM_TEMP_MIN or v_temp > CHEM_TEMP_MAX:
+                    chem_warning = True
+                    chem_warning_messages.append(f"⚠️ บ่อเคมี <b>{t_name}</b> เวลา <b>{v_time}</b>: ค่า Temp ({v_temp}°C) เกินเกณฑ์มาตรฐาน ({CHEM_TEMP_MIN} - {CHEM_TEMP_MAX}°C)")
+
+                # หากไม่ใช่บ่อซีล ให้ตรวจสอบ pH และ Density เพิ่มเติมด้วย
+                if not is_seal:
+                    if v_ph < CHEM_PH_MIN or v_ph > CHEM_PH_MAX:
+                        chem_warning = True
+                        chem_warning_messages.append(f"⚠️ บ่อเคมี <b>{t_name}</b> เวลา <b>{v_time}</b>: ค่า pH ({v_ph}) เกินเกณฑ์มาตรฐาน ({CHEM_PH_MIN} - {CHEM_PH_MAX})")
+                    if v_den < CHEM_DEN_MIN or v_den > CHEM_DEN_MAX:
+                        chem_warning = True
+                        chem_warning_messages.append(f"⚠️ บ่อเคมี <b>{t_name}</b> เวลา <b>{v_time}</b>: ค่า ความหนาแน่น ({v_den}) เกินเกณฑ์มาตรฐาน ({CHEM_DEN_MIN} - {CHEM_DEN_MAX})")
+
+            # แสดงตารางรวมบ่อสารเคมี
+            summary_chem_df = df_chem[["เวลา", "tank_name", "ph_value", "temperature", "density"]].rename(columns={
+                "tank_name": "ชื่อบ่อสารเคมี",
+                "ph_value": "ค่า pH",
+                "temperature": "อุณหภูมิ (Temp)",
+                "density": "ความหนาแน่น (Density)"
+            })
+            st.dataframe(summary_chem_df, use_container_width=True, hide_index=True)
+
+            # แสดงผลการแจ้งเตือนด้วย CSS สีแดงหากพบค่าผิดปกติ
+            if chem_warning:
+                st.markdown("<p style='color: #DC2626; font-weight: bold; margin-bottom: 5px;'>🚨 พบข้อมูลเกินเกณฑ์มาตรฐานด้านล่างนี้:</p>", unsafe_allow_html=True)
+                for msg in chem_warning_messages:
+                    st.markdown(f"<div style='color: #DC2626; padding-left: 15px; font-size: 14px;'>{msg}</div>", unsafe_allow_html=True)
             else:
-                show_df = chem_df[[ "เวลา", "ph_value", "temperature", "density" ]].rename(columns={
-                    "ph_value": "pH",
-                    "temperature": "Temp",
-                    "density": "Density"
-                })
-
-            st.dataframe( show_df, use_container_width=True, hide_index=True )
+                st.success("🟢 ค่าบ่อสารเคมีทุกบ่ออยู่ในเกณฑ์ปกติ")
 
             st.markdown("---")
-            st.subheader("✏️ แก้ไขข้อมูลบ่อสารเคมี")
+            st.subheader("✏️ แก้ไขข้อมูลรายบ่อสารเคมี")
+            # ===== ตัวเลือกสำหรับฟอร์มแก้ไข (คงเดิมตามระบบของคุณ) =====
+            chem_tanks = sorted(df_chem["tank_name"].dropna().unique())
+            selected_chem = st.selectbox("เลือกบ่อสารเคมีที่ต้องการแก้ไข", chem_tanks, key="chem_tank_filter")
+            chem_df = df_chem[df_chem["tank_name"] == selected_chem].copy()
+            is_sealer = ("seal" in selected_chem.lower() or "sealer" in selected_chem.lower())
 
-            # ===== ฟอร์มแก้ไขรายรายการ =====
             for idx, row in chem_df.iterrows():
-                with st.expander(f"⏰ {row['เวลา']}"):
+                with st.expander(f"⏰ บ่อ: {selected_chem} | เวลา {row['เวลา']}"):
                     with st.form(f"edit_chem_{idx}"):
+                        ph_value = st.number_input("pH", value=float(row["ph_value"] or 0), step=0.01, format="%.2f")
+                        temperature = st.number_input("Temperature", value=float(row["temperature"] or 0), step=0.1, format="%.1f")
                         
-                        # ทุกบ่อมีสิทธิ์แก้ไข Temp และ pH ได้เหมือนกัน
-                        ph_value = st.number_input(
-                            "pH", value=float(row["ph_value"] or 0), step=0.01, format="%.2f", key=f"ph_{idx}"
-                        )
-                        temperature = st.number_input(
-                            "Temperature", value=float(row["temperature"] or 0), step=0.1, format="%.1f", key=f"temp_{idx}"
-                        )
-
-                        # บ่อสารเคมีอื่นๆ ที่ไม่ใช่บ่อ Seal ให้กรอก Density ได้
                         if not is_sealer:
-                            density = st.number_input(
-                                "Density", value=float(row["density"] or 0), step=0.001, format="%.3f", key=f"den_{idx}"
-                            )
+                            density = st.number_input("Density", value=float(row["density"] or 0), step=0.001, format="%.3f")
                         else:
                             density = 0.0
 
                         col1, col2 = st.columns(2)
-                        
                         if col1.form_submit_button("💾 บันทึก"):
-                            update_payload = {
-                                "ph_value": ph_value,
-                                "temperature": temperature,
-                                "density": density
-                            }
+                            update_payload = {"ph_value": ph_value, "temperature": temperature, "density": density}
                             update_row("anodize_tank_logs", "id", row["id"], update_payload)
                             st.success("บันทึกสำเร็จ")
                             time.sleep(1)
                             st.rerun()
-
                         if col2.form_submit_button("🗑️ ลบ"):
                             delete_row("anodize_tank_logs", "id", row["id"])
                             st.success("ลบสำเร็จ")
