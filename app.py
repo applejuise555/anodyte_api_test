@@ -781,7 +781,7 @@ def show_data_editor():
                         all_logs = supabase.table("jig_usage_log") \
                             .select("""
                                 *,
-                                products(surface_area)
+                                products(surface_finish)
                             """) \
                             .eq("jig_id", jig_id) \
                             .execute().data or []
