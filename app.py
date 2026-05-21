@@ -848,22 +848,22 @@ def show_data_editor():
                     # =====================================================
                     # เลือกบ่อสี
                     # =====================================================
-    
+                    
                     current_tank_name = log.get("tank_name_snapshot") or ""
-    
+                    
                     if selected_color == "clear":
-    
+                    
                         selected_tank_name = None
-    
+                    
                         st.info("🪟 สี Clear ไม่ต้องเลือกบ่อสี")
-    
+                    
                     else:
-    
+                    
                         if current_tank_name in tank_names:
                             tank_index = tank_names.index(current_tank_name)
                         else:
                             tank_index = 0
-    
+                    
                         selected_tank_name = st.selectbox(
                             "เลือกบ่อสี",
                             tank_names,
