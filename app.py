@@ -609,194 +609,194 @@ def show_data_editor():
 
             with st.form("edit_product_form"):
 
-            # =====================================================
-            # โหลดค่าปัจจุบัน
-            # =====================================================
-        
-            current_shape = p.get("shape") or "สี่เหลี่ยม"
-        
-            shape_options = [
-                "สี่เหลี่ยม",
-                "ทรงกระบอกทึบ",
-                "ทรงกระบอกกลวง"
-            ]
-        
-            if current_shape in shape_options:
-                shape_index = shape_options.index(current_shape)
-            else:
-                shape_index = 0
-        
-            # =====================================================
-            # ข้อมูลพื้นฐาน
-            # =====================================================
-        
-            c1, c2 = st.columns(2)
-        
-            product_code = c1.text_input(
-                "รหัสสินค้า",
-                value=p.get("product_code", "")
-            )
-        
-            product_name = c1.text_input(
-                "ชื่อสินค้า",
-                value=p.get("product_name", "")
-            )
-        
-            surface_finish = c1.text_input(
-                "พื้นผิว",
-                value=p.get("surface_finish", "")
-            )
-        
-            # =====================================================
-            # เลือกรูปทรง
-            # =====================================================
-        
-            shape = c1.selectbox(
-                "📐 เลือกรูปทรง",
-                shape_options,
-                index=shape_index,
-                key=f"edit_shape_{p['product_id']}"
-            )
-        
-            # =====================================================
-            # โหลดค่ามิติเดิม
-            # =====================================================
-        
-            height = c2.number_input(
-                "ความยาว/ความสูง (H) [mm]",
-                min_value=0.0,
-                value=float(p.get("height") or 0)
-            )
-        
-            width = 0.0
-            thickness = 0.0
-            od = 0.0
-            id_inner = 0.0
-        
-            # =====================================================
-            # สี่เหลี่ยม
-            # =====================================================
-        
-            if shape == "สี่เหลี่ยม":
-        
-                width = c2.number_input(
-                    "กว้าง [mm]",
-                    min_value=0.0,
-                    value=float(p.get("width") or 0)
+                # =====================================================
+                # โหลดค่าปัจจุบัน
+                # =====================================================
+            
+                current_shape = p.get("shape") or "สี่เหลี่ยม"
+            
+                shape_options = [
+                    "สี่เหลี่ยม",
+                    "ทรงกระบอกทึบ",
+                    "ทรงกระบอกกลวง"
+                ]
+            
+                if current_shape in shape_options:
+                    shape_index = shape_options.index(current_shape)
+                else:
+                    shape_index = 0
+            
+                # =====================================================
+                # ข้อมูลพื้นฐาน
+                # =====================================================
+            
+                c1, c2 = st.columns(2)
+            
+                product_code = c1.text_input(
+                    "รหัสสินค้า",
+                    value=p.get("product_code", "")
                 )
-        
-                thickness = c2.number_input(
-                    "สูง/หนา [mm]",
-                    min_value=0.0,
-                    value=float(p.get("thickness") or 0)
+            
+                product_name = c1.text_input(
+                    "ชื่อสินค้า",
+                    value=p.get("product_name", "")
                 )
-        
-                unit_volume = height * width * thickness
-        
-            # =====================================================
-            # กระบอกทึบ
-            # =====================================================
-        
-            elif shape == "ทรงกระบอกทึบ":
-        
-                od = c2.number_input(
-                    "เส้นผ่านศูนย์กลาง (OD) [mm]",
-                    min_value=0.0,
-                    value=float(p.get("outer_diameter") or 0)
+            
+                surface_finish = c1.text_input(
+                    "พื้นผิว",
+                    value=p.get("surface_finish", "")
                 )
-        
-                unit_volume = math.pi * ((od / 2) ** 2) * height
-        
-            # =====================================================
-            # กระบอกกลวง
-            # =====================================================
-        
-            else:
-        
-                od = c2.number_input(
-                    "เส้นผ่านศูนย์กลาง (OD) [mm]",
-                    min_value=0.0,
-                    value=float(p.get("outer_diameter") or 0)
+            
+                # =====================================================
+                # เลือกรูปทรง
+                # =====================================================
+            
+                shape = c1.selectbox(
+                    "📐 เลือกรูปทรง",
+                    shape_options,
+                    index=shape_index,
+                    key=f"edit_shape_{p['product_id']}"
                 )
-        
-                thickness = c2.number_input(
-                    "ความหนาของเนื้อชิ้นงาน [mm]",
+            
+                # =====================================================
+                # โหลดค่ามิติเดิม
+                # =====================================================
+            
+                height = c2.number_input(
+                    "ความยาว/ความสูง (H) [mm]",
                     min_value=0.0,
-                    value=float(p.get("thickness") or 0)
+                    value=float(p.get("height") or 0)
                 )
-        
-                id_inner = max(0.0, od - (2 * thickness))
-        
-                unit_volume = math.pi * (
-                    ((od / 2) ** 2)
-                    - ((id_inner / 2) ** 2)
-                ) * height
-        
-            # =====================================================
-            # แสดงปริมาตร
-            # =====================================================
-        
-            st.info(f"💡 ปริมาตรใหม่: {unit_volume:,.2f} mm³")
-        
-            # =====================================================
-            # BUTTONS
-            # =====================================================
-        
-            col_save, col_delete = st.columns(2)
-        
-            # =====================================================
-            # SAVE
-            # =====================================================
-        
-            if col_save.form_submit_button("💾 บันทึกสินค้า"):
-        
-                try:
-        
-                    update_row(
-                        "products",
-                        "product_id",
-                        p["product_id"],
-                        {
-                            "product_code": product_code,
-                            "product_name": product_name,
-                            "surface_finish": surface_finish,
-                            "shape": shape,
-                            "height": height,
-                            "width": width,
-                            "thickness": thickness,
-                            "outer_diameter": od,
-                            "inner_diameter": id_inner,
-                            "unit_volume": unit_volume
-                        }
+            
+                width = 0.0
+                thickness = 0.0
+                od = 0.0
+                id_inner = 0.0
+            
+                # =====================================================
+                # สี่เหลี่ยม
+                # =====================================================
+            
+                if shape == "สี่เหลี่ยม":
+            
+                    width = c2.number_input(
+                        "กว้าง [mm]",
+                        min_value=0.0,
+                        value=float(p.get("width") or 0)
                     )
-        
-                    st.success("บันทึกข้อมูลสินค้าแล้ว")
-                    time.sleep(1)
-                    st.rerun()
-        
-                except Exception as e:
-                    st.error(f"บันทึกไม่สำเร็จ: {e}")
-        
-            # =====================================================
-            # DELETE
-            # =====================================================
-        
-            if col_delete.form_submit_button("🗑️ ลบสินค้า"):
-        
-                try:
-        
-                    delete_row(
-                        "products",
-                        "product_id",
-                        p["product_id"]
+            
+                    thickness = c2.number_input(
+                        "สูง/หนา [mm]",
+                        min_value=0.0,
+                        value=float(p.get("thickness") or 0)
                     )
-        
-                    st.success("ลบสินค้าแล้ว")
-                    time.sleep(1)
-                    st.rerun()
-        
-                except Exception as e:
-                    st.error(f"ลบไม่ได้ อาจมีข้อมูลอื่นอ้างอิงสินค้านี้อยู่: {e}")
+            
+                    unit_volume = height * width * thickness
+            
+                # =====================================================
+                # กระบอกทึบ
+                # =====================================================
+            
+                elif shape == "ทรงกระบอกทึบ":
+            
+                    od = c2.number_input(
+                        "เส้นผ่านศูนย์กลาง (OD) [mm]",
+                        min_value=0.0,
+                        value=float(p.get("outer_diameter") or 0)
+                    )
+            
+                    unit_volume = math.pi * ((od / 2) ** 2) * height
+            
+                # =====================================================
+                # กระบอกกลวง
+                # =====================================================
+            
+                else:
+            
+                    od = c2.number_input(
+                        "เส้นผ่านศูนย์กลาง (OD) [mm]",
+                        min_value=0.0,
+                        value=float(p.get("outer_diameter") or 0)
+                    )
+            
+                    thickness = c2.number_input(
+                        "ความหนาของเนื้อชิ้นงาน [mm]",
+                        min_value=0.0,
+                        value=float(p.get("thickness") or 0)
+                    )
+            
+                    id_inner = max(0.0, od - (2 * thickness))
+            
+                    unit_volume = math.pi * (
+                        ((od / 2) ** 2)
+                        - ((id_inner / 2) ** 2)
+                    ) * height
+            
+                # =====================================================
+                # แสดงปริมาตร
+                # =====================================================
+            
+                st.info(f"💡 ปริมาตรใหม่: {unit_volume:,.2f} mm³")
+            
+                # =====================================================
+                # BUTTONS
+                # =====================================================
+            
+                col_save, col_delete = st.columns(2)
+            
+                # =====================================================
+                # SAVE
+                # =====================================================
+            
+                if col_save.form_submit_button("💾 บันทึกสินค้า"):
+            
+                    try:
+            
+                        update_row(
+                            "products",
+                            "product_id",
+                            p["product_id"],
+                            {
+                                "product_code": product_code,
+                                "product_name": product_name,
+                                "surface_finish": surface_finish,
+                                "shape": shape,
+                                "height": height,
+                                "width": width,
+                                "thickness": thickness,
+                                "outer_diameter": od,
+                                "inner_diameter": id_inner,
+                                "unit_volume": unit_volume
+                            }
+                        )
+            
+                        st.success("บันทึกข้อมูลสินค้าแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+            
+                    except Exception as e:
+                        st.error(f"บันทึกไม่สำเร็จ: {e}")
+            
+                # =====================================================
+                # DELETE
+                # =====================================================
+            
+                if col_delete.form_submit_button("🗑️ ลบสินค้า"):
+            
+                    try:
+            
+                        delete_row(
+                            "products",
+                            "product_id",
+                            p["product_id"]
+                        )
+            
+                        st.success("ลบสินค้าแล้ว")
+                        time.sleep(1)
+                        st.rerun()
+            
+                    except Exception as e:
+                        st.error(f"ลบไม่ได้ อาจมีข้อมูลอื่นอ้างอิงสินค้านี้อยู่: {e}")
 
     with tab_jig:
         st.subheader("🛠️ แก้ไข / ลบจิ๊ก")
