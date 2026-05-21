@@ -626,7 +626,7 @@ def show_data_editor():
                     except Exception as e:
                         st.error(f"บันทึกไม่สำเร็จ: {e}")
 
-                if delete_btn:
+                if col_delete.form_submit_button("🗑️ ลบสินค้า"):
                     try:
                         delete_row("products", "product_id", p["product_id"])
                         st.success("ลบสินค้าแล้ว")
