@@ -776,43 +776,40 @@ def show_data_editor():
                 
                 current_color = log.get("color") or "clear"
                 
+                if current_color not in color_options:
+                    current_color = "clear"
+                
                 selected_color = st.selectbox(
                     "เลือกสี",
                     color_options,
-                    index=color_options.index(current_color)
-                    if current_color in color_options else 0
+                    index=color_options.index(current_color),
+                    key=f"edit_color_{id_val}"
                 )
                 
-                # ===== เลือกบ่อสี =====
-                tank_names = ["- ยังไม่ลงบ่อ -"] + list(tank_options.keys())
+                # =================================================
+                # เลือกบ่อสี (เฉพาะกรณีไม่ใช่ clear)
+                # =================================================
                 
-                current_tank_name = (
-                    log.get("tank_name_snapshot")
-                    or "- ยังไม่ลงบ่อ -"
-                )
+                selected_tank_name = None
                 
-                # กันกรณีไม่มีชื่อบ่อใน list
-                if current_tank_name not in tank_names:
-                    current_tank_name = "- ยังไม่ลงบ่อ -"
+                if selected_color != "clear":
                 
-                selected_tank_name = st.selectbox(
-                    "เลือกบ่อสี",
-                    tank_names,
-                    index=tank_names.index(current_tank_name)
-                )
+                    tank_names = ["- ยังไม่ลงบ่อ -"] + list(tank_options.keys())
                 
-                selected_tank_name = st.selectbox(
-                    "เลือกบ่อสี",
-                    tank_names,
-                    index=tank_names.index(current_tank_name)
-                )
+                    current_tank_name = (
+                        log.get("tank_name_snapshot")
+                        or "- ยังไม่ลงบ่อ -"
+                    )
                 
-                selected_tank_id = (
-                    None
-                    if selected_tank_name == "- ยังไม่ลงบ่อ -"
-                    else tank_options[selected_tank_name]
-                )
-
+                    if current_tank_name not in tank_names:
+                        current_tank_name = "- ยังไม่ลงบ่อ -"
+                
+                    selected_tank_name = st.selectbox(
+                        "เลือกบ่อสี",
+                        tank_names,
+                        index=tank_names.index(current_tank_name),
+                        key=f"edit_tank_{id_val}"
+                    )
                 col1, col2, col3 = st.columns(3)
                 pcs_per_row = col1.number_input("จำนวนต่อแถว", min_value=0, value=int(log.get("pcs_per_row") or 0))
                 rows_filled = col2.number_input("แถวที่เต็ม", min_value=0, value=int(log.get("rows_filled") or 0))
@@ -917,11 +914,11 @@ def show_data_editor():
                             "partial_pieces": partial_pieces,
                             "total_pieces": total_pieces,
                         
-                            # ===== สี + บ่อสี =====
                             "color": selected_color,
+                        
                             "tank_name_snapshot": (
                                 None
-                                if selected_tank_name == "- ยังไม่ลงบ่อ -"
+                                if selected_color == "clear"
                                 else selected_tank_name
                             )
                         })
