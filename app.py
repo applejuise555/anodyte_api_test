@@ -883,29 +883,7 @@ def show_data_editor():
                             index=tank_index,
                             key=f"tank_select_{id_val}"
                         )
-                    selected_color = selected_color_name.lower().strip()
-    
-                    # =====================================================
-                    # เลือกบ่อสี
-                    # =====================================================
-                    
-                    current_tank_name = log.get("tank_name_snapshot") or ""
-                    
-                    selected_color = selected_color_name.strip().lower()
 
-                    if selected_color == "clear":
-                    
-                        selected_tank_name = None
-                        st.info("🪟 สี Clear ไม่ต้องเลือกบ่อสี")
-                    
-                    else:
-                    
-                        selected_tank_name = st.selectbox(
-                            "เลือกบ่อสี",
-                            tank_names,
-                            index=tank_index,
-                            key=f"tank_select_edit_{id_val}"
-                        )
                     # =====================================================
                     # จำนวน
                     # =====================================================
