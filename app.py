@@ -501,42 +501,38 @@ def tank_record_dialog(clicked_tank_name, color_tanks, chemical_tanks):
 
         is_sealer = "sealer" in clicked_tank_name.lower() or "seal" in clicked_tank_name.lower()
 
+        # ปรับการแจ้งเตือน
         if is_sealer:
-            st.info(f"💡 บ่อ {clicked_tank_name}: บันทึกเฉพาะค่า **Temperature**")
+            st.info(f"💡 บ่อ {clicked_tank_name}: บันทึกค่า **Temperature และ pH**")
         else:
             st.info(f"💡 บ่อ {clicked_tank_name}: บันทึกค่า **Temp, pH และ Density**")
 
         with st.form("dialog_chemical_log_form", clear_on_submit=True):
             temp_val = st.number_input("อุณหภูมิ (°C)", step=0.1, format="%.1f")
 
-            ph_val = None
-            den_val = None
-
-            if not is_sealer:
+            # แยกเงื่อนไข: บ่อ Sealer ให้เก็บ pH ได้ แต่ไม่ต้องเก็บ Density (ความหนาแน่น)
+            if is_sealer:
+                ph_val = st.number_input("ค่า pH", step=0.01, format="%.2f")
+                den_val = 0.0  # บ่อ seal ไม่เก็บค่า density ให้เป็น 0.0 ไว้เหมือนเดิม
+            else:
                 ph_val = st.number_input("ค่า pH", step=0.01, format="%.2f")
                 den_val = st.number_input("ความหนาแน่น (Density)", step=0.001, format="%.3f")
 
             if st.form_submit_button("💾 บันทึกข้อมูล"):
                 payload = {
-                "tank_id": chemical_tanks[clicked_tank_name],
-                "tank_name_snapshot": clicked_tank_name,
-                "temperature": temp_val,
-                "recorded_at": datetime.now(ICT).isoformat()
-            }
-
-                if not is_sealer:
-                    payload["ph_value"] = ph_val
-                    payload["density"] = den_val
-                else:
-                    payload["ph_value"] = 0.0
-                    payload["density"] = 0.0
+                    "tank_id": chemical_tanks[clicked_tank_name],
+                    "tank_name_snapshot": clicked_tank_name,
+                    "temperature": temp_val,
+                    "ph_value": ph_val,    # บันทึกค่า pH ที่กรอกเข้าไป
+                    "density": den_val,    # บันทึกค่า density ตามที่ระบุข้างต้น
+                    "recorded_at": datetime.now(ICT).isoformat()
+                }
 
                 supabase.table("anodize_tank_logs").insert(payload).execute()
                 st.success(f"✅ บันทึกข้อมูลบ่อ {clicked_tank_name} สำเร็จ")
                 st.session_state["open_tank_dialog"] = False
                 time.sleep(1)
                 st.rerun()
-
     else:
         st.warning(
             f"ไม่พบบ่อ `{clicked_tank_name}` ในฐานข้อมูล tanks "
@@ -1290,144 +1286,89 @@ def show_data_editor():
                             st.rerun()
 
     with tab_chemical:
-
         st.subheader(f"🧪 บันทึกบ่อสารเคมีวันที่ {filter_date.strftime('%d/%m/%Y')}")
-    
         start_dt = f"{filter_date_str}T00:00:00"
         end_dt = f"{filter_date_str}T23:59:59"
-    
         chem_logs = supabase.table("anodize_tank_logs")\
             .select("*, tanks(tank_name)")\
             .gte("recorded_at", start_dt)\
             .lte("recorded_at", end_dt)\
             .order("recorded_at", desc=True)\
             .execute().data or []
-    
+
         if not chem_logs:
             st.warning("📅 ไม่มีบันทึกบ่อสารเคมี")
-    
         else:
-    
             df_chem = pd.DataFrame(chem_logs)
-    
             df_chem["recorded_at"] = pd.to_datetime(df_chem["recorded_at"])\
                 .dt.tz_convert(ICT)
-    
             df_chem["tank_name"] = df_chem["tanks"]\
                 .apply(lambda x: x.get("tank_name") if isinstance(x, dict) else "-")
-    
             df_chem["เวลา"] = df_chem["recorded_at"].dt.strftime("%H:%M")
-    
+
             # ===== เลือกบ่อ =====
             chem_tanks = sorted(df_chem["tank_name"].dropna().unique())
-    
             selected_chem = st.selectbox(
-                "เลือกบ่อสารเคมี",
-                chem_tanks,
-                key="chem_tank_filter"
+                "เลือกบ่อสารเคมี", chem_tanks, key="chem_tank_filter"
             )
-    
-            chem_df = df_chem[
-                df_chem["tank_name"] == selected_chem
-            ].copy()
-    
-            is_sealer = (
-                "seal" in selected_chem.lower()
-                or "sealer" in selected_chem.lower()
-            )
-    
-            # ===== ตาราง =====
+            chem_df = df_chem[ df_chem["tank_name"] == selected_chem ].copy()
+            is_sealer = ( "seal" in selected_chem.lower() or "sealer" in selected_chem.lower() )
+
+            # ===== แสดงตารางข้อมูล =====
+            # บ่อ Sealer: ให้แสดง เวลา, pH, Temp (ไม่ต้องแสดง Density)
             if is_sealer:
-    
-                show_df = chem_df[[
-                    "เวลา",
-                    "temperature"
-                ]].rename(columns={
+                show_df = chem_df[[ "เวลา", "ph_value", "temperature" ]].rename(columns={
+                    "ph_value": "pH",
                     "temperature": "Temp"
                 })
-    
             else:
-    
-                show_df = chem_df[[
-                    "เวลา",
-                    "ph_value",
-                    "temperature",
-                    "density"
-                ]].rename(columns={
+                show_df = chem_df[[ "เวลา", "ph_value", "temperature", "density" ]].rename(columns={
                     "ph_value": "pH",
                     "temperature": "Temp",
                     "density": "Density"
                 })
-    
-            st.dataframe(
-                show_df,
-                use_container_width=True,
-                hide_index=True
-            )
-    
+
+            st.dataframe( show_df, use_container_width=True, hide_index=True )
+
             st.markdown("---")
-            st.subheader("✏️ แก้ไขข้อมูล")
-    
+            st.subheader("✏️ แก้ไขข้อมูลบ่อสารเคมี")
+
+            # ===== ฟอร์มแก้ไขรายรายการ =====
             for idx, row in chem_df.iterrows():
-    
                 with st.expander(f"⏰ {row['เวลา']}"):
-    
                     with st.form(f"edit_chem_{idx}"):
-    
-                        temperature = st.number_input(
-                            "Temperature",
-                            value=float(row["temperature"] or 0),
-                            step=0.1,
-                            format="%.1f"
+                        
+                        # ทุกบ่อมีสิทธิ์แก้ไข Temp และ pH ได้เหมือนกัน
+                        ph_value = st.number_input(
+                            "pH", value=float(row["ph_value"] or 0), step=0.01, format="%.2f", key=f"ph_{idx}"
                         )
-    
+                        temperature = st.number_input(
+                            "Temperature", value=float(row["temperature"] or 0), step=0.1, format="%.1f", key=f"temp_{idx}"
+                        )
+
+                        # บ่อสารเคมีอื่นๆ ที่ไม่ใช่บ่อ Seal ให้กรอก Density ได้
                         if not is_sealer:
-    
-                            ph_value = st.number_input(
-                                "pH",
-                                value=float(row["ph_value"] or 0),
-                                step=0.01,
-                                format="%.2f"
-                            )
-    
                             density = st.number_input(
-                                "Density",
-                                value=float(row["density"] or 0),
-                                step=0.001,
-                                format="%.3f"
+                                "Density", value=float(row["density"] or 0), step=0.001, format="%.3f", key=f"den_{idx}"
                             )
-    
+                        else:
+                            density = 0.0
+
                         col1, col2 = st.columns(2)
-    
+                        
                         if col1.form_submit_button("💾 บันทึก"):
-    
-                            payload = {
-                                "temperature": temperature
+                            update_payload = {
+                                "ph_value": ph_value,
+                                "temperature": temperature,
+                                "density": density
                             }
-    
-                            if not is_sealer:
-                                payload["ph_value"] = ph_value
-                                payload["density"] = density
-    
-                            update_row(
-                                "anodize_tank_logs",
-                                "id",
-                                row["id"],
-                                payload
-                            )
-    
+                            update_row("anodize_tank_logs", "id", row["id"], update_payload)
                             st.success("บันทึกสำเร็จ")
                             time.sleep(1)
                             st.rerun()
-    
+
                         if col2.form_submit_button("🗑️ ลบ"):
-    
-                            delete_row(
-                                "anodize_tank_logs",
-                                "id",
-                                row["id"]
-                            )
-    
+                            delete_row("anodize_tank_logs", "id", row["id"])
                             st.success("ลบสำเร็จ")
                             time.sleep(1)
                             st.rerun()
