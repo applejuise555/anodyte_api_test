@@ -1683,16 +1683,15 @@ if menu == "Dashboard":
         st.info("📅 ไม่มีข้อมูลบันทึกบ่อสีในช่วงวันที่เลือก")
 
 
-    # --- 2. Anodize/Seal (ตารางแสดงประวัติบ่อเคมีตามวันที่เลือก) ---
+    # --- 2. Anodize/Seal (ตารางแสดงประวัติบ่อเคมีตามวันที่เลือก + สกรอล์เมาส์ได้) ---
     st.markdown("---")
     st.subheader("📈 เเนวโน้มบ่อ Anodize เเละ บ่อ Seal")
     
     if not df_a_filtered.empty:
-        c_sel1, c_sel2 = st.columns([1.3, 2.7])
+        c_sel1, c_sel2 = st.columns([1.4, 2.6])
         with c_sel1:
             sel_ano = st.selectbox("เลือกบ่อ", sorted(df_a_filtered["tank_name"].dropna().unique()), key="sb_ano")
             
-            # 🌟 แก้ไข: ดึงประวัติข้อมูลทั้งหมดของบ่อที่เลือกในช่วงวันที่กรองไว้ (เรียงจากเวลาล่าสุดขึ้นก่อน)
             history_a_selected = df_a_filtered[df_a_filtered["tank_name"] == sel_ano].sort_values("recorded_at", ascending=False)
             
             st.markdown(f"**🧪 ประวัติบันทึกตามวันที่เลือก: {sel_ano}**")
@@ -1705,7 +1704,6 @@ if menu == "Dashboard":
                     v_den = float(row["density"] or 0)
                     is_seal_t = "seal" in t_name.lower()
                     
-                    # แยกตรวจสอบเกณฑ์มาตรฐาน (Seal vs Anodize)
                     if is_seal_t:
                         style_p = "color:#DC2626; font-weight:bold;" if (v_ph < STD["SEAL_PH"][0] or v_ph > STD["SEAL_PH"][1]) else ""
                         style_t = "color:#DC2626; font-weight:bold;" if (v_tmp < STD["SEAL_TEMP"][0] or v_tmp > STD["SEAL_TEMP"][1]) else ""
@@ -1726,7 +1724,18 @@ if menu == "Dashboard":
                         "Temp": txt_t,
                         "Density": txt_d
                     })
-                st.write(pd.DataFrame(chem_rows).to_html(escape=False, index=False), unsafe_allow_html=True)
+                
+                # 🌟 แปลงตารางเป็น HTML และหุ้มด้วย div เพื่อให้สามารถเลื่อน Scroll เมาส์ได้ (ความสูงสูงสุด 260px) พร้อมคงหัวตารางตรึงไว้
+                html_table_a = pd.DataFrame(chem_rows).to_html(escape=False, index=False)
+                scrollable_table_a = f"""
+                <div style="max-height: 260px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 4px;">
+                    <style>
+                        thead th {{ position: sticky; top: 0; background-color: #F8FAFC; z-index: 1; }}
+                    </style>
+                    {html_table_a}
+                </div>
+                """
+                st.write(scrollable_table_a, unsafe_allow_html=True)
             else:
                 st.caption("📅 ไม่มีข้อมูลประวัติในช่วงวันที่เลือก")
         
@@ -1792,7 +1801,7 @@ if menu == "Dashboard":
                 st.plotly_chart(fig_mix, use_container_width=True)
 
 
-    # --- 4. ตารางประวัติบันทึกข้อมูลของบ่อสีตามช่วงเวลาที่เลือก (อยู่ล่างสุด) ---
+    # --- 4. ตารางประวัติบันทึกข้อมูลของบ่อสีตามช่วงเวลาที่เลือก (อยู่ล่างสุด + สกรอล์เมาส์ได้) ---
     st.markdown("---")
     st.markdown("### 📋 ตารางประวัติบันทึกข้อมูลของบ่อสีตามช่วงเวลาที่เลือก")
     
@@ -1814,7 +1823,17 @@ if menu == "Dashboard":
                 "อุณหภูมิ (°C)": f"<span style='{style_t}'>{v_tmp:.1f}</span>" if style_t else f"{v_tmp:.1f}"
             })
             
-        st.write(pd.DataFrame(color_rows).to_html(escape=False, index=False), unsafe_allow_html=True)
+        # 🌟 แปลงตารางเป็น HTML และหุ้มด้วย div เพื่อให้สามารถเลื่อน Scroll เมาส์ได้ (ความสูงสูงสุด 350px) พร้อมคงหัวตารางตรึงไว้
+        html_table_c = pd.DataFrame(color_rows).to_html(escape=False, index=False)
+        scrollable_table_c = f"""
+        <div style="max-height: 350px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 4px;">
+            <style>
+                thead th {{ position: sticky; top: 0; background-color: #F8FAFC; z-index: 1; }}
+            </style>
+            {html_table_c}
+        </div>
+        """
+        st.write(scrollable_table_c, unsafe_allow_html=True)
     else:
         st.caption("📅 ไม่มีข้อมูลบันทึกบ่อสีในวันที่และเวลาที่กำหนด")
 # ================= RECORD PAGE =================
