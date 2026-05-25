@@ -876,7 +876,7 @@ def show_data_editor():
                 # แสดงปริมาตร
                 # =====================================================
             
-                st.info(f"💡 ปริมาตรใหม่: {unit_volume:,.2f} mm³")
+                st.info(f"💡 พื้นที่ผิวใหม่: {unit_surface_area:,.2f} mm²")
             
                 # =====================================================
                 # BUTTONS
@@ -906,7 +906,7 @@ def show_data_editor():
                                 "thickness": thickness,
                                 "outer_diameter": od,
                                 "inner_diameter": id_inner,
-                                "unit_volume": unit_volume
+                                "unit_surface_area": unit_volume
                             }
                         )
             
@@ -1221,9 +1221,8 @@ def show_data_editor():
                 # =====================================================
 
                 if save_btn:
-
                     try:
-
+                        # 1. ดึงข้อมูลสินค้า
                         product_info = (
                             supabase.table("products")
                             .select("*")
@@ -1233,25 +1232,20 @@ def show_data_editor():
                             .data
                         )
 
-                        width = float(product_info.get("width_mm") or 0)
-                        height = float(product_info.get("height_mm") or 0)
-                        length = float(product_info.get("length_mm") or 0)
+                        # ดึงพื้นที่ผิวชิ้นงานเดี่ยว
+                        surface_area_per_piece = float(product_info.get("unit_surface_area") or 0)
 
-                        volume_per_piece = (
-                            width * height * length
-                        ) / 1000000
+                        # คำนวณพื้นที่ผิวรวมของแถวนี้
+                        log_total_surface_area = surface_area_per_piece * total_pieces
 
-                        log_total_volume = (
-                            volume_per_piece * total_pieces
-                        )
-
+                        # 2. เตรียมข้อมูลอัปเดตตาราง jig_usage_log (เปลี่ยนคีย์เป็น total_surface_area แล้ว)
                         update_payload = {
                             "product_id": selected_prod_id,
                             "pcs_per_row": pcs_per_row,
                             "rows_filled": rows_filled,
                             "partial_pieces": partial_pieces,
                             "total_pieces": total_pieces,
-                            "total_volume": log_total_volume,
+                            "total_surface_area": log_total_surface_area, # 👈 เปลี่ยนจาก total_volume
                             "color": selected_color_name,
                             "tank_name_snapshot": selected_tank_name
                         }
@@ -1264,31 +1258,33 @@ def show_data_editor():
                         )
 
                         # =====================================================
-                        # รวม total volume ของทั้งจิ๊ก
+                        # รวม total surface area ของทั้งจิ๊ก
                         # =====================================================
-
                         jig_id = log.get("jig_id")
 
+                        # ดึงข้อมูลมาบวกกัน (เปลี่ยนคำสั่ง select ให้ดึงคอลัมน์ใหม่ด้วย)
                         all_logs = (
                             supabase.table("jig_usage_log")
-                            .select("total_volume")
+                            .select("total_surface_area") # 👈 เปลี่ยนดึงค่าจากคอลัมน์ใหม่
                             .eq("jig_id", jig_id)
                             .execute()
                             .data
                             or []
                         )
 
-                        total_jig_volume = sum([
-                            float(x.get("total_volume") or 0)
+                        # รวมพื้นที่ผิวทั้งหมดบนโครงจิ๊กนี้
+                        total_jig_surface_area = sum([
+                            float(x.get("total_surface_area") or 0) # 👈 เปลี่ยนดึงค่าจากคอลัมน์ใหม่
                             for x in all_logs
                         ])
 
+                        # อัปเดตยอดรวมพื้นที่ผิวลงตารางโครงจิ๊กหลัก (jigs) (เปลี่ยนคีย์เป็น total_surface_area)
                         update_row(
                             "jigs",
                             "jig_id",
                             jig_id,
                             {
-                                "total_volume": total_jig_volume
+                                "total_surface_area": total_jig_surface_area # 👈 เปลี่ยนจาก total_volume
                             }
                         )
 
@@ -1298,7 +1294,6 @@ def show_data_editor():
 
                     except Exception as e:
                         st.error(f"บันทึกไม่สำเร็จ: {e}")
-
                 # =====================================================
                 # DELETE
                 # =====================================================
