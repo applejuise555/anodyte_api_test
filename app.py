@@ -906,7 +906,7 @@ def show_data_editor():
                                 "thickness": thickness,
                                 "outer_diameter": od,
                                 "inner_diameter": id_inner,
-                                "unit_surface_area": unit_volume
+                                "unit_surface_area": float(unit_surface_area)
                             }
                         )
             
@@ -2236,20 +2236,20 @@ if menu == "บันทึกข้อมูลการผลิต":
                                     # ===== คำนวณ =====
                                     total_pcs = (rows * pcs) + partial
                             
-                                    unit_vol = p_info.get("unit_volume", 0) if p_info else 0
-                            
-                                    total_vol = unit_vol * total_pcs
+                                    unit_surface_area = float(p_info.get("unit_surface_area") or 0) if p_info else 0
+
+                                    total_surface_area = unit_surface_area * total_pcs
+                                    
+                                    c2.metric(
+                                        "พื้นที่ผิวรวม (mm²)",
+                                        f"{total_surface_area:,.2f}"
+                                    )
                             
                                     # ===== แสดงผล =====
                                     c2.metric(
                                         "จำนวนรวม (Pcs)",
                                         total_pcs
-                                    )
-                            
-                                    c2.metric(
-                                        "ปริมาตรรวม (mm³)",
-                                        f"{total_vol:,.2f}"
-                                    )
+                    
                             
                                     # =====================================================
                                     # SAVE
@@ -2267,7 +2267,7 @@ if menu == "บันทึกข้อมูลการผลิต":
                                                 "status": status_value,
                                                 "total_pieces": total_pcs,
                                                 # 💡 แก้ไขจุดที่ 1: ดึงค่าจากตัวแปรคำนวณจริง (total_vol) ส่งเข้าฟิลด์ total_surface_area ของฐานข้อมูล
-                                                "total_surface_area": total_vol,  
+                                                "total_surface_area": float(total_surface_area),
                                                 "recorded_date": datetime.now(ICT).isoformat(),
                                                 "rows_filled": rows,
                                                 "partial_pieces": partial,
@@ -2287,12 +2287,14 @@ if menu == "บันทึกข้อมูลการผลิต":
                                             current_active = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", jig_id).neq("status", "finished").execute().data or []
                                             
                                             total_pcs_combined = sum([int(item.get("total_pieces") or 0) for item in current_active])
-                                            total_vol_combined = sum([float(item.get("total_surface_area") or 0) for item in current_active])
-                                    
-                                            # 4. อัปเดตข้อมูลสะสมกลับไปยังโครงจิ๊กหลัก (jigs)
+                                            total_surface_area_combined = sum([
+                                                float(item.get("total_surface_area") or 0)
+                                                for item in current_active
+                                            ])
+                                            
                                             supabase.table("jigs").update({
                                                 "total_pcs_in_jig": total_pcs_combined,
-                                                "total_surface_area": total_vol_combined
+                                                "total_surface_area": total_surface_area_combined
                                             }).eq("jig_id", jig_id).execute()
                                             
                                             st.success("✅ บันทึกสำเร็จ")
