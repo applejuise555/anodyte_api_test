@@ -2274,7 +2274,7 @@ if menu == "บันทึกข้อมูลการผลิต":
                                                 "tank_name_snapshot": selected_tank_name,
                                                 "status": status_value,
                                                 "total_pieces": total_pcs,
-                                                "total_volume": total_vol,
+                                                "total_surface_area": total_vol,
                                                 "recorded_date": datetime.now(ICT).isoformat(),
                                                 "rows_filled": rows,
                                                 "partial_pieces": partial,
@@ -2298,14 +2298,14 @@ if menu == "บันทึกข้อมูลการผลิต":
                                             }).execute()
                                             
                                             # 🛠️ จุดแก้ไขที่ 1: คำนวณหาผลรวมยอดสะสมทั้งหมดของโครงจิ๊กนี้ในปัจจุบัน
-                                            all_active_logs = supabase.table("jig_usage_log").select("total_pieces, total_volume").eq("jig_id", jig_id).neq("status", "finished").execute().data or []
+                                            all_active_logs = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", jig_id).neq("status", "finished").execute().data or []
                                             sum_pcs = sum([int(x.get("total_pieces") or 0) for x in all_active_logs])
-                                            sum_vol = sum([float(x.get("total_volume") or 0) for x in all_active_logs])
+                                            sum_vol = sum([float(x.get("total_surface_area") or 0) for x in all_active_logs])
 
                                             # ===== อัปเดตข้อมูลรวมเข้าตาราง jigs หลัก =====
                                             supabase.table("jigs").update({
                                                 "total_pcs_in_jig": sum_pcs,
-                                                "total_volume": sum_vol
+                                                "total_surface_area": sum_vol
                                             }).eq("jig_id", jig_id).execute()
                                             
                                             st.success("✅ บันทึกสำเร็จ")
@@ -2405,13 +2405,13 @@ if menu == "บันทึกข้อมูลการผลิต":
                         }).execute()
 
                         # 🛠️ จุดแก้ไขที่ 2: อัปเดตบ่อสีสะท้อนกลับไปที่ตารางโครงจิ๊กหลัก (jigs) ด้วย
-                        all_active_logs = supabase.table("jig_usage_log").select("total_pieces, total_volume").eq("jig_id", current_jig_id).neq("status", "finished").execute().data or []
+                        all_active_logs = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", current_jig_id).neq("status", "finished").execute().data or []
                         sum_pcs = sum([int(x.get("total_pieces") or 0) for x in all_active_logs])
-                        sum_vol = sum([float(x.get("total_volume") or 0) for x in all_active_logs])
+                        sum_vol = sum([float(x.get("total_surface_area") or 0) for x in all_active_logs])
 
                         supabase.table("jigs").update({
                             "total_pcs_in_jig": sum_pcs,
-                            "total_volume": sum_vol
+                            "total_surface_area": sum_vol
                         }).eq("jig_id", current_jig_id).execute()
                 
                         st.success("✅ อัปเดตบ่อสีสำเร็จ")
@@ -2515,13 +2515,13 @@ if menu == "บันทึกข้อมูลการผลิต":
                         
                         # 🛠️ จุดแก้ไขที่ 3: คำนวณยอดคงเหลือใหม่สำหรับทุกจิ๊กที่พึ่งโดนปิดงานไป (ถ้าไม่มีงานค้าง ยอดต้องเป็น 0)
                         for target_jig_id in jigs_to_refresh:
-                            remain_logs = supabase.table("jig_usage_log").select("total_pieces, total_volume").eq("jig_id", target_jig_id).neq("status", "finished").execute().data or []
+                            remain_logs = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", target_jig_id).neq("status", "finished").execute().data or []
                             remain_pcs = sum([int(x.get("total_pieces") or 0) for x in remain_logs])
-                            remain_vol = sum([float(x.get("total_volume") or 0) for x in remain_logs])
+                            remain_vol = sum([float(x.get("total_surface_area") or 0) for x in remain_logs])
                             
                             supabase.table("jigs").update({
                                 "total_pcs_in_jig": remain_pcs,
-                                "total_volume": remain_vol
+                                "total_surface_area": remain_vol
                             }).eq("jig_id", target_jig_id).execute()
         
                         st.success(f"✅ ปิดงานสำเร็จ {close_count} รายการ")
