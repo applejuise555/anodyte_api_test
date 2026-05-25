@@ -2254,9 +2254,7 @@ if menu == "บันทึกข้อมูลการผลิต":
                                     # =====================================================
                                     # SAVE
                                     # =====================================================
-                                    # =====================================================
-                                    # SAVE
-                                    # =====================================================
+                               
                                     if st.form_submit_button("💾 บันทึก"):
                                         try:
                                             # 1. บันทึกประวัติลง jig_usage_log
@@ -2268,7 +2266,7 @@ if menu == "บันทึกข้อมูลการผลิต":
                                                 "tank_name_snapshot": selected_tank_name,
                                                 "status": status_value,
                                                 "total_pieces": total_pcs,
-                                                # 💡 แก้ไขตัวแปรขวามือ: แมปเอาผลลัพธ์ของ total_vol ส่งเข้าเซฟในฟิลด์ total_surface_area ของ DB
+                                                # 💡 แก้ไขจุดที่ 1: ดึงค่าจากตัวแปรคำนวณจริง (total_vol) ส่งเข้าฟิลด์ total_surface_area ของฐานข้อมูล
                                                 "total_surface_area": total_vol,  
                                                 "recorded_date": datetime.now(ICT).isoformat(),
                                                 "rows_filled": rows,
@@ -2285,12 +2283,13 @@ if menu == "บันทึกข้อมูลการผลิต":
                                             }).execute()
                                             
                                             # 3. ดึงรายการที่ยังทำไม่เสร็จมาคำนวณยอดสะสมอัปเดตลงตารางโครงจิ๊กหลัก (jigs)
+                                            # 💡 แก้ไขจุดที่ 2: เปลี่ยนคำสั่งดึงคอลัมน์จาก "total_volume" ให้เป็น "total_surface_area" เพื่อความถูกต้อง
                                             current_active = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", jig_id).neq("status", "finished").execute().data or []
                                             
                                             total_pcs_combined = sum([int(item.get("total_pieces") or 0) for item in current_active])
                                             total_vol_combined = sum([float(item.get("total_surface_area") or 0) for item in current_active])
                                     
-                                            # อัปเดตข้อมูลสะสมกลับไปยังโครงจิ๊กหลัก
+                                            # 4. อัปเดตข้อมูลสะสมกลับไปยังโครงจิ๊กหลัก (jigs)
                                             supabase.table("jigs").update({
                                                 "total_pcs_in_jig": total_pcs_combined,
                                                 "total_surface_area": total_vol_combined
@@ -2302,7 +2301,6 @@ if menu == "บันทึกข้อมูลการผลิต":
                                             
                                         except Exception as e:
                                             st.error(f"เกิดข้อผิดพลาดในการบันทึก: {str(e)}")
-
         # =========================================================
         # 🎨 TAB อัปเดตลงบ่อสี
         # =========================================================
