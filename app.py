@@ -2254,9 +2254,12 @@ if menu == "บันทึกข้อมูลการผลิต":
                                     # =====================================================
                                     # SAVE
                                     # =====================================================
+                                    # =====================================================
+                                    # SAVE
+                                    # =====================================================
                                     if st.form_submit_button("💾 บันทึก"):
                                         try:
-                                            # 1. บันทึกประวัติลง jig_usage_log (แก้ไขชื่อตัวแปรที่รับค่า)
+                                            # 1. บันทึกประวัติลง jig_usage_log
                                             supabase.table("jig_usage_log").insert({
                                                 "product_id": selected_prod_id,
                                                 "jig_id": jig_id,
@@ -2265,7 +2268,8 @@ if menu == "บันทึกข้อมูลการผลิต":
                                                 "tank_name_snapshot": selected_tank_name,
                                                 "status": status_value,
                                                 "total_pieces": total_pcs,
-                                                "total_surface_area": total_vol,  # 💡 แก้จาก total_vol เป็น total_surface_area ตัวจริง
+                                                # 💡 แก้ไขตัวแปรขวามือ: แมปเอาผลลัพธ์ของ total_vol ส่งเข้าเซฟในฟิลด์ total_surface_area ของ DB
+                                                "total_surface_area": total_vol,  
                                                 "recorded_date": datetime.now(ICT).isoformat(),
                                                 "rows_filled": rows,
                                                 "partial_pieces": partial,
@@ -2281,13 +2285,12 @@ if menu == "บันทึกข้อมูลการผลิต":
                                             }).execute()
                                             
                                             # 3. ดึงรายการที่ยังทำไม่เสร็จมาคำนวณยอดสะสมอัปเดตลงตารางโครงจิ๊กหลัก (jigs)
-                                            # 💡 แก้ไขจาก "total_volume" ให้เป็นคอลัมน์จริงคือ "total_surface_area"
                                             current_active = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", jig_id).neq("status", "finished").execute().data or []
                                             
                                             total_pcs_combined = sum([int(item.get("total_pieces") or 0) for item in current_active])
                                             total_vol_combined = sum([float(item.get("total_surface_area") or 0) for item in current_active])
-                    
-                                            # อัปเดตข้อมูลกลับไปยังโครงจิ๊กหลัก
+                                    
+                                            # อัปเดตข้อมูลสะสมกลับไปยังโครงจิ๊กหลัก
                                             supabase.table("jigs").update({
                                                 "total_pcs_in_jig": total_pcs_combined,
                                                 "total_surface_area": total_vol_combined
