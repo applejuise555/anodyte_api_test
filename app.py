@@ -2265,7 +2265,7 @@ if menu == "บันทึกข้อมูลการผลิต":
                                                 "tank_name_snapshot": selected_tank_name,
                                                 "status": status_value,
                                                 "total_pieces": total_pcs,
-                                                "total_surface_area": total_surface_area,  # 💡 แก้จาก total_vol เป็น total_surface_area ตัวจริง
+                                                "total_surface_area": total_vol,  # 💡 แก้จาก total_vol เป็น total_surface_area ตัวจริง
                                                 "recorded_date": datetime.now(ICT).isoformat(),
                                                 "rows_filled": rows,
                                                 "partial_pieces": partial,
