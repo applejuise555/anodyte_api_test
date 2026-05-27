@@ -716,11 +716,7 @@ def show_data_editor():
     with tab_product:
         st.subheader("📦 แก้ไข / ลบสินค้า")
         try:
-            products = supabase.table("products") \
-                .select("*") \
-                .order("product_code") \
-                .execute().data or []
-        
+            products = supabase.table("products").select("*").order("product_code").execute().data or []
         except Exception as e:
             st.error(f"โหลดข้อมูลสินค้าไม่สำเร็จ: {e}")
             products = []
@@ -732,171 +728,85 @@ def show_data_editor():
             selected_label = st.selectbox("เลือกสินค้า", list(product_map.keys()), key="edit_product_select")
             p = product_map[selected_label]
 
-            with st.form("edit_product_form"):
+            # 🛠️ ย้ายกล่องเลือกรูปทรงออกมาไว้นอก st.form เพื่อให้ช่องกรอกอัปเดตตามทันที
+            current_shape = p.get("shape") or "สี่เหลี่ยม"
+            shape_options = ["สี่เหลี่ยม", "ทรงกระบอกทึบ", "ทรงกระบอกกลวง", "สี่เหลี่ยมโดนัท"]
+            
+            if current_shape in shape_options:
+                shape_index = shape_options.index(current_shape)
+            else:
+                shape_index = 0
 
-                # =====================================================
-                # โหลดค่าปัจจุบัน
-                # =====================================================
-            
-                current_shape = p.get("shape") or "สี่เหลี่ยม"
-            
-                shape_options = [
-                    "สี่เหลี่ยม",
-                    "ทรงกระบอกทึบ",
-                    "ทรงกระบอกกลวง",
-                    "สี่เหลี่ยมกลวง (โดนัท)"
-                ]
-            
-                if current_shape in shape_options:
-                    shape_index = shape_options.index(current_shape)
-                else:
-                    shape_index = 0
-            
-                # =====================================================
-                # ข้อมูลพื้นฐาน
-                # =====================================================
-            
+            shape = st.selectbox(
+                "📐 แก้ไขรูปทรง",
+                shape_options,
+                index=shape_index,
+                key=f"edit_shape_select_{p['product_id']}"
+            )
+
+            # เข้าสู่ฟอร์มกรอกข้อมูลตามเงื่อนไขรูปทรง
+            with st.form("edit_product_form"):
                 c1, c2 = st.columns(2)
+                
+                product_code = c1.text_input("รหัสสินค้า", value=p.get("product_code", ""), disabled=True)
+                product_name = c1.text_input("ชื่อสินค้า", value=p.get("product_name", ""))
+                surface_finish = c1.text_input("พื้นผิว", value=p.get("surface_finish", ""))
             
-                product_code = c1.text_input(
-                    "รหัสสินค้า",
-                    value=p.get("product_code", "")
-                )
-            
-                product_name = c1.text_input(
-                    "ชื่อสินค้า",
-                    value=p.get("product_name", "")
-                )
-            
-                surface_finish = c1.text_input(
-                    "พื้นผิว",
-                    value=p.get("surface_finish", "")
-                )
-            
-                # =====================================================
-                # เลือกรูปทรง
-                # =====================================================
-            
-                shape = c1.selectbox(
-                    "📐 เลือกรูปทรง",
-                    shape_options,
-                    index=shape_index,
-                    key=f"edit_shape_{p['product_id']}"
-                )
-            
-                # =====================================================
-                # โหลดค่ามิติเดิม
-                # =====================================================
-            
-                height = c2.number_input(
-                    "ความยาว/ความสูง (H) [mm]",
-                    min_value=0.0,
-                    value=float(p.get("height") or 0)
-                )
+                height = c2.number_input("ความยาว/ความสูง (H) [mm]", min_value=0.0, value=float(p.get("height") or 0))
             
                 width = 0.0
                 thickness = 0.0
                 od = 0.0
                 id_inner = 0.0
+                unit_surface_area = 0.0
             
-                # =====================================================
-                # สี่เหลี่ยม (ทรงบล็อกสี่เหลี่ยมมุมฉาก)
-                # สูตรพื้นที่ผิวเดิม = 2*(กว้าง*ยาว + กว้าง*หนา + ยาว*หนา)
-                # =====================================================
+                # --- ตรวจสอบเงื่อนไขรูปทรงเพื่อแสดงผลช่องรับข้อมูลช่องที่ 2 ---
                 if shape == "สี่เหลี่ยม":
-                
-                    width = c2.number_input(
-                        "กว้าง [mm]",
-                        min_value=0.0,
-                        value=float(p.get("width") or 0)
-                    )
-                
-                    thickness = c2.number_input(
-                        "สูง/หนา [mm]",
-                        min_value=0.0,
-                        value=float(p.get("thickness") or 0)
-                    )
-                
-                    # คำนวณพื้นที่ผิวรวมของกล่องสี่เหลี่ยม
+                    width = c2.number_input("กว้าง [mm]", min_value=0.0, value=float(p.get("width") or 0))
+                    thickness = c2.number_input("สูง/หนา [mm]", min_value=0.0, value=float(p.get("thickness") or 0))
                     unit_surface_area = 2 * ((width * height) + (width * thickness) + (height * thickness))
                 
-                # =====================================================
-                # กระบอกทึบ
-                # สูตรพื้นที่ผิว = (2 * pi * r * h) + (2 * pi * r^2)
-                # =====================================================
                 elif shape == "ทรงกระบอกทึบ":
-                
-                    od = c2.number_input(
-                        "เส้นผ่านศูนย์กลาง (OD) [mm]",
-                        min_value=0.0,
-                        value=float(p.get("outer_diameter") or 0)
-                    )
-                
+                    od = c2.number_input("เส้นผ่านศูนย์กลาง (OD) [mm]", min_value=0.0, value=float(p.get("outer_diameter") or 0))
                     r_outer = od / 2
-                    # พื้นที่ผิวข้าง + พื้นที่หน้าตัดหัวท้าย
                     unit_surface_area = (2 * math.pi * r_outer * height) + (2 * math.pi * (r_outer ** 2))
                 
-                # =====================================================
-                # กระบอกกลวง (เช่น ท่อ)
-                # สูตรพื้นที่ผิว = พื้นที่ผิวข้างนอก + พื้นที่ผิวข้างใน + พื้นที่หน้าตัดวงแหวนหัวท้าย 2 ฝั่ง
-                # =====================================================
-                else:
-                
-                    od = c2.number_input(
-                        "เส้นผ่านศูนย์กลาง (OD) [mm]",
-                        min_value=0.0,
-                        value=float(p.get("outer_diameter") or 0)
-                    )
-                
-                    thickness = c2.number_input(
-                        "ความหนาของเนื้อชิ้นงาน [mm]",
-                        min_value=0.0,
-                        value=float(p.get("thickness") or 0)
-                    )
-                
+                elif shape == "ทรงกระบอกกลวง":
+                    od = c2.number_input("เส้นผ่านศูนย์กลาง (OD) [mm]", min_value=0.0, value=float(p.get("outer_diameter") or 0))
+                    thickness = c2.number_input("ความหนาของเนื้อชิ้นงาน [mm]", min_value=0.0, value=float(p.get("thickness") or 0))
                     id_inner = max(0.0, od - (2 * thickness))
-                    
                     r_outer = od / 2
                     r_inner = id_inner / 2
-                
-                    # 1. พื้นที่ผิวข้างนอก = 2 * pi * R * H
+                    
                     side_outer = 2 * math.pi * r_outer * height
-                    # 2. พื้นที่ผิวข้างใน = 2 * pi * r * H
                     side_inner = 2 * math.pi * r_inner * height
-                    # 3. พื้นที่หน้าตัดวงแหวนหัวท้าย 2 ด้าน = 2 * pi * (R^2 - r^2)
                     base_rings = 2 * math.pi * ((r_outer ** 2) - (r_inner ** 2))
-                
                     unit_surface_area = side_outer + side_inner + base_rings
-                
-                # =====================================================
-                # แสดงพื้นที่ผิวรวม
-                # =====================================================
+
+                # 🌟 เงื่อนไขสี่เหลี่ยมโดนัท: แสดงผลดึงข้อมูลเก่าจาก OD และ ID ออกมาแก้ไข
+                elif shape == "สี่เหลี่ยมโดนัท":
+                    width = c2.number_input("ความกว้างภายนอก [mm]", min_value=0.0, value=float(p.get("width") or 0))
+                    thickness = c2.number_input("ความหนาของชิ้นงาน [mm]", min_value=0.0, value=float(p.get("thickness") or 0))
+                    
+                    width_inner = c2.number_input("ความกว้างภายใน (รูเจาะ) [mm]", min_value=0.0, value=float(p.get("outer_diameter") or 0))
+                    height_inner = c2.number_input("ความสูง/ยาวภายใน (รูเจาะ) [mm]", min_value=0.0, value=float(p.get("inner_diameter") or 0))
+                    
+                    od = width_inner
+                    id_inner = height_inner
+                    
+                    surf_outer = 2 * ((width * height) + (width * thickness) + (height * thickness))
+                    surf_inner = 2 * ((width_inner * thickness) + (thickness * height_inner))
+                    hole_cut = 2 * (width_inner * height_inner)
+                    unit_surface_area = surf_outer + surf_inner - hole_cut
+            
                 st.info(f"💡 พื้นที่ผิวใหม่: {unit_surface_area:,.2f} mm²")
-            
-                # =====================================================
-                # แสดงปริมาตร
-                # =====================================================
-            
-                st.info(f"💡 พื้นที่ผิวใหม่: {unit_surface_area:,.2f} mm²")
-            
-                # =====================================================
-                # BUTTONS
-                # =====================================================
             
                 col_save, col_delete = st.columns(2)
             
-                # =====================================================
-                # SAVE
-                # =====================================================
-            
                 if col_save.form_submit_button("💾 บันทึกสินค้า"):
-            
                     try:
-            
                         update_row(
-                            "products",
-                            "product_id",
-                            p["product_id"],
+                            "products", "product_id", p["product_id"],
                             {
                                 "product_code": product_code,
                                 "product_name": product_name,
@@ -910,32 +820,18 @@ def show_data_editor():
                                 "unit_surface_area": float(unit_surface_area)
                             }
                         )
-            
                         st.success("บันทึกข้อมูลสินค้าแล้ว")
-                        time.sleep(1)
+                        time.sleep(0.5)
                         st.rerun()
-            
                     except Exception as e:
                         st.error(f"บันทึกไม่สำเร็จ: {e}")
             
-                # =====================================================
-                # DELETE
-                # =====================================================
-            
                 if col_delete.form_submit_button("🗑️ ลบสินค้า"):
-            
                     try:
-            
-                        delete_row(
-                            "products",
-                            "product_id",
-                            p["product_id"]
-                        )
-            
+                        delete_row("products", "product_id", p["product_id"])
                         st.success("ลบสินค้าแล้ว")
-                        time.sleep(1)
+                        time.sleep(0.5)
                         st.rerun()
-            
                     except Exception as e:
                         st.error(f"ลบไม่ได้ อาจมีข้อมูลอื่นอ้างอิงสินค้านี้อยู่: {e}")
 
