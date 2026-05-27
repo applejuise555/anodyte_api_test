@@ -1297,7 +1297,7 @@ def show_data_editor():
     
                             update_row(
                                 "color_tank_logs",
-                                "id",
+                                "log_id",
                                 row["log_id"],
                                 {
                                     "ph_value": ph_value,
@@ -1313,7 +1313,7 @@ def show_data_editor():
     
                             delete_row(
                                 "color_tank_logs",
-                                "id",
+                                "log_id",
                                 row["log_id"]
                             )
     
