@@ -1314,7 +1314,7 @@ def show_data_editor():
                             delete_row(
                                 "color_tank_logs",
                                 "id",
-                                row["id"]
+                                row["log_id"]
                             )
     
                             st.success("ลบสำเร็จ")
