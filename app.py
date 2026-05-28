@@ -212,6 +212,17 @@ def render_color__table(target_date_str):
         })
 
     df_display = pd.DataFrame(display_rows)
+    st.write(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
+    
+    # 📥 เพิ่มปุ่มดาวน์โหลด CSV ไว้ใต้ตารางสรุปบ่อสี
+    csv_color = df_display.to_csv(index=False).encode('utf-8-sig')
+    st.download_button(
+        label="📥 Export ตารางบ่อสีเป็น CSV",
+        data=csv_color,
+        file_name=f"color_tanks_summary_{target_date_str}.csv",
+        mime="text/csv",
+        key=f"btn_csv_color_{target_date_str}"
+    )
     # แสดงผลตารางผ่าน HTML เพื่อให้ CSS สีแดงทำงานได้
     st.write(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
@@ -286,6 +297,17 @@ def render_chemical__table(target_date_str):
         })
 
     df_chem_display = pd.DataFrame(chem_display_rows)
+    st.write(df_chem_display.to_html(escape=False, index=False), unsafe_allow_html=True)
+    
+    # 📥 เพิ่มปุ่มดาวน์โหลด CSV ไว้ใต้ตารางสรุปบ่อสารเคมี
+    csv_chem = df_chem_display.to_csv(index=False).encode('utf-8-sig')
+    st.download_button(
+        label="📥 Export ตารางบ่อสารเคมีเป็น CSV",
+        data=csv_chem,
+        file_name=f"chemical_tanks_summary_{target_date_str}.csv",
+        mime="text/csv",
+        key=f"btn_csv_chem_{target_date_str}"
+    )
     st.write(df_chem_display.to_html(escape=False, index=False), unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 #====================================================================================
