@@ -973,79 +973,7 @@ def show_data_editor():
                     current_index = i
                     break
 
-            # =====================================================
-            # โหลดบ่อสี
-            # =====================================================
-            tank_rows = (
-                supabase.table("tanks")
-                .select("tank_name")
-                .execute()
-                .data
-                or []
-            )
-
-            tank_names = sorted([
-                t["tank_name"]
-                for t in tank_rows
-                if t.get("tank_name")
-            ])
-
-            # =====================================================
-            # FORM
-            # =====================================================
-            # เลือกสี (อยู่นอก form)
-            # =====================================================
             
-            # 🛠️ แก้ไขจุดที่ 1: ดึงรายการตัวเลือกสีเดิมมาประกอบ ป้องกันปัญหาไม่มีสีเดิมในตัวเลือก
-            color_options = [
-                "Clear", "Black", "Red", "Blue", "Gold", 
-                "Green", "Orange", "Pink", "Titanium", "Dark Titanium"
-            ]
-            
-            # ดึงสีจาก snapshot เก่าใน Database
-            current_color = str(log.get("color") or "Clear").strip()
-            
-            # หากชื่อสีที่บันทึกอยู่ ไม่อยู่ในลิสต์เริ่มต้น ให้เพิ่มเข้าไปใน List ตัวเลือกทันทีเพื่อไม่ให้ระบบพัง
-            if current_color not in color_options:
-                color_options.append(current_color)
-            
-            color_index = color_options.index(current_color)
-            
-            selected_color_name = st.selectbox(
-                "เลือกสี",
-                color_options,
-                index=color_index,
-                key=f"color_select_{id_val}"
-            )
-            # =====================================================
-            # เลือกบ่อสี
-            # =====================================================
-            selected_tank_name = None
-            if selected_color_name.strip().lower() != "clear":
-                current_tank_name = str(
-                    log.get("tank_name_snapshot") or ""
-                ).strip()
-            
-                if current_tank_name in tank_names:
-                    tank_index = tank_names.index(current_tank_name)
-                else:
-                    # ถ้าจดถังอะไรไว้แล้วถังนั้นไม่มีในระบบ ให้เพิ่มตัวเลือกถังนั้นชั่วคราว
-                    if current_tank_name and current_tank_name not in tank_names:
-                        tank_names.append(current_tank_name)
-                        tank_index = tank_names.index(current_tank_name)
-                    else:
-                        tank_index = 0
-            
-                selected_tank_name = st.selectbox(
-                    "เลือกบ่อสี",
-                    tank_names,
-                    index=tank_index,
-                    key=f"tank_select_{id_val}"
-                )
-            else:
-                st.info("🪟 สี Clear ไม่ต้องเลือกบ่อสี")
-
-            # (โค้ดดึงข้อมูลด้านบน logs, all_products, tank_rows ปล่อยไว้ตามเดิมจนถึงส่วนเริ่มฟอร์ม...)
 
         # === เริ่มต้นฟอร์มและย้ายตัวเลือกทั้งหมดเข้ามาอยู่ด้านในอย่างเป็นระเบียบ ===
         with st.form("edit_jiglog_form_v2"):
