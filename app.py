@@ -1047,6 +1047,7 @@ def show_data_editor():
                 st.info("🪟 สี Clear ไม่ต้องเลือกบ่อสี")
 
             with st.form("edit_jiglog_form_v2"):
+                jig_id = log.get("jig_id")
                 st.markdown("### 🔄 เปลี่ยนชิ้นงานและแก้ไขจำนวน")
                 old_p_code = log.get("products", {}).get("product_code", "N/A")
                 old_p_name = log.get("products", {}).get("product_name", "N/A") 
