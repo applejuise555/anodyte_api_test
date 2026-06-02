@@ -856,19 +856,48 @@ def show_data_editor():
                         st.error(f"ลบไม่ได้ อาจมีข้อมูลอื่นอ้างอิงสินค้านี้อยู่: {e}")
 
     with tab_jig:
-        st.subheader("🛠️ แก้ไข / ลบจิ๊ก")
-        try:
-            jigs = supabase.table("jigs") \
-                .select("*") \
-                .order("jig_model_code") \
-                .execute().data or []
+        st.subheader("🛠️ แก้ไข / ลบจิ๊ก (กรองตามวันที่เลือก)")
         
+        # 1. กำหนดช่วงเวลาของวันที่เลือก (อ้างอิงรูปแบบเดียวกับ tab_jiglog)
+        start_of_day = f"{filter_date_str}T00:00:00+07:00"
+        end_of_day = f"{filter_date_str}T23:59:59+07:00"
+
+        try:
+            # 2. ดึง log ของวันนั้น เพื่อดูว่ามี jig_id ไหนบ้างที่มีการทำงานในวันปัจจุบัน
+            active_logs = (
+                supabase.table("jig_usage_log")
+                .select("jig_id")
+                .gte("recorded_date", start_of_day)
+                .lte("recorded_date", end_of_day)
+                .execute()
+                .data
+                or []
+            )
+            
+            # เก็บเซ็ตของ jig_id ที่ไม่ซ้ำกันในวันนั้น
+            active_jig_ids = list(set([item["jig_id"] for item in active_logs if item.get("jig_id")]))
+
+            # 3. นำกลุ่ม jig_id ที่ได้ ไปดึงข้อมูลรายละเอียดจากตาราง jigs (คัดกรองตามวันที่จริง)
+            if active_jig_ids:
+                jigs = (
+                    supabase.table("jigs")
+                    .select("*")
+                    .in_("jig_id", active_jig_ids) # ดึงเฉพาะจิ๊กที่มีงานในวันนั้น
+                    .order("jig_model_code")
+                    .execute()
+                    .data
+                    or []
+                )
+            else:
+                jigs = []
+                
         except Exception as e:
             st.error(f"โหลดข้อมูลจิ๊กไม่สำเร็จ: {e}")
             jigs = []
 
+        # 4. แสดงผลบน UI
         if not jigs:
-            st.info("ยังไม่มีข้อมูลจิ๊ก")
+            st.warning(f"📅 ไม่มีข้อมูลการใช้งานจิ๊กในวันที่ {filter_date.strftime('%d/%m/%Y')}")
         else:
             jig_map = {f"{j.get('jig_model_code', '')} | Lot: {j.get('lot_no', '')}": j for j in jigs}
             selected_label = st.selectbox("เลือกจิ๊ก", list(jig_map.keys()), key="edit_jig_select")
