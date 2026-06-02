@@ -1138,24 +1138,24 @@ def show_data_editor():
     
                 if btn_delete.form_submit_button("🗑️ ลบบันทึกนี้"):
                     try:
-                        delete_row("jig_usage_log", "log_id", id_val) [cite: 95]
+                        delete_row("jig_usage_log", "log_id", id_val) 
                         
                         # หลังลบรายการคำนวณตัดยอดที่ตารางจิ๊กหลัก (jigs) ออกด้วย
-                        all_logs = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", jig_id).neq("status", "finished").execute().data or [] [cite: 95]
-                        total_jig_pieces = sum([int(x.get("total_pieces") or 0) for x in all_logs]) [cite: 95]
-                        total_jig_surface_area = sum([float(x.get("total_surface_area") or 0) for x in all_logs]) [cite: 95]
+                        all_logs = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", jig_id).neq("status", "finished").execute().data or [] 
+                        total_jig_pieces = sum([int(x.get("total_pieces") or 0) for x in all_logs])
+                        total_jig_surface_area = sum([float(x.get("total_surface_area") or 0) for x in all_logs]) 
                         
                         update_row(
-                            "jigs", "jig_id", jig_id, { [cite: 95]
-                                "total_pcs_in_jig": total_jig_pieces, [cite: 95]
-                                "total_surface_area": total_jig_surface_area [cite: 95]
-                            } [cite: 95]
-                        ) [cite: 95]
-                        st.success("ลบบันทึกงานจิ๊กและอัปเดตยอดรวมแล้ว") [cite: 95]
-                        time.sleep(1) [cite: 95]
-                        st.rerun() [cite: 95]
+                            "jigs", "jig_id", jig_id, { 
+                                "total_pcs_in_jig": total_jig_pieces, 
+                                "total_surface_area": total_jig_surface_area 
+                            } 
+                        ) 
+                        st.success("ลบบันทึกงานจิ๊กและอัปเดตยอดรวมแล้ว") 
+                        time.sleep(1)
+                        st.rerun()
                     except Exception as e:
-                        st.error(f"ลบไม่สำเร็จ: {e}") [cite: 95]
+                        st.error(f"ลบไม่สำเร็จ: {e}") 
  
     with tab_color:
         st.subheader(f"🎨 บันทึกบ่อสีวันที่ {filter_date.strftime('%d/%m/%Y')}")
