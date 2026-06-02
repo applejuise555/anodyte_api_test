@@ -1048,19 +1048,19 @@ def show_data_editor():
 
             with st.form("edit_jiglog_form_v2"):
                 st.markdown("### 🔄 เปลี่ยนชิ้นงานและแก้ไขจำนวน")
-                old_p_code = log.get("products", {}).get("product_code", "N/A") [cite: 87]
-                old_p_name = log.get("products", {}).get("product_name", "N/A") [cite: 87]
+                old_p_code = log.get("products", {}).get("product_code", "N/A")
+                old_p_name = log.get("products", {}).get("product_name", "N/A") 
                 st.text_input(
-                    "ชิ้นงานเดิม", value=f"{old_p_code} - {old_p_name}", disabled=True [cite: 87]
+                    "ชิ้นงานเดิม", value=f"{old_p_code} - {old_p_name}", disabled=True 
                 )
     
                 # =====================================================
                 # เลือกสินค้า และ โหลดข้อมูลพื้นที่ผิวต่อหน่วย (Unit Surface Area)
                 # =====================================================
                 new_product_id = st.selectbox(
-                    "เลือกชิ้นงานใหม่", options=option_list, index=current_index [cite: 87]
+                    "เลือกชิ้นงานใหม่", options=option_list, index=current_index 
                 )
-                selected_prod_id = prod_options[new_product_id] [cite: 87]
+                selected_prod_id = prod_options[new_product_id] 
                 
                 # ดึงข้อมูลสินค้าเพื่อหาค่าพื้นที่ผิวหน่วย (unit_surface_area) มารองรับการคำนวณใหม่
                 p_info_res = supabase.table("products").select("unit_surface_area").eq("product_id", selected_prod_id).single().execute()
@@ -1069,15 +1069,15 @@ def show_data_editor():
                 # =====================================================
                 # จำนวนชิ้นงาน
                 # =====================================================
-                col1, col2, col3 = st.columns(3) [cite: 87, 88]
+                col1, col2, col3 = st.columns(3) 
                 pcs_per_row = col1.number_input(
-                    "จำนวนต่อแถว", min_value=0, value=int(log.get("pcs_per_row") or 0) [cite: 88]
+                    "จำนวนต่อแถว", min_value=0, value=int(log.get("pcs_per_row") or 0) 
                 )
                 rows_filled = col2.number_input(
-                    "แถวที่เต็ม", min_value=0, value=int(log.get("rows_filled") or 0) [cite: 88]
+                    "แถวที่เต็ม", min_value=0, value=int(log.get("rows_filled") or 0)
                 )
                 partial_pieces = col3.number_input(
-                    "เศษ", min_value=0, value=int(log.get("partial_pieces") or 0) [cite: 88]
+                    "เศษ", min_value=0, value=int(log.get("partial_pieces") or 0) 
                 )
     
                 # คำนวณจำนวนรวมและพื้นที่ผิวสะสมใหม่ ณ ตอนแก้ไขฟอร์มทันที
