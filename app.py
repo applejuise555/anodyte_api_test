@@ -1046,25 +1046,25 @@ def show_data_editor():
             else:
                 st.info("🪟 สี Clear ไม่ต้องเลือกบ่อสี")
 
+            # === เริ่มต้นโค้ดชุดใหม่ แก้ไขปัญหาตาราง jigs อัปเดตกลับไปเป็น 0 ===
             with st.form("edit_jiglog_form_v2"):
                 st.markdown("### 🔄 เปลี่ยนชิ้นงานและแก้ไขจำนวน")
                 
-                # ดึงไอดีจิ๊กป้องกัน Error
                 jig_id = log.get("jig_id")
                 
-                old_p_code = log.get("products", {}).get("product_code", "N/A")
-                old_p_name = log.get("products", {}).get("product_name", "N/A")
+                old_p_code = log.get("products", {}).get("product_code", "N/A") 
+                old_p_name = log.get("products", {}).get("product_name", "N/A") 
                 st.text_input(
-                    "ชิ้นงานเดิม", value=f"{old_p_code} - {old_p_name}", disabled=True
+                    "ชิ้นงานเดิม", value=f"{old_p_code} - {old_p_name}", disabled=True 
                 )
     
                 # =====================================================
                 # 1. จัดการเลือกสินค้าใหม่ และหาค่าพื้นที่ผิวหน่วย
                 # =====================================================
                 new_product_id = st.selectbox(
-                    "เลือกชิ้นงานใหม่", options=option_list, index=current_index
+                    "เลือกชิ้นงานใหม่", options=option_list, index=current_index 
                 )
-                selected_prod_id = prod_options[new_product_id]
+                selected_prod_id = prod_options[new_product_id] 
                 
                 # ดึงข้อมูลสินค้าเพื่อหาค่าพื้นที่ผิวต่อหน่วยจริง
                 p_info_res = supabase.table("products").select("unit_surface_area").eq("product_id", selected_prod_id).single().execute()
@@ -1073,12 +1073,12 @@ def show_data_editor():
                 # =====================================================
                 # 2. ป้อนข้อมูลจำนวนชิ้นงาน
                 # =====================================================
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3 = st.columns(3) 
                 pcs_per_row = col1.number_input(
-                    "จำนวนต่อแถว", min_value=0, value=int(log.get("pcs_per_row") or 0)
+                    "จำนวนต่อแถว", min_value=0, value=int(log.get("pcs_per_row") or 0) 
                 )
                 rows_filled = col2.number_input(
-                    "แถวที่เต็ม", min_value=0, value=int(log.get("rows_filled") or 0)
+                    "แถวที่เต็ม", min_value=0, value=int(log.get("rows_filled") or 0) 
                 )
                 partial_pieces = col3.number_input(
                     "เศษ", min_value=0, value=int(log.get("partial_pieces") or 0)
@@ -1089,13 +1089,11 @@ def show_data_editor():
                 new_total_surface_area = new_total_pieces * unit_surface_area
     
                 # =====================================================
-                # 3. จัดการเรื่อง "สี" และ "บ่อชุบ" (ดึงค่าจากรายการเดิม ไม่ให้หลุดเป็น 0)
+                # 3. จัดการเรื่อง "สี" และ "บ่อชุบ"
                 # =====================================================
                 st.markdown("---")
-                # รายการตัวเลือกสีที่มีในระบบ
                 color_options_list = ["⏳ ยังไม่ลงบ่อสี", "✨ สีใส (Clear)", "Black", "Red", "Dark Red", "Violet", "Green", "Gold", "Orange", "Blue", "Pink"]
                 
-                # เช็คค่าสีปัจจุบันของ log นี้
                 db_color = log.get("color")
                 if db_color is None:
                     default_color_idx = 0
@@ -1104,17 +1102,14 @@ def show_data_editor():
                 else:
                     default_color_idx = color_options_list.index(db_color) if db_color in color_options_list else 0
     
-                # กล่องเลือกสีประจำรายการนี้
                 chosen_color_ui = st.selectbox("แก้ไขสีชิ้นงาน", options=color_options_list, index=default_color_idx)
     
-                # ดึงข้อมูลบ่อชุบทั้งหมดจากตาราง tanks มารองรับ
                 tanks_db_data = supabase.table("tanks").select("tank_id, tank_name").execute().data or []
                 fresh_tank_map = {t["tank_name"]: t["tank_id"] for t in tanks_db_data}
                 
                 tank_name_list = ["❌ ไม่ระบุบ่อ/ไม่ลงบ่อสี"] + list(fresh_tank_map.keys())
                 
-                # เช็คบ่อปัจจุบันของรายการนี้
-                db_tank_name = log.get("tank_name_snapshot")
+                db_tank_name = log.get("tank_name_snapshot") 
                 if db_tank_name in tank_name_list:
                     default_tank_idx = tank_name_list.index(db_tank_name)
                 else:
@@ -1130,7 +1125,7 @@ def show_data_editor():
                 
                 if btn_save.form_submit_button("💾 บันทึกการแก้ไข"):
                     try:
-                        # แปลงค่าสีจาก UI กลับไปเป็นค่าลง Database
+                        # แปลงค่าสีจาก UI กลับเป็นแบบโครงสร้าง DB
                         if chosen_color_ui == "⏳ ยังไม่ลงบ่อสี":
                             final_color_value = None
                         elif chosen_color_ui == "✨ สีใส (Clear)":
@@ -1138,7 +1133,6 @@ def show_data_editor():
                         else:
                             final_color_value = chosen_color_ui
     
-                        # แปลงค่าบ่อจาก UI กลับไปเป็น ID และ Snapshot
                         if chosen_tank_ui == "❌ ไม่ระบุบ่อ/ไม่ลงบ่อสี":
                             final_tank_id = None
                             final_tank_snapshot = None
@@ -1146,25 +1140,25 @@ def show_data_editor():
                             final_tank_id = fresh_tank_map.get(chosen_tank_ui)
                             final_tank_snapshot = chosen_tank_ui
     
-                        # จัดการเตรียม Payload
                         update_payload = {
                             "product_id": selected_prod_id,
                             "pcs_per_row": pcs_per_row,
                             "rows_filled": rows_filled,
                             "partial_pieces": partial_pieces,
                             "total_pieces": new_total_pieces,
-                            "total_surface_area": float(new_total_surface_area), # ส่งค่าที่คำนวณใหม่ไป
-                            "color": final_color_value,                         # ส่งค่าสีที่เลือกใหม่ไป
-                            "tank_id": final_tank_id,                           # ส่งไอดีบ่อใหม่ไป
-                            "tank_name_snapshot": final_tank_snapshot           # ส่งชื่อบ่อสแนปชอตใหม่ไป
+                            "total_surface_area": float(new_total_surface_area),
+                            "color": final_color_value,
+                            "tank_id": final_tank_id,
+                            "tank_name_snapshot": final_tank_snapshot
                         }
     
-                        # อัปเดตข้อมูลที่ตารางประวัติ log
+                        # 1. อัปเดตข้อมูลที่ตารางประวัติ log หลักก่อน
                         supabase.table("jig_usage_log").update(update_payload).eq("log_id", id_val).execute()
     
-                        # สั่งบวกยอดรวมใหม่ทั้งหมดส่งกลับไปทับตารางจิ๊กหลัก (jigs) เพื่อให้ Dashboard คำนวณถูกต้อง
+                        # 2. คำนวณยอดสะสมใหม่ส่งกลับตารางจิ๊กหลัก (jigs) 
+                        # 💡 ปรับปรุงตรงนี้: ถอดตัวกรองสถานะออก เพื่อป้องกันค่าย้อนกลับไปเป็น 0
                         if jig_id:
-                            all_logs = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", jig_id).neq("status", "finished").execute().data or []
+                            all_logs = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", jig_id).execute().data or []
                             total_jig_pieces = sum([int(x.get("total_pieces") or 0) for x in all_logs])
                             total_jig_surface_area = sum([float(x.get("total_surface_area") or 0) for x in all_logs])
                             
@@ -1185,9 +1179,9 @@ def show_data_editor():
                     try:
                         delete_row("jig_usage_log", "log_id", id_val)
                         
-                        # รีคำนวณยอดรวมของจิ๊กใหม่หลังจากมีการลบรายการ
+                        # 💡 ปรับปรุงตรงนี้เช่นกัน: ถอดตัวกรองสถานะออกตอนที่มีการลบรายการ
                         if jig_id:
-                            all_logs = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", jig_id).neq("status", "finished").execute().data or []
+                            all_logs = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", jig_id).execute().data or []
                             total_jig_pieces = sum([int(x.get("total_pieces") or 0) for x in all_logs])
                             total_jig_surface_area = sum([float(x.get("total_surface_area") or 0) for x in all_logs])
                             
@@ -1197,12 +1191,12 @@ def show_data_editor():
                                     "total_surface_area": total_jig_surface_area
                                 }
                             )
-                        st.success("ลบบันทึกงานจิ๊กและอัปเดตยอดรวมแล้ว")
+                        st.success("ลบบันทึกงานจิ๊กและอัปเดตยอดรวมแล้ว") 
                         time.sleep(1)
                         st.rerun()
                     except Exception as e:
-                        st.error(f"ลบไม่สำเร็จ: {e}")
- 
+                        st.error(f"ลบไม่สำเร็จ: {e}") 
+            # === สิ้นสุดโค้ดชุดใหม่ ===
  
     with tab_color:
         st.subheader(f"🎨 บันทึกบ่อสีวันที่ {filter_date.strftime('%d/%m/%Y')}")
