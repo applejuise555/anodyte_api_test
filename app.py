@@ -2455,35 +2455,48 @@ if menu == "📝 บันทึกข้อมูลการผลิต":
                 if st.button("🏁 ยืนยันเสร็จสิ้นงาน", use_container_width=True):
                     try:
                         rows_to_close = active_df.head(close_count)
-                        jigs_to_refresh = set()
-        
+                        log_ids_to_close = [int(row["log_id"]) for _, row in rows_to_close.iterrows()]
+                        jigs_to_refresh = set(int(row["jig_id"]) for _, row in rows_to_close.iterrows())
+
+                        # ===== Step 1: อัปเดต jigs ก่อน — ขณะที่ log ยังไม่ถูก mark finished =====
+                        # หักเฉพาะ log ที่กำลังจะปิด ออกจากยอดปัจจุบัน
+                        for target_jig_id in jigs_to_refresh:
+                            closing_ids_for_jig = [
+                                int(row["log_id"])
+                                for _, row in rows_to_close.iterrows()
+                                if int(row["jig_id"]) == target_jig_id
+                            ]
+                            # ดึง log ที่ยังไม่ finished และไม่ใช่ตัวที่กำลังจะปิด
+                            remain_logs = (
+                                supabase.table("jig_usage_log")
+                                .select("total_pieces, total_surface_area")
+                                .eq("jig_id", target_jig_id)
+                                .neq("status", "finished")
+                                .not_.in_("log_id", closing_ids_for_jig)
+                                .execute()
+                                .data or []
+                            )
+                            remain_pcs = sum(int(x.get("total_pieces") or 0) for x in remain_logs)
+                            remain_vol = sum(float(x.get("total_surface_area") or 0) for x in remain_logs)
+                            supabase.table("jigs").update({
+                                "total_pcs_in_jig": remain_pcs,
+                                "total_surface_area": remain_vol
+                            }).eq("jig_id", target_jig_id).execute()
+
+                        # ===== Step 2: mark log เป็น finished และอัปเดต jig_status =====
                         for _, row in rows_to_close.iterrows():
                             current_jig_id = int(row["jig_id"])
-                            jigs_to_refresh.add(current_jig_id)
-        
-                            # ===== update jig_usage_log =====
+
                             supabase.table("jig_usage_log").update({
                                 "status": "finished"
                             }).eq("log_id", int(row["log_id"])).execute()
-        
-                            # ===== update jig_status =====
+
                             supabase.table("jig_status").upsert({
                                 "jig_id": current_jig_id,
                                 "status_type": "Finished",
                                 "current_tank_id": None,
                                 "updated_at": datetime.now(ICT).isoformat()
                             }).execute()
-                        
-                        # 🛠️ จุดแก้ไขที่ 3: คำนวณยอดคงเหลือใหม่สำหรับทุกจิ๊กที่พึ่งโดนปิดงานไป (ถ้าไม่มีงานค้าง ยอดต้องเป็น 0)
-                        for target_jig_id in jigs_to_refresh:
-                            remain_logs = supabase.table("jig_usage_log").select("total_pieces, total_surface_area").eq("jig_id", target_jig_id).neq("status", "finished").execute().data or []
-                            remain_pcs = sum([int(x.get("total_pieces") or 0) for x in remain_logs])
-                            remain_vol = sum([float(x.get("total_surface_area") or 0) for x in remain_logs])
-                            
-                            supabase.table("jigs").update({
-                                "total_pcs_in_jig": remain_pcs,
-                                "total_surface_area": remain_vol
-                            }).eq("jig_id", target_jig_id).execute()
         
                         st.success(f"✅ ปิดงานสำเร็จ {close_count} รายการ")
                         time.sleep(1)
