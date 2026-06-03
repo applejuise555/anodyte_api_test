@@ -2171,7 +2171,7 @@ if menu == "📝 บันทึกข้อมูลการผลิต":
                                 # =========================================================
                                 # FORM
                                 # =========================================================
-                                with st.form("continue_form_fixed", clear_on_submit=True):
+                                with st.form("continue_form_fixed"):
                             
                                     c1, c2 = st.columns(2)
                             
@@ -2179,21 +2179,24 @@ if menu == "📝 บันทึกข้อมูลการผลิต":
                                         "จำนวนต่อแถว",
                                         min_value=0,
                                         max_value=1000,
-                                        value=0
+                                        value=0,
+                                        key="form_pcs"
                                     )
                             
                                     rows = c1.number_input(
                                         "แถวที่เต็ม",
                                         min_value=0,
                                         max_value=100,
-                                        value=0
+                                        value=0,
+                                        key="form_rows"
                                     )
                             
                                     partial = c1.number_input(
                                         "เศษ",
                                         min_value=0,
                                         max_value=1000,
-                                        value=0
+                                        value=0,
+                                        key="form_partial"
                                     )
                             
                                     # ===== คำนวณ =====
@@ -2220,6 +2223,13 @@ if menu == "📝 บันทึกข้อมูลการผลิต":
                                     # =====================================================
                                
                                     if st.form_submit_button("💾 บันทึก"):
+                                        # อ่านค่าจาก session_state เพื่อให้แน่ใจว่าได้ค่าที่ผู้ใช้กรอก
+                                        _pcs     = int(st.session_state.get("form_pcs", pcs))
+                                        _rows    = int(st.session_state.get("form_rows", rows))
+                                        _partial = int(st.session_state.get("form_partial", partial))
+                                        _total_pcs = (_rows * _pcs) + _partial
+                                        _unit_sa   = float(p_info.get("unit_surface_area") or 0) if p_info else 0
+                                        _total_sa  = _unit_sa * _total_pcs
                                         try:
                                             # 1. บันทึกประวัติลง jig_usage_log
                                             supabase.table("jig_usage_log").insert({
@@ -2229,13 +2239,12 @@ if menu == "📝 บันทึกข้อมูลการผลิต":
                                                 "tank_id": selected_tank_id,
                                                 "tank_name_snapshot": selected_tank_name,
                                                 "status": status_value,
-                                                "total_pieces": total_pcs,
-                                                # 💡 แก้ไขจุดที่ 1: ดึงค่าจากตัวแปรคำนวณจริง (total_vol) ส่งเข้าฟิลด์ total_surface_area ของฐานข้อมูล
-                                                "total_surface_area": float(total_surface_area),
+                                                "total_pieces": _total_pcs,
+                                                "total_surface_area": float(_total_sa),
                                                 "recorded_date": datetime.now(ICT).isoformat(),
-                                                "rows_filled": rows,
-                                                "partial_pieces": partial,
-                                                "pcs_per_row": pcs
+                                                "rows_filled": _rows,
+                                                "partial_pieces": _partial,
+                                                "pcs_per_row": _pcs
                                             }).execute()
                                             
                                             # 2. อัปเดตตารางสถานะการทำงานปัจจุบัน
