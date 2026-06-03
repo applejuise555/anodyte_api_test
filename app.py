@@ -930,39 +930,19 @@ def show_data_editor():
     with tab_jig:
         st.subheader("🛠️ แก้ไข / ลบจิ๊ก (กรองตามวันที่เลือก)")
         
-        # 1. กำหนดช่วงเวลาของวันที่เลือก (อ้างอิงรูปแบบเดียวกับ tab_jiglog)
-        start_of_day = f"{filter_date_str}T00:00:00+07:00"
-        end_of_day = f"{filter_date_str}T23:59:59+07:00"
+        # ดึงจิ๊ก **ทั้งหมด** ที่สร้างในวันที่เลือก โดยใช้ prefix ของ jig_model_code (YYYYMMDD)
+        date_prefix = filter_date.strftime("%Y%m%d")
 
         try:
-            # 2. ดึง log ของวันนั้น เพื่อดูว่ามี jig_id ไหนบ้างที่มีการทำงานในวันปัจจุบัน
-            active_logs = (
-                supabase.table("jig_usage_log")
-                .select("jig_id")
-                .gte("recorded_date", start_of_day)
-                .lte("recorded_date", end_of_day)
+            jigs = (
+                supabase.table("jigs")
+                .select("*")
+                .like("jig_model_code", f"{date_prefix}%")
+                .order("jig_model_code")
                 .execute()
                 .data
                 or []
             )
-            
-            # เก็บเซ็ตของ jig_id ที่ไม่ซ้ำกันในวันนั้น
-            active_jig_ids = list(set([item["jig_id"] for item in active_logs if item.get("jig_id")]))
-
-            # 3. นำกลุ่ม jig_id ที่ได้ ไปดึงข้อมูลรายละเอียดจากตาราง jigs (คัดกรองตามวันที่จริง)
-            if active_jig_ids:
-                jigs = (
-                    supabase.table("jigs")
-                    .select("*")
-                    .in_("jig_id", active_jig_ids) # ดึงเฉพาะจิ๊กที่มีงานในวันนั้น
-                    .order("jig_model_code")
-                    .execute()
-                    .data
-                    or []
-                )
-            else:
-                jigs = []
-                
         except Exception as e:
             st.error(f"โหลดข้อมูลจิ๊กไม่สำเร็จ: {e}")
             jigs = []
