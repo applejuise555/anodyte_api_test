@@ -590,6 +590,11 @@ def render_tank_map(selected_tank_name=None):
 
         <!-- ANODIZE -->
 
+        <div class="tank vertical" data-tank="HardAnodize"
+            style="left:670px;top:520px;width:140px;height:190px;background:#67E8F9;color:black;">
+            HardAnodize
+        </div>
+
         <div class="tank vertical" data-tank="Anodize Tank 1"
             style="left:890px;top:520px;width:140px;height:190px;background:#ccc;color:black;">
             AnodizedPPool1
