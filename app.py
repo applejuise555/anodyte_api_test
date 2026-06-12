@@ -2142,7 +2142,7 @@ if menu == "📝 บันทึกข้อมูลการผลิต":
                                 # =========================================================
                                 else:
                                     # แปลงชื่อแสดงผล "✨ สีใส (Clear)" ให้กลายเป็นคำว่า "Clear" เพื่อเอาไปค้นหาในฐานข้อมูล
-                                    search_color_name = "Clear" if sel_c_new == "✨ สีใส (Clear)" else sel_c_new
+                                    search_color_name = "เคลียร์" if sel_c_new == "✨ สีใส (Clear)" else sel_c_new
                                     
                                     # ค้นหาบ่อที่คู่กับสีนี้ในระบบอัตโนมัติ
                                     filtered_tanks = {
